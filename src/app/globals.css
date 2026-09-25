@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Tiptap / Prosemirror editor styles */
+.ProseMirror {
+  outline: none;
+  min-height: 60px;
+}
+
+.ProseMirror p {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #94a3b8;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

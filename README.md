@@ -18,7 +18,7 @@ Aplicación web desarrollada con Next.js, React y Tailwind CSS, preparada para d
    ```bash
    cp .env.example .env
    ```
-   *Puedes cambiar el puerto en `.env` (por defecto `3000`).*
+   *Puedes cambiar el puerto en `.env` (por defecto `3005` para evitar conflictos con servicios como Dokploy en el puerto 3000).*
 
 2. **Construir y levantar en segundo plano:**
    ```bash
@@ -53,13 +53,13 @@ Aplicación web desarrollada con Next.js, React y Tailwind CSS, preparada para d
    ```bash
    docker run -d \
      --name santina-consulturia \
-     -p 3000:3000 \
+     -p 3005:3000 \
      --restart unless-stopped \
      santina-consulturia:latest
    ```
 
 3. **Acceder a la aplicación:**
-   Abre tu navegador en [http://localhost:3000](http://localhost:3000).
+   Abre tu navegador en [http://localhost:3005](http://localhost:3005).
 
 ---
 

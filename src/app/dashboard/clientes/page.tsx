@@ -1,0 +1,2139 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { createClient } from '@/utils/supabase/client';
+import { Cliente, TipoTramite, TramiteRetiroDesempleo, TramiteMejoravit, TramiteAltaMedicaImss } from '@/types/cliente';
+import { runOcrWithHeatmap, parseIneOcrText, IneParsedData } from '@/utils/ineOcrParser';
+import { generateAndUploadOfficialCurpPdf } from '@/utils/curpPdfGenerator';
+import {
+  Users,
+  Plus,
+  Search,
+  FileText,
+  Building2,
+  HeartPulse,
+  Banknote,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  AlertCircle,
+  X,
+  ChevronRight,
+  ShieldCheck,
+  Phone,
+  Mail,
+  Smartphone,
+  Camera,
+  KeyRound,
+  FileCheck2,
+  Sparkles,
+  Upload,
+  Image as ImageIcon,
+  ScanLine,
+  Eye,
+  ExternalLink,
+  Check,
+  Download,
+  FileDown,
+  Copy,
+  Link2,
+  Share2,
+  ArrowLeft,
+  User,
+  UserCheck
+} from 'lucide-react';
+
+export default function ClientesPage() {
+  const supabase = createClient();
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [showFullDetails, setShowFullDetails] = useState(false);
+  const [clienteTramites, setClienteTramites] = useState<{
+    retiro?: TramiteRetiroDesempleo[];
+    mejoravit?: TramiteMejoravit[];
+    altaMedica?: TramiteAltaMedicaImss[];
+  }>({});
+  const [loadingTramites, setLoadingTramites] = useState(false);
+
+  // Form State Cliente
+  const [formCliente, setFormCliente] = useState({
+    nombre: '',
+    apellido_paterno: '',
+    apellido_materno: '',
+    telefono: '',
+    email: '',
+    notas: '',
+  });
+
+  const [crearTramiteInicial, setCrearTramiteInicial] = useState(false);
+  const [tipoTramiteInicial, setTipoTramiteInicial] = useState<TipoTramite>('retiro_desempleo');
+
+  // Form Retiro por Desempleo (Exacto a Imagen 1)
+  const [formRetiro, setFormRetiro] = useState({
+    semanas_cotizadas: '',
+    ultimo_salario_registrado: '',
+    validado_inactivo_imss: false,
+    req_ine_vigente: false,
+    req_comprobante_domicilio: false,
+    req_curp: false,
+    req_constancia_situacion_fiscal: false,
+    req_reporte_semanas_imss: false,
+    req_app_aforemovil_instalada: false,
+    req_registro_aforemovil_realizado: false,
+    req_saldo_visible_aforemovil: false,
+    req_tiene_semanas_descontadas: false,
+    req_anexo_sindo: false,
+    observaciones: '',
+  });
+
+  // Form Mejoravit (Exacto a 10 puntos de Imagen 2)
+  const [formMejoravit, setFormMejoravit] = useState({
+    req_ine_normal: false,
+    req_ine_ampliada_200: false,
+    req_curp_actualizada: false,
+    req_acta_nacimiento: false,
+    req_comprobante_domicilio: false,
+    comprobante_familiar_anexo_acta: false,
+    req_estado_cuenta_bancario: false,
+    req_constancia_situacion_fiscal: false,
+    req_3_referencias_personales: false,
+    nss_portal_infonavit: '',
+    password_portal_infonavit: '',
+    req_portal_infonavit_validado: false,
+    req_fotos_inmueble_5: false,
+    observaciones: '',
+  });
+
+  // Form Alta Médica IMSS
+  const [formAltaMedica, setFormAltaMedica] = useState({
+    clinica_umf_asignada: '',
+    turno_preferido: 'Matutino',
+    codigo_postal_clinica: '',
+    modalidad_aseguramiento: 'Modalidad 10 (Trabajador)',
+    req_curp_validada: false,
+    req_comprobante_domicilio_reciente: false,
+    req_identificacion_oficial: false,
+    req_fotografia_infantil: false,
+    req_cartilla_nacional_salud: false,
+    req_alta_patronal_vigente: false,
+    observaciones: '',
+  });
+
+  // Estado de subida de INE y OCR
+  const [ineUploadMode, setIneUploadMode] = useState<'single' | 'dual'>('single'); // 'single': 1 hoja con ambos lados, 'dual': frente y reverso por separado
+  const [ineCompletaFile, setIneCompletaFile] = useState<File | null>(null);
+  const [ineCompletaPreview, setIneCompletaPreview] = useState<string | null>(null);
+  const [ineFrenteFile, setIneFrenteFile] = useState<File | null>(null);
+  const [ineReversoFile, setIneReversoFile] = useState<File | null>(null);
+  const [ineFrentePreview, setIneFrentePreview] = useState<string | null>(null);
+  const [ineReversoPreview, setIneReversoPreview] = useState<string | null>(null);
+  const [processingOcr, setProcessingOcr] = useState(false);
+  const [ocrSuccessData, setOcrSuccessData] = useState<IneParsedData | null>(null);
+  const [ocrStatusMsg, setOcrStatusMsg] = useState<string | null>(null);
+
+  const [saving, setSaving] = useState(false);
+  const [downloadingCurp, setDownloadingCurp] = useState(false);
+  const [waitingCurpDownload, setWaitingCurpDownload] = useState(false);
+  const [isDraggingPdf, setIsDraggingPdf] = useState(false);
+  const [copiedScanLink, setCopiedScanLink] = useState(false);
+  const [curpSuccessMsg, setCurpSuccessMsg] = useState<string | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const [localNetworkIp, setLocalNetworkIp] = useState<string>('');
+
+  useEffect(() => {
+    fetch('/api/system/local-ip')
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.localIp && d.localIp !== 'localhost') {
+          setLocalNetworkIp(d.localIp);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const getClientScanLink = (cliId?: string) => {
+    const id = cliId || selectedCliente?.id;
+    if (!id || typeof window === 'undefined') return '';
+    const origin = window.location.origin;
+    if ((origin.includes('localhost') || origin.includes('127.0.0.1')) && localNetworkIp) {
+      const port = window.location.port ? `:${window.location.port}` : '';
+      return `${window.location.protocol}//${localNetworkIp}${port}/scan-ine/${id}`;
+    }
+    return `${origin}/scan-ine/${id}`;
+  };
+
+  const handleCopyScanLink = (cliId?: string) => {
+    const link = getClientScanLink(cliId);
+    if (!link) return;
+    navigator.clipboard.writeText(link).catch(() => {});
+    setCopiedScanLink(true);
+    setFeedbackMsg({ type: 'success', text: '¡Enlace de escaneo copiado! Puedes enviárselo a tu cliente.' });
+    setTimeout(() => setCopiedScanLink(false), 3000);
+  };
+
+  const handleShareWhatsAppScanLink = (cliente?: Cliente) => {
+    const cli = cliente || selectedCliente;
+    if (!cli) return;
+    const link = getClientScanLink(cli.id);
+    const nombreCli = cli.nombre || 'estimado cliente';
+    const msg = `Hola ${nombreCli}, te comparto tu enlace oficial y seguro para escanear tu Credencial de Elector (INE) por ambos lados con la cámara de tu celular y completar tu expediente:\n\n👉 ${link}\n\nSolo te tomará 1 minuto. ¡Gracias!`;
+    const cleanPhone = cli.telefono ? cli.telefono.replace(/\D/g, '') : '';
+    const waUrl = cleanPhone
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone.length === 10 ? '52' + cleanPhone : cleanPhone}&text=${encodeURIComponent(msg)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const handleDownloadCurpOfficial = async (curpOverride?: string) => {
+    if (!selectedCliente) return;
+    const targetCurp = curpOverride || selectedCliente.curp || ocrSuccessData?.curp;
+    if (!targetCurp) {
+      alert('No se ha detectado o registrado ninguna CURP.');
+      return;
+    }
+
+    setDownloadingCurp(true);
+    setCurpSuccessMsg('Generando constancia certificada de CURP y guardando en Storage...');
+    try {
+      const { publicUrl, pdfBlob } = await generateAndUploadOfficialCurpPdf({
+        clienteId: selectedCliente.id,
+        curp: targetCurp,
+        nombre: selectedCliente.nombre || ocrSuccessData?.nombre,
+        apellidoPaterno: selectedCliente.apellido_paterno || ocrSuccessData?.apellido_paterno,
+        apellidoMaterno: selectedCliente.apellido_materno || ocrSuccessData?.apellido_materno,
+        fechaNacimiento: ocrSuccessData?.fecha_nacimiento,
+        sexo: ocrSuccessData?.sexo,
+        entidad: 'JALISCO',
+      });
+
+      setSelectedCliente((prev) => prev ? { ...prev, curp: targetCurp, curp_document_url: publicUrl } : null);
+      setCurpSuccessMsg('¡Constancia certificada de CURP guardada en el expediente!');
+
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const downloadLink = document.createElement('a');
+      downloadLink.href = blobUrl;
+      downloadLink.download = `CURP_Certificada_${targetCurp}.pdf`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+
+      fetchClientes();
+      fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error al generar CURP:', err);
+      setCurpSuccessMsg(`Error: ${err.message}`);
+    } finally {
+      setDownloadingCurp(false);
+    }
+  };
+
+  const handleOpenGobMxCurp = (curpToCopy?: string) => {
+    const curp = curpToCopy || selectedCliente?.curp || ocrSuccessData?.curp || '';
+    if (curp) {
+      navigator.clipboard.writeText(curp).catch(() => {});
+      setCurpSuccessMsg(`¡CURP (${curp}) copiada al portapapeles! Pégala en el portal oficial de RENAPO.`);
+    }
+    setWaitingCurpDownload(true);
+    window.open('https://www.gob.mx/curp/', '_blank');
+  };
+
+  const handleUploadCurpPdf = async (file: File) => {
+    if (!selectedCliente) return;
+    setDownloadingCurp(true);
+    setCurpSuccessMsg('Subiendo constancia original de RENAPO al Storage...');
+    try {
+      const curpVal = selectedCliente.curp || ocrSuccessData?.curp || 'RENAPO';
+      const storagePath = `${selectedCliente.id}/curp_oficial_${curpVal}_${Date.now()}.pdf`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('ine_documents')
+        .upload(storagePath, file, {
+          contentType: 'application/pdf',
+          upsert: true,
+        });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('ine_documents')
+        .getPublicUrl(storagePath);
+
+      await supabase
+        .from('clientes')
+        .update({
+          curp_document_url: publicUrl,
+          ...(selectedCliente.curp ? {} : ocrSuccessData?.curp ? { curp: ocrSuccessData.curp } : {}),
+        })
+        .eq('id', selectedCliente.id);
+
+      await Promise.all([
+        supabase.from('tramites_retiro_desempleo').update({ req_curp: true }).eq('cliente_id', selectedCliente.id),
+        supabase.from('tramites_mejoravit').update({ req_curp_actualizada: true }).eq('cliente_id', selectedCliente.id),
+        supabase.from('tramites_alta_medica_imss').update({ req_curp_validada: true }).eq('cliente_id', selectedCliente.id),
+      ]);
+
+      setSelectedCliente((prev) => prev ? { ...prev, curp_document_url: publicUrl } : null);
+      setCurpSuccessMsg('¡Constancia original de RENAPO guardada y anexada al expediente!');
+      setWaitingCurpDownload(false);
+      fetchClientes();
+      fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error subiendo CURP PDF:', err);
+      setCurpSuccessMsg(`Error al subir: ${err.message}`);
+    } finally {
+      setDownloadingCurp(false);
+    }
+  };
+
+  // Listener global para capturar arrastre de archivos (Drag & Drop) y pegado (Ctrl+V) de la CURP
+  useEffect(() => {
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer?.types?.includes('Files')) {
+        setIsDraggingPdf(true);
+      }
+    };
+
+    const handleDragLeave = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.relatedTarget === null) {
+        setIsDraggingPdf(false);
+      }
+    };
+
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDraggingPdf(false);
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0 && selectedCliente) {
+        const file = files[0];
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+          handleUploadCurpPdf(file);
+        }
+      }
+    };
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (items && selectedCliente) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].kind === 'file') {
+            const file = items[i].getAsFile();
+            if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))) {
+              handleUploadCurpPdf(file);
+              break;
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('dragover', handleDragOver);
+    window.addEventListener('dragleave', handleDragLeave);
+    window.addEventListener('drop', handleDrop);
+    window.addEventListener('paste', handlePaste);
+
+    return () => {
+      window.removeEventListener('dragover', handleDragOver);
+      window.removeEventListener('dragleave', handleDragLeave);
+      window.removeEventListener('drop', handleDrop);
+      window.removeEventListener('paste', handlePaste);
+    };
+  }, [selectedCliente, ocrSuccessData]);
+
+  useEffect(() => {
+    fetchClientes();
+  }, []);
+
+  const fetchClientes = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.warn('Error fetching clientes:', error.message);
+      } else if (data) {
+        setClientes(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchTramites = async (clienteId: string) => {
+    setLoadingTramites(true);
+    try {
+      const [retiroRes, mejoravitRes, altaMedicaRes] = await Promise.all([
+        supabase.from('tramites_retiro_desempleo').select('*').eq('cliente_id', clienteId),
+        supabase.from('tramites_mejoravit').select('*').eq('cliente_id', clienteId),
+        supabase.from('tramites_alta_medica_imss').select('*').eq('cliente_id', clienteId),
+      ]);
+
+      setClienteTramites({
+        retiro: (retiroRes.data as TramiteRetiroDesempleo[]) || [],
+        mejoravit: (mejoravitRes.data as TramiteMejoravit[]) || [],
+        altaMedica: (altaMedicaRes.data as TramiteAltaMedicaImss[]) || [],
+      });
+    } catch (e) {
+      console.error('Error fetching tramites:', e);
+    } finally {
+      setLoadingTramites(false);
+    }
+  };
+
+  const handleSelectCliente = async (cliente: Cliente, openDetails: boolean = false) => {
+    setSelectedCliente(cliente);
+    setShowFullDetails(openDetails);
+    setIneCompletaFile(null);
+    setIneFrenteFile(null);
+    setIneReversoFile(null);
+    setIneCompletaPreview(cliente.ine_completa_url || null);
+    setIneFrentePreview(cliente.ine_frente_url || null);
+    setIneReversoPreview(cliente.ine_reverso_url || null);
+    if (cliente.ine_completa_url && !cliente.ine_frente_url) {
+      setIneUploadMode('single');
+    }
+    setOcrSuccessData(cliente.ine_ocr_raw ? (cliente.ine_ocr_raw as IneParsedData) : null);
+    setOcrStatusMsg(null);
+    setCurpSuccessMsg(null);
+    await fetchTramites(cliente.id);
+  };
+
+  // Función para subir archivos a Supabase Storage y aplicar OCR
+  const handleUploadAndOcrIne = async () => {
+    if (!selectedCliente) return;
+
+    if (ineUploadMode === 'single' && !ineCompletaFile) {
+      setOcrStatusMsg('Por favor selecciona el archivo con la hoja completa del INE (ambos lados).');
+      return;
+    }
+
+    if (ineUploadMode === 'dual' && !ineFrenteFile && !ineReversoFile) {
+      setOcrStatusMsg('Por favor selecciona al menos la imagen del Frente o Reverso del INE.');
+      return;
+    }
+
+    setProcessingOcr(true);
+    setOcrStatusMsg('Iniciando procesamiento y subida al Storage...');
+
+    try {
+      let completaUrl = selectedCliente.ine_completa_url || '';
+      let frenteUrl = selectedCliente.ine_frente_url || '';
+      let reversoUrl = selectedCliente.ine_reverso_url || '';
+      let frontText = '';
+      let backText = '';
+
+      if (ineUploadMode === 'single' && ineCompletaFile) {
+        // Modo 1: Un solo archivo con ambos lados
+        setOcrStatusMsg('Subiendo hoja completa del INE al Storage...');
+        const ext = ineCompletaFile.name.split('.').pop() || 'png';
+        const filePath = `${selectedCliente.id}/ine_completa_${Date.now()}.${ext}`;
+
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('ine_documents')
+          .upload(filePath, ineCompletaFile, { upsert: true });
+
+        if (uploadErr) {
+          console.warn('Storage upload error:', uploadErr.message);
+        } else if (uploadData) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('ine_documents')
+            .getPublicUrl(filePath);
+          completaUrl = publicUrl;
+        }
+
+        setOcrStatusMsg('Detectando credenciales mediante Mapa de Calor & procesando OCR...');
+        const res = await runOcrWithHeatmap(ineCompletaFile);
+        frontText = res.frontText;
+        backText = res.backText;
+      } else {
+        // Modo 2: Dos archivos separados (frente y reverso)
+        if (ineFrenteFile) {
+          setOcrStatusMsg('Subiendo INE Frente al Storage...');
+          const frenteExt = ineFrenteFile.name.split('.').pop() || 'png';
+          const frentePath = `${selectedCliente.id}/ine_frente_${Date.now()}.${frenteExt}`;
+          
+          const { data: uploadFrente, error: uploadFrenteErr } = await supabase.storage
+            .from('ine_documents')
+            .upload(frentePath, ineFrenteFile, { upsert: true });
+
+          if (uploadFrenteErr) {
+            console.warn('Storage upload error:', uploadFrenteErr.message);
+          } else if (uploadFrente) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('ine_documents')
+              .getPublicUrl(frentePath);
+            frenteUrl = publicUrl;
+          }
+
+          setOcrStatusMsg('Analizando texto OCR del Frente con Mapa de Calor...');
+          const resFrente = await runOcrWithHeatmap(ineFrenteFile);
+          frontText = resFrente.frontText;
+        }
+
+        if (ineReversoFile) {
+          setOcrStatusMsg('Subiendo INE Reverso al Storage...');
+          const reversoExt = ineReversoFile.name.split('.').pop() || 'png';
+          const reversoPath = `${selectedCliente.id}/ine_reverso_${Date.now()}.${reversoExt}`;
+
+          const { data: uploadRev, error: uploadRevErr } = await supabase.storage
+            .from('ine_documents')
+            .upload(reversoPath, ineReversoFile, { upsert: true });
+
+          if (uploadRevErr) {
+            console.warn('Storage upload error:', uploadRevErr.message);
+          } else if (uploadRev) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('ine_documents')
+              .getPublicUrl(reversoPath);
+            reversoUrl = publicUrl;
+          }
+
+          setOcrStatusMsg('Analizando texto OCR del Reverso con Mapa de Calor...');
+          const resReverso = await runOcrWithHeatmap(ineReversoFile);
+          backText = resReverso.frontText || resReverso.backText;
+        }
+      }
+
+      // 3. Parsear texto detectado del INE
+      setOcrStatusMsg('Estructurando datos detectados...');
+      const parsedData = parseIneOcrText(frontText, backText);
+      setOcrSuccessData(parsedData);
+
+      // 4. Actualizar registro del Cliente en la base de datos
+      const updatePayload: Record<string, any> = {
+        ine_completa_url: completaUrl || selectedCliente.ine_completa_url,
+        ine_frente_url: frenteUrl || selectedCliente.ine_frente_url,
+        ine_reverso_url: reversoUrl || selectedCliente.ine_reverso_url,
+        ine_ocr_raw: parsedData,
+      };
+
+      if (parsedData.curp && !selectedCliente.curp) {
+        updatePayload.curp = parsedData.curp;
+      }
+      if (parsedData.nombre && !selectedCliente.nombre) {
+        updatePayload.nombre = parsedData.nombre;
+      }
+      if (parsedData.apellido_paterno && !selectedCliente.apellido_paterno) {
+        updatePayload.apellido_paterno = parsedData.apellido_paterno;
+      }
+      if (parsedData.apellido_materno && !selectedCliente.apellido_materno) {
+        updatePayload.apellido_materno = parsedData.apellido_materno;
+      }
+
+      const { data: updatedCli, error: updateCliErr } = await supabase
+        .from('clientes')
+        .update(updatePayload)
+        .eq('id', selectedCliente.id)
+        .select()
+        .single();
+
+      if (updateCliErr) {
+        console.error('Error actualizando cliente con datos OCR:', updateCliErr);
+      } else if (updatedCli) {
+        setSelectedCliente(updatedCli);
+      }
+
+      // 5. Autocompletar y marcar los requisitos de INE como verificados en sus trámites activos
+      if (clienteTramites.retiro && clienteTramites.retiro.length > 0) {
+        for (const tr of clienteTramites.retiro) {
+          await supabase
+            .from('tramites_retiro_desempleo')
+            .update({
+              req_ine_vigente: true,
+              req_curp: !!parsedData.curp,
+            })
+            .eq('id', tr.id);
+        }
+      }
+
+      if (clienteTramites.mejoravit && clienteTramites.mejoravit.length > 0) {
+        for (const tr of clienteTramites.mejoravit) {
+          await supabase
+            .from('tramites_mejoravit')
+            .update({
+              req_ine_normal: true,
+              req_ine_ampliada_200: true,
+              req_curp_actualizada: !!parsedData.curp,
+            })
+            .eq('id', tr.id);
+        }
+      }
+
+      if (clienteTramites.altaMedica && clienteTramites.altaMedica.length > 0) {
+        for (const tr of clienteTramites.altaMedica) {
+          await supabase
+            .from('tramites_alta_medica_imss')
+            .update({
+              req_identificacion_oficial: true,
+              req_curp_validada: !!parsedData.curp,
+            })
+            .eq('id', tr.id);
+        }
+      }
+
+      // Recargar trámites para reflejar los checks
+      if (selectedCliente) {
+        const [r1, r2, r3] = await Promise.all([
+          supabase.from('tramites_retiro_desempleo').select('*').eq('cliente_id', selectedCliente.id),
+          supabase.from('tramites_mejoravit').select('*').eq('cliente_id', selectedCliente.id),
+          supabase.from('tramites_alta_medica_imss').select('*').eq('cliente_id', selectedCliente.id),
+        ]);
+        setClienteTramites({
+          retiro: (r1.data as TramiteRetiroDesempleo[]) || [],
+          mejoravit: (r2.data as TramiteMejoravit[]) || [],
+          altaMedica: (r3.data as TramiteAltaMedicaImss[]) || [],
+        });
+      }
+
+      setOcrStatusMsg('¡INE procesada, guardada y vinculada exitosamente con OCR!');
+      fetchClientes();
+    } catch (err: any) {
+      console.error(err);
+      setOcrStatusMsg(`Error en OCR/Storage: ${err.message || 'Error desconocido'}`);
+    } finally {
+      setProcessingOcr(false);
+    }
+  };
+
+  const handleSubmitCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setFeedbackMsg(null);
+
+    const pat = formCliente.apellido_paterno.trim();
+    const mat = formCliente.apellido_materno.trim();
+
+    if (!pat && !mat) {
+      setFeedbackMsg({ type: 'error', text: 'Debes ingresar al menos un apellido (paterno o materno).' });
+      setSaving(false);
+      return;
+    }
+
+    const fullApellidos = [pat, mat].filter(Boolean).join(' ');
+
+    try {
+      // 1. Guardar cliente
+      const { data: clienteData, error: clienteError } = await supabase
+        .from('clientes')
+        .insert([{
+          nombre: formCliente.nombre.trim(),
+          apellido_paterno: pat || null,
+          apellido_materno: mat || null,
+          apellidos: fullApellidos,
+          telefono: formCliente.telefono.trim() || null,
+          email: formCliente.email.trim() || null,
+          notas: formCliente.notas.trim() || null,
+        }])
+        .select()
+        .single();
+
+      if (clienteError) {
+        throw new Error(clienteError.message);
+      }
+
+      // 2. Trámite Inicial Opcional
+      if (crearTramiteInicial && clienteData) {
+        const clienteId = clienteData.id;
+
+        if (tipoTramiteInicial === 'retiro_desempleo') {
+          await supabase.from('tramites_retiro_desempleo').insert([{
+            cliente_id: clienteId,
+            semanas_cotizadas: formRetiro.semanas_cotizadas ? parseInt(formRetiro.semanas_cotizadas) : null,
+            ultimo_salario_registrado: formRetiro.ultimo_salario_registrado ? parseFloat(formRetiro.ultimo_salario_registrado) : null,
+            validado_inactivo_imss: formRetiro.validado_inactivo_imss,
+            req_ine_vigente: formRetiro.req_ine_vigente,
+            req_comprobante_domicilio: formRetiro.req_comprobante_domicilio,
+            req_curp: formRetiro.req_curp,
+            req_constancia_situacion_fiscal: formRetiro.req_constancia_situacion_fiscal,
+            req_reporte_semanas_imss: formRetiro.req_reporte_semanas_imss,
+            req_app_aforemovil_instalada: formRetiro.req_app_aforemovil_instalada,
+            req_registro_aforemovil_realizado: formRetiro.req_registro_aforemovil_realizado,
+            req_saldo_visible_aforemovil: formRetiro.req_saldo_visible_aforemovil,
+            req_tiene_semanas_descontadas: formRetiro.req_tiene_semanas_descontadas,
+            req_anexo_sindo: formRetiro.req_anexo_sindo,
+            observaciones: formRetiro.observaciones || null,
+          }]);
+        } else if (tipoTramiteInicial === 'mejoravit') {
+          await supabase.from('tramites_mejoravit').insert([{
+            cliente_id: clienteId,
+            req_ine_normal: formMejoravit.req_ine_normal,
+            req_ine_ampliada_200: formMejoravit.req_ine_ampliada_200,
+            req_curp_actualizada: formMejoravit.req_curp_actualizada,
+            req_acta_nacimiento: formMejoravit.req_acta_nacimiento,
+            req_comprobante_domicilio: formMejoravit.req_comprobante_domicilio,
+            comprobante_familiar_anexo_acta: formMejoravit.comprobante_familiar_anexo_acta,
+            req_estado_cuenta_bancario: formMejoravit.req_estado_cuenta_bancario,
+            req_constancia_situacion_fiscal: formMejoravit.req_constancia_situacion_fiscal,
+            req_3_referencias_personales: formMejoravit.req_3_referencias_personales,
+            nss_portal_infonavit: formMejoravit.nss_portal_infonavit || null,
+            password_portal_infonavit: formMejoravit.password_portal_infonavit || null,
+            req_portal_infonavit_validado: formMejoravit.req_portal_infonavit_validado,
+            req_fotos_inmueble_5: formMejoravit.req_fotos_inmueble_5,
+            observaciones: formMejoravit.observaciones || null,
+          }]);
+        } else if (tipoTramiteInicial === 'alta_medica_imss') {
+          await supabase.from('tramites_alta_medica_imss').insert([{
+            cliente_id: clienteId,
+            clinica_umf_asignada: formAltaMedica.clinica_umf_asignada || null,
+            turno_preferido: formAltaMedica.turno_preferido,
+            codigo_postal_clinica: formAltaMedica.codigo_postal_clinica || null,
+            modalidad_aseguramiento: formAltaMedica.modalidad_aseguramiento,
+            req_curp_validada: formAltaMedica.req_curp_validada,
+            req_comprobante_domicilio_reciente: formAltaMedica.req_comprobante_domicilio_reciente,
+            req_identificacion_oficial: formAltaMedica.req_identificacion_oficial,
+            req_fotografia_infantil: formAltaMedica.req_fotografia_infantil,
+            req_cartilla_nacional_salud: formAltaMedica.req_cartilla_nacional_salud,
+            req_alta_patronal_vigente: formAltaMedica.req_alta_patronal_vigente,
+            observaciones: formAltaMedica.observaciones || null,
+          }]);
+        }
+      }
+
+      setFeedbackMsg({ type: 'success', text: 'Cliente registrado exitosamente.' });
+      setIsModalOpen(false);
+      setFormCliente({
+        nombre: '',
+        apellido_paterno: '',
+        apellido_materno: '',
+        telefono: '',
+        email: '',
+        notas: '',
+      });
+      fetchClientes();
+    } catch (err: any) {
+      setFeedbackMsg({ type: 'error', text: err.message || 'Error al guardar cliente' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filteredClientes = clientes.filter((c) => {
+    const q = search.toLowerCase();
+    const fullName = `${c.nombre} ${c.apellido_paterno || ''} ${c.apellido_materno || ''} ${c.apellidos || ''}`.toLowerCase();
+    return (
+      fullName.includes(q) ||
+      (c.telefono && c.telefono.includes(q)) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    );
+  });
+
+  const renderTramitesChecklist = () => (
+    <div>
+      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+        <Sparkles className="w-5 h-5 text-indigo-500" />
+        Expediente y Requisitos Registrados
+      </h3>
+
+      {loadingTramites ? (
+        <div className="flex items-center justify-center p-8 text-xs text-slate-400">
+          <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-2" />
+          Cargando expediente...
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {/* 1. RETIRO POR DESEMPLEO (Checklist Exacto Imagen 1) */}
+          {clienteTramites.retiro && clienteTramites.retiro.length > 0 && (
+            clienteTramites.retiro.map((tr) => (
+              <div key={tr.id} className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-emerald-200/60 dark:border-emerald-900/40">
+                  <div className="flex items-center gap-2">
+                    <Banknote className="w-5 h-5 text-emerald-600" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-emerald-300">
+                      Retiro por Desempleo
+                    </span>
+                  </div>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 uppercase font-semibold">
+                    {tr.estado}
+                  </span>
+                </div>
+
+                {/* Datos del Cliente */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                  <div>
+                    <span className="text-slate-400 block font-medium">Semanas Cotizadas:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{tr.semanas_cotizadas || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Último Salario:</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">${tr.ultimo_salario_registrado || '0.00'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block font-medium">Estatus IMSS:</span>
+                    <span className={`inline-flex items-center gap-1 font-semibold ${tr.validado_inactivo_imss ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {tr.validado_inactivo_imss ? '✓ Validado Inactivo' : '⏳ Pendiente Validar'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Documentación Escaneada a Color & AforeMóvil */}
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
+                    Documentación (Escaneada a Color) & AforeMóvil:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_vigente ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_ine_vigente ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>INE Vigente</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_app_aforemovil_instalada ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_app_aforemovil_instalada ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>App AforeMóvil instalada</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_comprobante_domicilio ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Comprobante de domicilio</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_registro_aforemovil_realizado ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_registro_aforemovil_realizado ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Registro en AforeMóvil realizado</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_curp ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>CURP</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_saldo_visible_aforemovil ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_saldo_visible_aforemovil ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Saldo visible en AforeMóvil</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_constancia_situacion_fiscal ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_constancia_situacion_fiscal ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Constancia de Situación Fiscal</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_anexo_sindo ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_anexo_sindo ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Anexo SINDO (Semanas Descontadas)</span>
+                    </div>
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 sm:col-span-2 ${tr.req_reporte_semanas_imss ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      {tr.req_reporte_semanas_imss ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
+                      <span>Semanas Cotizadas (Reporte del IMSS)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* 2. MEJORAVIT INFONAVIT (Checklist Exacto 10 Puntos Imagen 2) */}
+          {clienteTramites.mejoravit && clienteTramites.mejoravit.length > 0 && (
+            clienteTramites.mejoravit.map((tr) => (
+              <div key={tr.id} className="p-5 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/20 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-red-200/60 dark:border-red-900/40">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-5 h-5 text-red-600" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-red-300">
+                      Expediente Mejoravit (Infonavit)
+                    </span>
+                  </div>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 uppercase font-semibold">
+                    {tr.estado}
+                  </span>
+                </div>
+
+                {/* 10 Puntos de Documentación */}
+                <div className="space-y-2">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
+                    Lista de Documentos Requeridos:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_normal ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
+                      <span className="truncate">INE Normal (Frente y reverso)</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_estado_cuenta_bancario ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">6</span>
+                      <span className="truncate">Edo. Cuenta Bancario (Último mes)</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_ampliada_200 ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
+                      <span className="truncate">INE Ampliada al 200%</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_constancia_situacion_fiscal ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">7</span>
+                      <span className="truncate">Constancia Situación Fiscal (SAT)</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp_actualizada ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
+                      <span className="truncate">CURP Actualizada</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_3_referencias_personales ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">8</span>
+                      <span className="truncate">3 Referencias Personales</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_acta_nacimiento ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
+                      <span className="truncate">Acta de Nacimiento</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_portal_infonavit_validado ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">9</span>
+                      <span className="truncate">NSS y Contraseña Portal Infonavit</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
+                      <span className="truncate">Comp. Domicilio (Último mes)</span>
+                    </div>
+
+                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_fotos_inmueble_5 ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
+                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">10</span>
+                      <span className="truncate">Fotos Inmueble (3 int. / 2 ext.)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {/* 3. ALTA MÉDICA IMSS */}
+          {clienteTramites.altaMedica && clienteTramites.altaMedica.length > 0 && (
+            clienteTramites.altaMedica.map((tr) => (
+              <div key={tr.id} className="p-5 rounded-2xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/30 dark:bg-sky-950/20 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-sky-200/60 dark:border-sky-900/40">
+                  <div className="flex items-center gap-2">
+                    <HeartPulse className="w-5 h-5 text-sky-600" />
+                    <span className="font-bold text-sm text-slate-900 dark:text-sky-300">
+                      Alta Médica IMSS ({tr.clinica_umf_asignada || 'Clínica/UMF'})
+                    </span>
+                  </div>
+                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 uppercase font-semibold">
+                    {tr.estado}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp_validada ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
+                    {tr.req_curp_validada ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
+                    <span>CURP Validada</span>
+                  </div>
+                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio_reciente ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
+                    {tr.req_comprobante_domicilio_reciente ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
+                    <span>Comprobante Domicilio Reciente</span>
+                  </div>
+                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_identificacion_oficial ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
+                    {tr.req_identificacion_oficial ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
+                    <span>Identificación Oficial Vigente</span>
+                  </div>
+                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_cartilla_nacional_salud ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
+                    {tr.req_cartilla_nacional_salud ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
+                    <span>Cartilla Nacional de Salud</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+
+          {(!clienteTramites.retiro?.length && !clienteTramites.mejoravit?.length && !clienteTramites.altaMedica?.length) && (
+            <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs">
+              Este cliente aún no cuenta con trámites registrados.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
+            <Users className="w-7 h-7 text-blue-600" />
+            Gestión de Clientes & Expedientes
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Checklist de requisitos oficiales para Retiro por Desempleo, Mejoravit Infonavit y Alta Médica IMSS.
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            setFeedbackMsg(null);
+            setIsModalOpen(true);
+          }}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          Nuevo Cliente
+        </button>
+      </div>
+
+      {/* Main Content Layout */}
+      {showFullDetails && selectedCliente ? (
+        /* VISTA COMPLETA (OCUPA TODO EL ANCHO DE LA PÁGINA - EXPEDIENTE DETALLADO) */
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md p-6 lg:p-8 space-y-8 animate-in fade-in duration-200">
+          {/* Barra superior de navegación / regreso */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setShowFullDetails(false)}
+              className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
+            >
+              <ArrowLeft className="w-4 h-4 text-blue-600" />
+              <span>← Volver a la Lista de Clientes & Checklist</span>
+            </button>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4" />
+                Expediente Completo
+              </span>
+              <button
+                type="button"
+                onClick={() => handleShareWhatsAppScanLink(selectedCliente)}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                title="Enviar link de escaneo por WhatsApp"
+              >
+                <Share2 className="w-4 h-4" />
+                <span>Enviar Link por WhatsApp</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Client Info Header Card */}
+          <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-800 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {selectedCliente.nombre} {[selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || ''}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {selectedCliente.curp ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg">
+                      CURP: {selectedCliente.curp}
+                    </span>
+                  ) : null}
+
+                  {/* 1. Botón para abrir RENAPO oficial y copiar la CURP */}
+                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGobMxCurp()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                      title="Copia la CURP al portapapeles y abre el portal oficial gob.mx/curp"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Obtener Original en RENAPO (gob.mx)</span>
+                    </button>
+                  )}
+
+                  {/* 2. Botón para subir y guardar el PDF original descargado de RENAPO */}
+                  <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Adjuntar PDF Original RENAPO</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadCurpPdf(f);
+                      }}
+                    />
+                  </label>
+
+                  {/* 3. Ver PDF guardado en el expediente */}
+                  {selectedCliente.curp_document_url && (
+                    <a
+                      href={selectedCliente.curp_document_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Ver Constancia PDF</span>
+                    </a>
+                  )}
+
+                  {/* 4. Alternativa: Generar PDF Certificado en el sistema */}
+                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadCurpOfficial()}
+                      disabled={downloadingCurp}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs transition-colors cursor-pointer"
+                      title="Generar constancia local con formato oficial"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Generar PDF</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Banner de Escucha Activa al abrir gob.mx */}
+                {waitingCurpDownload && (
+                  <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-emerald-900 dark:text-emerald-200 font-medium">
+                        <strong>Escuchando descarga:</strong> Descarga la CURP en gob.mx y arrastra el archivo PDF a cualquier parte de esta ventana (o presiona <strong>Ctrl + V</strong>) para anexarla al instante.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] rounded-lg cursor-pointer font-semibold transition-colors">
+                        <span>Seleccionar Archivo</span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadCurpPdf(f);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setWaitingCurpDownload(false)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {curpSuccessMsg && (
+                  <p className={`text-[11px] mt-1.5 ${curpSuccessMsg.includes('Error') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}`}>
+                    {curpSuccessMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-200 dark:border-slate-700 text-xs">
+              <div>
+                <span className="text-slate-400 block font-medium">Teléfono:</span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.telefono || 'No especificado'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block font-medium">Correo Electrónico:</span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.email || 'No especificado'}</span>
+              </div>
+              {selectedCliente.notas && (
+                <div className="sm:col-span-2 lg:col-span-3 p-3.5 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-400 block font-medium mb-1">Notas / Observaciones:</span>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedCliente.notas}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* INE Upload & OCR Module */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ScanLine className="w-5 h-5 text-blue-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Credencial de Elector (INE) & Extracción OCR
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Captura o sube la credencial del cliente para extraer sus datos oficiales y generar el expediente en PDF.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* BANNER: ESCANEO GUIADO PARA EL CLIENTE DESDE SU CELULAR */}
+            <div className="p-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/20 to-purple-900/20 rounded-2xl border border-blue-200/80 dark:border-blue-800/80 space-y-3">
+              <div className="flex items-start justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                    <Camera className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      Escaneo Asistido con Cámara para el Cliente
+                      {selectedCliente.ine_completa_url ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-md border border-emerald-300 dark:border-emerald-700">
+                          ✓ INE Recibido y Validado
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium px-2 py-0.5 bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-300 rounded-md">
+                          ⏳ Pendiente de Escaneo
+                        </span>
+                      )}
+                    </h4>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                      El cliente abre el link en su celular, enfoca el frente y reverso con el marco guía y el sistema valida los datos automáticamente.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleCopyScanLink()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  {copiedScanLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedScanLink ? '¡Enlace Copiado!' : 'Copiar Link de Escaneo'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleShareWhatsAppScanLink()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                  title="Enviar mensaje con el link al WhatsApp del cliente"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  <span>Enviar por WhatsApp</span>
+                </button>
+
+                <a
+                  href={getClientScanLink()}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl transition-all"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Abrir Escáner de Prueba</span>
+                </a>
+
+                {selectedCliente.ine_completa_url && (
+                  <a
+                    href={selectedCliente.ine_completa_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 text-xs font-semibold rounded-xl transition-all ml-auto"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Ver PDF Generado (Ambas Caras)</span>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Separador o Subida Manual */}
+            <div className="pt-2">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                O Carga Manual desde el Panel de Asesor:
+              </span>
+            </div>
+
+            {/* Modalidad de Subida: 1 Hoja Completa vs 2 Fotos Separadas */}
+            <div className="flex items-center gap-2 p-1 bg-slate-200 dark:bg-slate-900 rounded-xl w-fit">
+              <button
+                type="button"
+                onClick={() => setIneUploadMode('single')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  ineUploadMode === 'single'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                1 Hoja (Ambos Lados)
+              </button>
+              <button
+                type="button"
+                onClick={() => setIneUploadMode('dual')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  ineUploadMode === 'dual'
+                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                2 Archivos (Frente y Reverso)
+              </button>
+            </div>
+
+            {/* MODO 1: Una Sola Hoja con Ambos Lados */}
+            {ineUploadMode === 'single' ? (
+              <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
+                  Hoja de INE Completa (Frente y Reverso en el mismo documento o foto)
+                </span>
+
+                {ineCompletaPreview ? (
+                  <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 max-h-56 flex items-center justify-center bg-slate-950">
+                    <img src={ineCompletaPreview} alt="INE Completa" className="object-contain max-h-56 w-full" />
+                  </div>
+                ) : (
+                  <div className="h-32 rounded-xl border-2 border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs">
+                    <ImageIcon className="w-8 h-8 mb-1.5 text-slate-400" />
+                    <span>Sin archivo de hoja completa cargado</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-xs font-semibold bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-slate-700 rounded-xl transition-all">
+                    <Upload className="w-4 h-4" />
+                    {ineCompletaFile ? ineCompletaFile.name : 'Seleccionar Archivo (Foto / Escaneo / PDF)'}
+                    <input
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          setIneCompletaFile(f);
+                          setIneCompletaPreview(URL.createObjectURL(f));
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            ) : (
+              /* MODO 2: Dos Archivos Separados (Frente y Reverso) */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Frente */}
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      1. INE Frente
+                    </span>
+                    {ineFrentePreview ? (
+                      <div className="relative mb-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 max-h-36 flex items-center justify-center bg-slate-950">
+                        <img src={ineFrentePreview} alt="INE Frente" className="object-contain max-h-36 w-full" />
+                      </div>
+                    ) : (
+                      <div className="h-24 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs mb-2">
+                        <ImageIcon className="w-6 h-6 mb-1 text-slate-400" />
+                        <span>Sin imagen del frente</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      {ineFrenteFile ? ineFrenteFile.name.slice(0, 18) + '...' : 'Seleccionar Frente'}
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            setIneFrenteFile(f);
+                            setIneFrentePreview(URL.createObjectURL(f));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Reverso */}
+                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                      2. INE Reverso
+                    </span>
+                    {ineReversoPreview ? (
+                      <div className="relative mb-2 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 max-h-36 flex items-center justify-center bg-slate-950">
+                        <img src={ineReversoPreview} alt="INE Reverso" className="object-contain max-h-36 w-full" />
+                      </div>
+                    ) : (
+                      <div className="h-24 rounded-lg border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center text-slate-400 text-xs mb-2">
+                        <ImageIcon className="w-6 h-6 mb-1 text-slate-400" />
+                        <span>Sin imagen del reverso</span>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="cursor-pointer inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors">
+                      <Upload className="w-3.5 h-3.5" />
+                      {ineReversoFile ? ineReversoFile.name.slice(0, 18) + '...' : 'Seleccionar Reverso'}
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) {
+                            setIneReversoFile(f);
+                            setIneReversoPreview(URL.createObjectURL(f));
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Botón de Procesamiento OCR */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleUploadAndOcrIne}
+                disabled={
+                  processingOcr ||
+                  (ineUploadMode === 'single' ? !ineCompletaFile : (!ineFrenteFile && !ineReversoFile))
+                }
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+              >
+                {processingOcr ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Procesando OCR & Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <ScanLine className="w-4 h-4" />
+                    <span>Guardar en Storage & Extraer Datos OCR</span>
+                  </>
+                )}
+              </button>
+
+              {ocrStatusMsg && (
+                <p className={`text-xs ${ocrStatusMsg.includes('Error') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400 font-medium'}`}>
+                  {ocrStatusMsg}
+                </p>
+              )}
+            </div>
+
+            {/* Resultados OCR Detectados */}
+            {ocrSuccessData && (
+              <div className="p-4 bg-blue-50/70 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/60 text-xs space-y-3">
+                <p className="font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Datos Detectados por OCR:
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-slate-700 dark:text-slate-300">
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Nombre Completo:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {[ocrSuccessData.nombre, ocrSuccessData.apellido_paterno, ocrSuccessData.apellido_materno].filter(Boolean).join(' ') || 'No identificado'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">CURP Extraída:</span>
+                    <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{ocrSuccessData.curp || 'No identificada'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Clave Elector:</span>
+                    <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{ocrSuccessData.clave_elector || 'No identificada'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[10px] uppercase font-bold">Vigencia / Sección:</span>
+                    <span className="font-bold text-slate-900 dark:text-white">
+                      {ocrSuccessData.vigencia ? `Vig. ${ocrSuccessData.vigencia}` : ''} {ocrSuccessData.seccion ? `Sec. ${ocrSuccessData.seccion}` : 'No identificada'}
+                    </span>
+                  </div>
+                  {ocrSuccessData.fecha_nacimiento && (
+                    <div>
+                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Nacimiento / Sexo:</span>
+                      <span className="font-semibold text-slate-900 dark:text-white">
+                        {ocrSuccessData.fecha_nacimiento} ({ocrSuccessData.sexo || 'N/A'})
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {ocrSuccessData.curp && (
+                  <div className="pt-2.5 border-t border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[11px] text-blue-900 dark:text-blue-200">
+                      Constancia de CURP Oficial:
+                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenGobMxCurp(ocrSuccessData.curp)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                        <span>Obtener Original en RENAPO (gob.mx)</span>
+                      </button>
+
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Adjuntar PDF Original</span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadCurpPdf(f);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {ocrSuccessData.raw_text && (
+                  <details className="mt-2 pt-2 border-t border-blue-200/60 dark:border-blue-900/40 text-[11px]">
+                    <summary className="text-blue-600 dark:text-blue-400 cursor-pointer font-medium hover:underline">
+                      Ver texto OCR plano extraído
+                    </summary>
+                    <pre className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
+                      {ocrSuccessData.raw_text}
+                    </pre>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Expedientes de Trámites */}
+          {renderTramitesChecklist()}
+        </div>
+      ) : (
+        /* VISTA HABITUAL: LISTA DE CLIENTES (IZQ) + CHECKLIST RÁPIDO (DER) */
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Listado de Clientes */}
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[750px]">
+            {/* Search bar */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por nombre, CURP o NSS..."
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {loading ? (
+                <div className="flex items-center justify-center h-48 text-slate-400 text-xs">
+                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                  Cargando clientes...
+                </div>
+              ) : filteredClientes.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <Users className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No hay clientes registrados</p>
+                  <p className="text-xs text-slate-400 mt-1">Registra uno nuevo con el botón superior.</p>
+                </div>
+              ) : (
+                filteredClientes.map((cliente) => {
+                  const isSelected = selectedCliente?.id === cliente.id;
+                  const fullApellidos = [cliente.apellido_paterno, cliente.apellido_materno].filter(Boolean).join(' ') || cliente.apellidos || '';
+                  return (
+                    <div
+                      key={cliente.id}
+                      onClick={() => handleSelectCliente(cliente, false)}
+                      className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 shadow-sm'
+                          : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                          {cliente.nombre} {fullApellidos}
+                        </p>
+                        {cliente.telefono ? (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            Tel: {cliente.telefono}
+                          </p>
+                        ) : cliente.email ? (
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {cliente.email}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-slate-400 italic mt-0.5">Sin contacto registrado</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectCliente(cliente, true);
+                          }}
+                          title="Abrir expediente y detalles completos"
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                            isSelected && showFullDetails
+                              ? 'bg-blue-600 text-white shadow-sm'
+                              : 'bg-slate-200/80 hover:bg-blue-600 hover:text-white dark:bg-slate-700 dark:hover:bg-blue-600 text-slate-700 dark:text-slate-200'
+                          }`}
+                        >
+                          <User className="w-3 h-3" />
+                          <span>Detalles</span>
+                        </button>
+                        <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'text-blue-600 translate-x-0.5' : 'text-slate-400'}`} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Detalle y Trámites del Cliente Seleccionado (Vista Checklist Rápida) */}
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 h-[750px] overflow-y-auto">
+            {!selectedCliente ? (
+              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400">
+                <FileCheck2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-3" />
+                <p className="text-base font-semibold text-slate-700 dark:text-slate-300">Ningún cliente seleccionado</p>
+                <p className="text-xs text-slate-500 max-w-sm mt-1">
+                  Selecciona un cliente de la lista para ver el checklist completo de sus documentos y estado de trámites.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Header Compacto del Cliente - Vista Checklist Rápida */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-800 border border-blue-200/70 dark:border-slate-700 shadow-sm">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-md shadow-blue-500/20">
+                      {selectedCliente.nombre.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                          {selectedCliente.nombre} {[selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || ''}
+                        </h2>
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                          Checklist
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
+                        {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
+                        {selectedCliente.curp && <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">🆔 {selectedCliente.curp}</span>}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowFullDetails(true)}
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer shrink-0"
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Ver Expediente Completo (INE, RENAPO, Datos)</span>
+                  </button>
+                </div>
+
+                {/* Checklist de Trámites */}
+                {renderTramitesChecklist()}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registro Cliente */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Plus className="w-5 h-5 text-blue-600" />
+                Registrar Nuevo Cliente & Expediente
+              </h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {feedbackMsg && (
+              <div className={`mt-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${feedbackMsg.type === 'error' ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'}`}>
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{feedbackMsg.text}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitCliente} className="space-y-6 pt-4">
+              {/* Información Básica */}
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  1. Información del Cliente
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre(s) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={formCliente.nombre}
+                      onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })}
+                      placeholder="ej: Juan Carlos"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Apellido Paterno <span className="text-slate-400 text-[10px] font-normal">(o materno)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formCliente.apellido_paterno}
+                      onChange={(e) => setFormCliente({ ...formCliente, apellido_paterno: e.target.value })}
+                      placeholder="ej: Hernández"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Apellido Materno <span className="text-slate-400 text-[10px] font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formCliente.apellido_materno}
+                      onChange={(e) => setFormCliente({ ...formCliente, apellido_materno: e.target.value })}
+                      placeholder="ej: López"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Teléfono <span className="text-slate-400 text-[10px] font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="tel"
+                      value={formCliente.telefono}
+                      onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })}
+                      placeholder="ej: 55 1234 5678"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Correo Electrónico <span className="text-slate-400 text-[10px] font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={formCliente.email}
+                      onChange={(e) => setFormCliente({ ...formCliente, email: e.target.value })}
+                      placeholder="cliente@ejemplo.com"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Notas / Observaciones <span className="text-slate-400 text-[10px] font-normal">(opcional)</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formCliente.notas}
+                      onChange={(e) => setFormCliente({ ...formCliente, notas: e.target.value })}
+                      placeholder="Agrega anotaciones o detalles relevantes del cliente..."
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Trámite Inicial y Checklist */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex items-center justify-between mb-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={crearTramiteInicial}
+                      onChange={(e) => setCrearTramiteInicial(e.target.checked)}
+                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                    />
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Asignar Trámite Inicial y Checklist de Documentos
+                    </span>
+                  </label>
+                </div>
+
+                {crearTramiteInicial && (
+                  <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+                    {/* Selector de Tipo de Trámite */}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTipoTramiteInicial('retiro_desempleo')}
+                        className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                          tipoTramiteInicial === 'retiro_desempleo'
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Banknote className="w-4 h-4" />
+                        Retiro Desempleo
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTipoTramiteInicial('mejoravit')}
+                        className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                          tipoTramiteInicial === 'mejoravit'
+                            ? 'bg-red-600 text-white border-red-600 shadow-md'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <Building2 className="w-4 h-4" />
+                        Mejoravit Infonavit
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setTipoTramiteInicial('alta_medica_imss')}
+                        className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
+                          tipoTramiteInicial === 'alta_medica_imss'
+                            ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        <HeartPulse className="w-4 h-4" />
+                        Alta Médica IMSS
+                      </button>
+                    </div>
+
+                    {/* Form Checklist RETIRO POR DESEMPLEO (Imagen 1) */}
+                    {tipoTramiteInicial === 'retiro_desempleo' && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Semanas Cotizadas</label>
+                            <input
+                              type="number"
+                              value={formRetiro.semanas_cotizadas}
+                              onChange={(e) => setFormRetiro({ ...formRetiro, semanas_cotizadas: e.target.value })}
+                              placeholder="ej: 250"
+                              className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Último Salario Registrado</label>
+                            <input
+                              type="number"
+                              value={formRetiro.ultimo_salario_registrado}
+                              onChange={(e) => setFormRetiro({ ...formRetiro, ultimo_salario_registrado: e.target.value })}
+                              placeholder="$ 0.00"
+                              className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                            />
+                          </div>
+                        </div>
+
+                        <label className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formRetiro.validado_inactivo_imss}
+                            onChange={(e) => setFormRetiro({ ...formRetiro, validado_inactivo_imss: e.target.checked })}
+                            className="w-4 h-4 rounded text-emerald-600"
+                          />
+                          <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                            Validaste que se encuentra INACTIVO ante el IMSS
+                          </span>
+                        </label>
+
+                        {/* Checklist Documentación Escaneada a Color */}
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                          <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase">
+                            Documentación (Escaneada a color):
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_ine_vigente}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_ine_vigente: e.target.checked })}
+                              />
+                              <span>INE vigente</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_app_aforemovil_instalada}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_app_aforemovil_instalada: e.target.checked })}
+                              />
+                              <span>App AforeMóvil instalada</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_comprobante_domicilio}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_comprobante_domicilio: e.target.checked })}
+                              />
+                              <span>Comprobante de domicilio</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_registro_aforemovil_realizado}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_registro_aforemovil_realizado: e.target.checked })}
+                              />
+                              <span>Registro en AforeMóvil realizado</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_curp}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_curp: e.target.checked })}
+                              />
+                              <span>CURP</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_saldo_visible_aforemovil}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_saldo_visible_aforemovil: e.target.checked })}
+                              />
+                              <span>Saldo visible en AforeMóvil</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_constancia_situacion_fiscal}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_constancia_situacion_fiscal: e.target.checked })}
+                              />
+                              <span>Constancia de Situación Fiscal</span>
+                            </label>
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_anexo_sindo}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_anexo_sindo: e.target.checked })}
+                              />
+                              <span>Si tiene semanas descontadas: ANEXAR SINDO</span>
+                            </label>
+                            <label className="flex items-center gap-2 sm:col-span-2">
+                              <input
+                                type="checkbox"
+                                checked={formRetiro.req_reporte_semanas_imss}
+                                onChange={(e) => setFormRetiro({ ...formRetiro, req_reporte_semanas_imss: e.target.checked })}
+                              />
+                              <span>Semanas cotizadas (Reporte del IMSS)</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Form Checklist MEJORAVIT (10 Puntos Imagen 2) */}
+                    {tipoTramiteInicial === 'mejoravit' && (
+                      <div className="space-y-4">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5">
+                          <p className="text-[11px] font-bold text-red-600 dark:text-red-400 uppercase tracking-wider">
+                            Lista de 10 Documentos Requeridos:
+                          </p>
+
+                          <div className="space-y-2 text-xs">
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_ine_normal}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_ine_normal: e.target.checked })}
+                              />
+                              <span><strong>1. INE Normal:</strong> Frente y reverso</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_ine_ampliada_200}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_ine_ampliada_200: e.target.checked })}
+                              />
+                              <span><strong>2. INE Ampliada al 200%:</strong> Frente y reverso</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_curp_actualizada}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_curp_actualizada: e.target.checked })}
+                              />
+                              <span><strong>3. CURP Actualizada</strong></span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_acta_nacimiento}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_acta_nacimiento: e.target.checked })}
+                              />
+                              <span><strong>4. Acta de Nacimiento</strong></span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_comprobante_domicilio}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_comprobante_domicilio: e.target.checked })}
+                              />
+                              <span><strong>5. Comprobante de Domicilio (Último mes):</strong> Descargado de app/portal</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_estado_cuenta_bancario}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_estado_cuenta_bancario: e.target.checked })}
+                              />
+                              <span><strong>6. Estado de Cuenta Bancario (Último mes):</strong> Sin abreviaturas</span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_constancia_situacion_fiscal}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_constancia_situacion_fiscal: e.target.checked })}
+                              />
+                              <span><strong>7. Constancia de Situación Fiscal (SAT)</strong></span>
+                            </label>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_3_referencias_personales}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_3_referencias_personales: e.target.checked })}
+                              />
+                              <span><strong>8. 3 Referencias Personales:</strong> Nombre, teléfono y última con parentesco</span>
+                            </label>
+
+                            <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={formMejoravit.req_portal_infonavit_validado}
+                                  onChange={(e) => setFormMejoravit({ ...formMejoravit, req_portal_infonavit_validado: e.target.checked })}
+                                />
+                                <span><strong>9. Acceso al Portal Infonavit:</strong></span>
+                              </label>
+                              <div className="grid grid-cols-2 gap-2 pl-6">
+                                <input
+                                  type="text"
+                                  value={formMejoravit.password_portal_infonavit}
+                                  onChange={(e) => setFormMejoravit({ ...formMejoravit, password_portal_infonavit: e.target.value })}
+                                  placeholder="Contraseña Portal Infonavit"
+                                  className="w-full px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"
+                                />
+                              </div>
+                            </div>
+
+                            <label className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={formMejoravit.req_fotos_inmueble_5}
+                                onChange={(e) => setFormMejoravit({ ...formMejoravit, req_fotos_inmueble_5: e.target.checked })}
+                              />
+                              <span><strong>10. Fotografías del Inmueble:</strong> 5 fotos (3 interiores / 2 exteriores)</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Form Checklist Alta Médica IMSS */}
+                    {tipoTramiteInicial === 'alta_medica_imss' && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Clínica / UMF Asignada</label>
+                            <input
+                              type="text"
+                              value={formAltaMedica.clinica_umf_asignada}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, clinica_umf_asignada: e.target.value })}
+                              placeholder="ej: UMF No. 34"
+                              className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Turno</label>
+                            <select
+                              value={formAltaMedica.turno_preferido}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, turno_preferido: e.target.value })}
+                              className="w-full px-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg"
+                            >
+                              <option value="Matutino">Matutino</option>
+                              <option value="Vespertino">Vespertino</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formAltaMedica.req_curp_validada}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, req_curp_validada: e.target.checked })}
+                            />
+                            <span>CURP Validada ante RENAPO</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formAltaMedica.req_comprobante_domicilio_reciente}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, req_comprobante_domicilio_reciente: e.target.checked })}
+                            />
+                            <span>Comprobante de Domicilio no mayor a 3 meses</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formAltaMedica.req_identificacion_oficial}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, req_identificacion_oficial: e.target.checked })}
+                            />
+                            <span>Identificación Oficial Vigente</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={formAltaMedica.req_cartilla_nacional_salud}
+                              onChange={(e) => setFormAltaMedica({ ...formAltaMedica, req_cartilla_nacional_salud: e.target.checked })}
+                            />
+                            <span>Cartilla Nacional de Salud</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Botón Guardar */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+                >
+                  {saving ? 'Guardando...' : 'Registrar Cliente & Expediente'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay Global de Arrastre de PDF (Drag & Drop desde la barra de descargas) */}
+      {isDraggingPdf && (
+        <div className="fixed inset-0 z-50 bg-blue-900/70 backdrop-blur-sm flex flex-col items-center justify-center p-6 border-4 border-dashed border-emerald-400 text-white pointer-events-none transition-all">
+          <div className="p-6 bg-slate-900/90 border border-emerald-500/40 rounded-3xl backdrop-blur-md flex flex-col items-center text-center max-w-md shadow-2xl animate-pulse">
+            <Upload className="w-16 h-16 mb-3 text-emerald-400 animate-bounce" />
+            <h3 className="text-xl font-bold text-white">Suelta la Constancia de CURP aquí</h3>
+            <p className="text-xs text-slate-300 mt-2">
+              Se guardará automáticamente en el Storage y se anexará al expediente de{' '}
+              <strong>{selectedCliente?.nombre || 'este cliente'}</strong>.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

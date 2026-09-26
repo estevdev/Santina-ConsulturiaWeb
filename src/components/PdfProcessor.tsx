@@ -184,7 +184,6 @@ export default function PdfProcessor({
         setActiveZones(zonesToUse);
       }
 
-      // Aplicar OCR automáticamente a las zonas definidas al subir el archivo
       if (zonesToUse.length > 0) {
         runOcrForZones(file, zonesToUse);
       }
@@ -202,7 +201,6 @@ export default function PdfProcessor({
         const newZones = [...found.zones];
         setActiveZones(newZones);
         setIsDrawingMode(false);
-        // Extraer texto de las zonas del nuevo preset seleccionado
         if (selectedFile && newZones.length > 0) {
           runOcrForZones(selectedFile, newZones);
         }
@@ -233,7 +231,6 @@ export default function PdfProcessor({
     setSelectedZoneId(newZone.id);
     setDownloadUrl(null);
 
-    // Extraer texto con OCR automáticamente para la zona recién dibujada
     if (selectedFile) {
       runOcrForSingleZone(newZone);
     }
@@ -261,32 +258,31 @@ export default function PdfProcessor({
   };
 
   const handleExportPdf = async () => {
-    if (!selectedFile || activeZones.length === 0) return;
+    if (!selectedFile) return;
 
     try {
       setIsProcessing(true);
-      const arrayBuffer = await selectedFile.arrayBuffer();
+      const originalPdfBytes = await selectedFile.arrayBuffer();
 
-      const editedBytes = await applyEditsToPdf(
-        arrayBuffer,
+      const updatedPdfBytes = await applyEditsToPdf(
+        originalPdfBytes,
         activeZones,
         fieldValues
       );
 
-      const blob = new Blob([editedBytes as any], { type: 'application/pdf' });
+      const blob = new Blob([updatedPdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       setDownloadUrl(url);
 
-      // Descarga automática
       const link = document.createElement('a');
       link.href = url;
-      link.download = `editado_${selectedFile.name}`;
+      link.download = `modificado_${selectedFile.name}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error('Error exportando PDF:', err);
-      alert('Ocurrió un error al exportar el PDF.');
+      console.error('Error al generar PDF:', err);
+      alert('Ocurrió un error al generar el PDF modificado');
     } finally {
       setIsProcessing(false);
     }
@@ -294,60 +290,54 @@ export default function PdfProcessor({
 
   const handleSavePresetChanges = () => {
     if (activeZones.length === 0) {
-      alert('No hay zonas definidas para guardar.');
+      alert('No hay zonas para guardar.');
       return;
     }
 
-    // Enriquecer cada zona con su formato tipográfico actual (negritas por línea, tamaños, colores, etc.)
-    const enrichedZones: FieldZone[] = activeZones.map((zone) => {
-      const curVal = fieldValues[zone.id];
-      let lineFormats = zone.lineFormats || [];
-      let defaultTemplateHtml = zone.defaultTemplateHtml || '';
-
-      if (curVal && typeof curVal === 'object') {
-        if (Array.isArray(curVal.lines) && curVal.lines.length > 0) {
-          lineFormats = extractLineFormatsFromRichTextValue(curVal, zone);
-        }
-        if (curVal.html) {
-          defaultTemplateHtml = curVal.html;
-        }
+    const zonesWithDefaults: FieldZone[] = activeZones.map((z) => {
+      const richVal = fieldValues[z.id];
+      if (richVal && typeof richVal === 'object') {
+        const lineFormats = extractLineFormatsFromRichTextValue(richVal, z);
+        return {
+          ...z,
+          defaultRichValue: richVal,
+          lineFormats: lineFormats.length > 0 ? lineFormats : z.lineFormats,
+        };
       }
-
-      return {
-        ...zone,
-        lineFormats,
-        defaultTemplateHtml,
-      };
+      return z;
     });
 
-    if (selectedPresetObj) {
-      const updatedPreset: Preset = {
-        ...selectedPresetObj,
-        zones: enrichedZones,
-        updatedAt: Date.now(),
-      };
-      savePreset(updatedPreset);
-      if (onSavePreset) onSavePreset(updatedPreset);
-      setActiveZones(enrichedZones);
-      setSaveSuccessMessage(`Plantilla "${selectedPresetObj.name}" guardada con formato y posiciones.`);
-      setTimeout(() => setSaveSuccessMessage(null), 4000);
-    } else {
-      const name = prompt('Ingresa un nombre para guardar esta nueva plantilla:', 'Nueva Plantilla');
-      if (!name || !name.trim()) return;
+    if (selectedPresetId && selectedPresetId !== 'custom') {
+      const existingPreset = presets.find((p) => p.id === selectedPresetId);
+      if (existingPreset) {
+        const updatedPreset: Preset = {
+          ...existingPreset,
+          zones: zonesWithDefaults,
+          updatedAt: Date.now(),
+        };
+        savePreset(updatedPreset);
+        if (onSavePreset) onSavePreset(updatedPreset);
+        setSaveSuccessMessage(`Plantilla "${existingPreset.name}" actualizada con éxito.`);
+        setTimeout(() => setSaveSuccessMessage(null), 4000);
+        return;
+      }
+    }
 
+    const newPresetName = prompt('Ingresa un nombre para guardar esta plantilla de zonas:', selectedFile ? selectedFile.name.replace(/\.[^/.]+$/, '') : 'Nueva Plantilla');
+    if (newPresetName && newPresetName.trim()) {
       const newPreset: Preset = {
         id: `preset-${Date.now()}`,
-        name: name.trim(),
+        name: newPresetName.trim(),
+        description: `Creado desde procesador el ${new Date().toLocaleDateString()}`,
         identifierKeywords: [],
-        zones: enrichedZones,
+        zones: zonesWithDefaults,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
       savePreset(newPreset);
       if (onSavePreset) onSavePreset(newPreset);
-      setActiveZones(enrichedZones);
       setSelectedPresetId(newPreset.id);
-      setSaveSuccessMessage(`Plantilla "${newPreset.name}" creada y guardada con formato y posiciones.`);
+      setSaveSuccessMessage(`Plantilla "${newPreset.name}" creada y guardada.`);
       setTimeout(() => setSaveSuccessMessage(null), 4000);
     }
   };
@@ -355,19 +345,20 @@ export default function PdfProcessor({
   const selectedPresetObj = presets.find((p) => p.id === selectedPresetId);
 
   return (
-    <div className="bg-slate-50 min-h-screen pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header Bar */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors cursor-pointer"
+            className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            title="Volver"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-slate-800">Editor Enriquecido de PDF</h1>
-            <p className="text-xs text-slate-500">
+            <h1 className="text-lg font-bold text-slate-900 dark:text-white">Editor Enriquecido de PDF</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Edita textos con formato de Word, previsualiza y compara con el PDF original
             </p>
           </div>
@@ -377,7 +368,7 @@ export default function PdfProcessor({
           <button
             onClick={handleExportPdf}
             disabled={isProcessing}
-            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+            className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl text-xs font-semibold transition-all shadow-sm shadow-emerald-600/20 disabled:opacity-50 cursor-pointer"
           >
             {isProcessing ? (
               <>
@@ -398,12 +389,12 @@ export default function PdfProcessor({
         {/* Panel Izquierdo: Configuración de campos y editor WYSIWYG */}
         <div className="lg:col-span-5 space-y-5">
           {/* Carga de Archivo */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-semibold text-slate-800 text-sm border-b pb-2">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2">
               1. Documento PDF
             </h3>
 
-            <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center bg-slate-50/50 hover:bg-slate-100/50 transition-colors">
+            <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-center bg-slate-50/50 dark:bg-slate-800/40 hover:bg-slate-100/50 dark:hover:bg-slate-800/70 transition-colors">
               <input
                 type="file"
                 accept="application/pdf"
@@ -415,37 +406,37 @@ export default function PdfProcessor({
                 htmlFor="processor-pdf-upload"
                 className="cursor-pointer flex flex-col items-center justify-center gap-2"
               >
-                <Upload className="w-7 h-7 text-blue-600" />
-                <span className="text-sm font-medium text-slate-700">
+                <Upload className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   {selectedFile ? selectedFile.name : 'Subir archivo PDF'}
                 </span>
-                <span className="text-xs text-slate-400">PDF con texto o escaneado (auto-OCR al cargar)</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">PDF con texto o escaneado (auto-OCR al cargar)</span>
               </label>
             </div>
           </div>
 
           {/* Selector de Preset y Modo de dibujo */}
           {selectedFile && (
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <div className="flex justify-between items-center border-b pb-2">
-                <h3 className="font-semibold text-slate-800 text-sm">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+                <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
                   2. Configuración de Plantilla
                 </h3>
                 {selectedPresetObj && (
-                  <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/60">
                     <CheckCircle2 className="w-3 h-3" /> {selectedPresetObj.name}
                   </span>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Preset de Zonas
                 </label>
                 <select
                   value={selectedPresetId}
                   onChange={(e) => handlePresetSelect(e.target.value)}
-                  className="w-full text-sm p-2 border border-slate-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                 >
                   <option value="custom">✏️ Personalizado (Definir o agregar zonas)</option>
                   <optgroup label="Presets Guardados">
@@ -462,10 +453,10 @@ export default function PdfProcessor({
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setIsDrawingMode(!isDrawingMode)}
-                    className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                       isDrawingMode
-                        ? 'bg-amber-100 text-amber-800 border-amber-300 shadow-sm'
-                        : 'bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200'
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700/80 shadow-xs'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
                     }`}
                   >
                     <Edit2 className="w-3.5 h-3.5" />
@@ -476,7 +467,7 @@ export default function PdfProcessor({
                     <button
                       onClick={() => runOcrForZones(selectedFile, activeZones, true)}
                       disabled={isBatchOcrRunning}
-                      className="flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 cursor-pointer"
+                      className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 cursor-pointer"
                       title="Re-extraer texto de todas las zonas usando OCR"
                     >
                       {isBatchOcrRunning ? (
@@ -497,7 +488,7 @@ export default function PdfProcessor({
                         setSelectedZoneId(null);
                       }
                     }}
-                    className="text-xs text-rose-500 hover:underline cursor-pointer ml-auto"
+                    className="text-xs text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-medium cursor-pointer ml-auto"
                   >
                     Borrar todas
                   </button>
@@ -506,11 +497,11 @@ export default function PdfProcessor({
 
               {/* Botón para guardar posiciones y cambios en la plantilla */}
               {activeZones.length > 0 && (
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={handleSavePresetChanges}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer"
                     title="Guardar las nuevas posiciones y dimensiones de las zonas en la plantilla para futuras cargas"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -518,7 +509,7 @@ export default function PdfProcessor({
                       ? `Guardar cambios en "${selectedPresetObj.name}"`
                       : 'Guardar como nueva plantilla'}
                   </button>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
                     Guarda la posición ajustada
                   </span>
                 </div>
@@ -528,8 +519,8 @@ export default function PdfProcessor({
 
           {/* Banner de confirmación de guardado de plantilla */}
           {saveSuccessMessage && (
-            <div className="p-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs flex items-center gap-2 animate-fade-in shadow-2xs">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <div className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-xs flex items-center gap-2 animate-fade-in shadow-2xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               <span className="font-medium">{saveSuccessMessage}</span>
             </div>
           )}
@@ -538,18 +529,18 @@ export default function PdfProcessor({
           {ocrStatusMessage && (
             <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 transition-all animate-fade-in ${
               isBatchOcrRunning 
-                ? 'bg-blue-50 border-blue-200 text-blue-800' 
-                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/60 text-blue-800 dark:text-blue-300' 
+                : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300'
             }`}>
               {isBatchOcrRunning ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+                <RefreshCw className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
               ) : (
-                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               )}
               <div className="flex-1">
                 <span className="font-semibold">{ocrStatusMessage}</span>
                 {ocrProgress && (
-                  <div className="w-full bg-blue-200 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                  <div className="w-full bg-blue-200 dark:bg-blue-900/60 h-1.5 rounded-full mt-1.5 overflow-hidden">
                     <div 
                       className="bg-blue-600 h-full transition-all duration-300 rounded-full"
                       style={{ width: `${(ocrProgress.current / ocrProgress.total) * 100}%` }}
@@ -562,16 +553,16 @@ export default function PdfProcessor({
 
           {/* Campos de Edición con Editor WYSIWYG individual */}
           {selectedFile && (
-            <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-semibold text-slate-800 text-sm border-b pb-2 flex items-center justify-between">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center justify-between">
                 <span>3. Contenido y Formato de Zonas ({activeZones.length})</span>
-                <span className="text-[11px] text-slate-500 font-normal">
+                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
                   Modifica los textos detectados
                 </span>
               </h3>
 
               {activeZones.length === 0 ? (
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs text-center space-y-1">
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs text-center space-y-1">
                   <p className="font-medium">No hay zonas para editar.</p>
                   <p>Presiona <b>+ Dibujar nueva zona</b> y selecciona la parte del PDF que deseas modificar.</p>
                 </div>
@@ -584,10 +575,10 @@ export default function PdfProcessor({
                       <div
                         key={zone.id}
                         onClick={() => setSelectedZoneId(zone.id)}
-                        className={`p-3.5 rounded-xl border transition-all ${
+                        className={`p-3.5 rounded-2xl border transition-all ${
                           isSelected
-                            ? 'border-blue-500 bg-blue-50/20 ring-1 ring-blue-400'
-                            : 'border-slate-200 bg-white hover:border-slate-300'
+                            ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-950/30 ring-1 ring-blue-400'
+                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700'
                         }`}
                       >
                         {/* Título de la zona */}
@@ -598,9 +589,9 @@ export default function PdfProcessor({
                             onChange={(e) =>
                               handleUpdateZone(zone.id, { name: e.target.value })
                             }
-                            className="font-semibold text-xs text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 focus:outline-none"
+                            className="font-semibold text-xs text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 focus:outline-none"
                           />
-                          <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-medium">
+                          <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-medium">
                             Pág. {zone.pageNumber || 1}
                           </span>
                         </div>
@@ -625,41 +616,41 @@ export default function PdfProcessor({
         </div>
 
         {/* Panel Derecho: Visor de PDF con Vista Previa en Tiempo Real */}
-        <div className="lg:col-span-7 flex flex-col items-center bg-white p-6 rounded-xl border border-slate-200 shadow-sm min-h-[650px]">
+        <div className="lg:col-span-7 flex flex-col items-center bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm min-h-[650px] transition-colors">
           {!selectedFile ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400 my-auto">
-              <AlertCircle className="w-12 h-12 mb-2 stroke-1 text-slate-300" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400 dark:text-slate-500 my-auto">
+              <AlertCircle className="w-12 h-12 mb-2 stroke-1 text-slate-300 dark:text-slate-600" />
               <p className="text-sm font-medium">Ningún documento seleccionado</p>
               <p className="text-xs">Sube un archivo PDF para ver la previsualización en vivo.</p>
             </div>
           ) : (
             <div className="w-full flex flex-col items-center">
               {/* Controles de página y botón de alternar Ver Original / Ver Editado */}
-              <div className="flex flex-wrap justify-between items-center w-full mb-4 pb-3 border-b text-sm gap-2">
+              <div className="flex flex-wrap justify-between items-center w-full mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 text-sm gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setShowOriginal((prev) => !prev)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-xs ${
                       showOriginal
                         ? 'bg-amber-500 hover:bg-amber-600 text-white ring-2 ring-amber-300'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700'
                     }`}
                     title="Haz clic para alternar entre ver el documento editado o el original"
                   >
                     {showOriginal ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     {showOriginal ? 'Viendo Fondo Original (Clic para volver)' : 'Ver Fondo Original'}
                   </button>
-                  <span className="text-[11px] text-slate-400 hidden sm:inline">
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
                     {showOriginal ? '(Ediciones ocultas)' : '(Ediciones visibles)'}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs text-slate-600">
+                <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
                   <button
                     disabled={currentPage <= 1}
                     onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50 cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg disabled:opacity-50 cursor-pointer"
                   >
                     Anterior
                   </button>
@@ -669,7 +660,7 @@ export default function PdfProcessor({
                   <button
                     disabled={currentPage >= numPages}
                     onClick={() => setCurrentPage((p) => Math.min(numPages, p + 1))}
-                    className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded disabled:opacity-50 cursor-pointer"
+                    className="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg disabled:opacity-50 cursor-pointer"
                   >
                     Siguiente
                   </button>
@@ -677,19 +668,21 @@ export default function PdfProcessor({
               </div>
 
               {/* Visor Interactivo en Vivo */}
-              <CanvasPdfViewer
-                pdfFile={selectedFile}
-                currentPage={currentPage}
-                onNumPagesChange={setNumPages}
-                zones={activeZones}
-                activeZoneId={selectedZoneId}
-                onSelectZone={(id) => setSelectedZoneId(id)}
-                onAddZone={handleAddZone}
-                onUpdateZone={(zone) => handleUpdateZone(zone.id, zone)}
-                isEditorMode={isDrawingMode}
-                livePreviewValues={fieldValues}
-                showOverlays={!showOriginal}
-              />
+              <div className="w-full flex justify-center bg-slate-100/70 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 overflow-auto">
+                <CanvasPdfViewer
+                  pdfFile={selectedFile}
+                  currentPage={currentPage}
+                  onNumPagesChange={setNumPages}
+                  zones={activeZones}
+                  activeZoneId={selectedZoneId}
+                  onSelectZone={(id) => setSelectedZoneId(id)}
+                  onAddZone={handleAddZone}
+                  onUpdateZone={(zone) => handleUpdateZone(zone.id, zone)}
+                  isEditorMode={isDrawingMode}
+                  livePreviewValues={fieldValues}
+                  showOverlays={!showOriginal}
+                />
+              </div>
             </div>
           )}
         </div>

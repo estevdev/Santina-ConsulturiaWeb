@@ -85,26 +85,25 @@ export default function PresetList({
     };
 
     reader.readAsText(file);
-    // Reset file input value to allow selecting same file again if desired
     e.target.value = '';
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      {/* Notificación flotante / superior */}
+    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 transition-colors">
+      {/* Notificación flotante */}
       {notification && (
         <div
-          className={`mb-5 p-3.5 rounded-lg flex items-center justify-between gap-3 text-sm animate-fade-in ${
+          className={`mb-5 p-3.5 rounded-xl flex items-center justify-between gap-3 text-sm animate-fade-in ${
             notification.type === 'success'
-              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-              : 'bg-rose-50 text-rose-800 border border-rose-200'
+              ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60'
+              : 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60'
           }`}
         >
           <div className="flex items-center gap-2">
             {notification.type === 'success' ? (
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 flex-shrink-0" />
             )}
             <span className="font-medium">{notification.message}</span>
           </div>
@@ -129,8 +128,8 @@ export default function PresetList({
       {/* Encabezado con botones de acción */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Presets de Edición</h2>
-          <p className="text-sm text-slate-500">
+          <h2 className="text-xl font-bold text-slate-800 dark:text-white">Presets de Edición</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Plantillas con zonas, tipografía y formato predefinidos para modificar PDFs automáticamente
           </p>
         </div>
@@ -140,10 +139,10 @@ export default function PresetList({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer shadow-sm"
             title="Cargar presets desde un archivo .json"
           >
-            <Upload className="w-4 h-4 text-slate-600" />
+            <Upload className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Importar JSON</span>
           </button>
 
@@ -152,10 +151,10 @@ export default function PresetList({
             type="button"
             onClick={handleExportAll}
             disabled={presets.length === 0}
-            className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg text-sm font-medium transition-colors border border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-2 rounded-xl text-xs font-medium transition-colors border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
             title="Descargar todos los presets en un archivo .json"
           >
-            <Download className="w-4 h-4 text-slate-600" />
+            <Download className="w-4 h-4 text-slate-600 dark:text-slate-400" />
             <span>Exportar Todos</span>
           </button>
 
@@ -163,7 +162,7 @@ export default function PresetList({
           <button
             type="button"
             onClick={onCreateNew}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm cursor-pointer"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm shadow-blue-600/20 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Crear Nuevo Preset</span>
@@ -172,16 +171,16 @@ export default function PresetList({
       </div>
 
       {presets.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-slate-200 rounded-xl">
-          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-600 font-medium">No tienes presets guardados</p>
-          <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+          <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+          <p className="text-slate-600 dark:text-slate-300 font-medium">No tienes presets guardados</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-sm mx-auto">
             Crea un preset marcando las zonas de un PDF de muestra o importa un archivo JSON con tus plantillas.
           </p>
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 text-xs text-blue-600 font-medium bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-100"
+              className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/40"
             >
               <Upload className="w-3.5 h-3.5" />
               Importar archivo .json
@@ -193,31 +192,31 @@ export default function PresetList({
           {presets.map((preset) => (
             <div
               key={preset.id}
-              className="border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all bg-slate-50/50 flex flex-col justify-between group"
+              className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-slate-800 group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {preset.name}
                   </h3>
                   <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
                     <button
                       onClick={(e) => handleExportSingle(e, preset)}
-                      className="p-1 hover:bg-slate-200 text-slate-600 rounded transition-colors"
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors"
                       title="Exportar esta plantilla a JSON"
                     >
                       <Download className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onEditPreset(preset)}
-                      className="p-1 hover:bg-slate-200 text-slate-600 rounded transition-colors"
+                      className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-colors"
                       title="Editar zonas del preset"
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => onDeletePreset(preset.id)}
-                      className="p-1 hover:bg-rose-100 text-rose-600 rounded transition-colors"
+                      className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-colors"
                       title="Eliminar preset"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -226,19 +225,19 @@ export default function PresetList({
                 </div>
 
                 {preset.description && (
-                  <p className="text-xs text-slate-500 mb-3 line-clamp-2">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">
                     {preset.description}
                   </p>
                 )}
 
                 <div className="flex flex-wrap gap-1 mb-3">
-                  <span className="text-[11px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                  <span className="text-[11px] bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-900/60">
                     {preset.zones.length} {preset.zones.length === 1 ? 'Zona' : 'Zonas'}
                   </span>
                   {preset.identifierKeywords?.map((kw, i) => (
                     <span
                       key={i}
-                      className="text-[11px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full"
+                      className="text-[11px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full border border-slate-300 dark:border-slate-700"
                     >
                       #{kw}
                     </span>
@@ -248,7 +247,7 @@ export default function PresetList({
 
               <button
                 onClick={() => onSelectPreset(preset)}
-                className="w-full mt-2 flex items-center justify-center gap-2 bg-white border border-slate-300 hover:border-blue-600 hover:text-blue-600 font-medium text-xs text-slate-700 py-2 rounded-lg transition-all cursor-pointer"
+                className="w-full mt-2 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-semibold text-xs text-slate-700 dark:text-slate-300 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
               >
                 Usar este Preset
                 <ArrowRight className="w-3.5 h-3.5" />

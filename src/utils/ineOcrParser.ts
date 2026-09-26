@@ -26,6 +26,11 @@ interface BoundingBox {
   height: number;
 }
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 // Catálogo oficial de claves de estado RENAPO / INE
 const ESTADOS_MAP: Record<string, string> = {
   '01': 'AS', // Aguascalientes
@@ -922,4 +927,338 @@ export function parseIneOcrText(frontText: string, backText: string = '', detect
   }
 
   return result;
+}
+
+/**
+ * Toma la INE Normal (frente y reverso en una hoja/imagen o PDF)
+ * Extrae mediante mapa de calor y subregiones los dos lados (frente y reverso)
+export interface Point {
+  x: number;
+  y: number;
+}
+
+/**
+ * Aplica transformación de perspectiva homográfica (warpPerspective) con 4 puntos
+ */
+export function cropPerspectiveFromPoints(
+  sourceCanvas: HTMLCanvasElement,
+  points: [Point, Point, Point, Point], // TL, TR, BR, BL
+  outW: number = 856,
+  outH: number = 540
+): HTMLCanvasElement {
+  const outCanvas = document.createElement('canvas');
+  outCanvas.width = outW;
+  outCanvas.height = outH;
+  const outCtx = outCanvas.getContext('2d');
+  if (!outCtx) return outCanvas;
+
+  try {
+    if (typeof window !== 'undefined' && window.cv && window.cv.Mat) {
+      const cv = window.cv;
+      const srcMat = cv.imread(sourceCanvas);
+      const dstMat = new cv.Mat();
+
+      const srcTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        points[0].x, points[0].y,
+        points[1].x, points[1].y,
+        points[2].x, points[2].y,
+        points[3].x, points[3].y,
+      ]);
+
+      const dstTri = cv.matFromArray(4, 1, cv.CV_32FC2, [
+        0, 0,
+        outW, 0,
+        outW, outH,
+        0, outH,
+      ]);
+
+      const M = cv.getPerspectiveTransform(srcTri, dstTri);
+      cv.warpPerspective(srcMat, dstMat, M, new cv.Size(outW, outH));
+      cv.imshow(outCanvas, dstMat);
+
+      srcMat.delete();
+      dstMat.delete();
+      srcTri.delete();
+      dstTri.delete();
+      M.delete();
+      return outCanvas;
+    }
+  } catch (err) {
+    console.warn('Fallback en homografía de perspectiva:', err);
+  }
+
+  // Fallback recortando por Bounding Box si OpenCV no responde
+  const minX = Math.min(points[0].x, points[1].x, points[2].x, points[3].x);
+  const maxX = Math.max(points[0].x, points[1].x, points[2].x, points[3].x);
+  const minY = Math.min(points[0].y, points[1].y, points[2].y, points[3].y);
+  const maxY = Math.max(points[0].y, points[1].y, points[2].y, points[3].y);
+  const bw = maxX - minX;
+  const bh = maxY - minY;
+
+  outCtx.drawImage(sourceCanvas, minX, minY, bw, bh, 0, 0, outW, outH);
+  return outCanvas;
+}
+
+/**
+ * Clasifica de forma inteligente cuál cara es la Frontal (con foto/datos) y cuál es la Trasera
+ * Y genera un archivo de INE Ampliada al 200% donde:
+ * - La mitad superior (Y: 0 a 1100 px) es la cara FRONTAL ampliada usando el 100% de la media hoja
+ * - La mitad inferior (Y: 1100 a 2200 px) es la cara TRASERA ampliada usando el 100% de la otra media hoja
+ */
+export async function generateIneAmpliada200File(
+  sourceUrlOrFile: string | File | Blob,
+  manualPoints?: {
+    frente: [Point, Point, Point, Point];
+    reverso: [Point, Point, Point, Point];
+  }
+): Promise<File> {
+  let canvas: HTMLCanvasElement | null = null;
+  const isPdf =
+    (sourceUrlOrFile instanceof File && (sourceUrlOrFile.type === 'application/pdf' || sourceUrlOrFile.name.toLowerCase().endsWith('.pdf'))) ||
+    (sourceUrlOrFile instanceof Blob && sourceUrlOrFile.type === 'application/pdf') ||
+    (typeof sourceUrlOrFile === 'string' && sourceUrlOrFile.toLowerCase().includes('.pdf'));
+
+  if (isPdf) {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+    let buffer: ArrayBuffer;
+    if (typeof sourceUrlOrFile === 'string') {
+      const resp = await fetch(sourceUrlOrFile);
+      buffer = await resp.arrayBuffer();
+    } else {
+      buffer = await sourceUrlOrFile.arrayBuffer();
+    }
+    const doc = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
+    const page = await doc.getPage(1);
+    const viewport = page.getViewport({ scale: 2.0 });
+    canvas = document.createElement('canvas');
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await (page as any).render({ canvasContext: ctx, canvas, viewport }).promise;
+  } else {
+    let img: HTMLImageElement;
+    if (typeof sourceUrlOrFile === 'string') {
+      img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = sourceUrlOrFile;
+      await new Promise((res, rej) => {
+        img.onload = res;
+        img.onerror = rej;
+      });
+      canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+    } else {
+      const bitmap = await createImageBitmap(sourceUrlOrFile);
+      canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(bitmap, 0, 0);
+    }
+  }
+
+  if (!canvas) {
+    throw new Error('No se pudo renderizar el documento original.');
+  }
+
+  const w = canvas.width;
+  const h = canvas.height;
+  const targetAspect = 1.585; // Relación oficial ID-1 (85.6mm x 54mm)
+
+  let frenteCanvas: HTMLCanvasElement;
+  let reversoCanvas: HTMLCanvasElement;
+
+  if (manualPoints && manualPoints.frente && manualPoints.reverso) {
+    // Usar recortes homográficos por 4 puntos manuales marcados por el usuario
+    frenteCanvas = cropPerspectiveFromPoints(canvas, manualPoints.frente, 856, 540);
+    reversoCanvas = cropPerspectiveFromPoints(canvas, manualPoints.reverso, 856, 540);
+  } else {
+    // Algoritmo por mapa de calor y análisis de regiones
+    const getSubRegionCardBox = (subX: number, subY: number, subW: number, subH: number): BoundingBox => {
+      const ctx = canvas!.getContext('2d');
+      if (!ctx) {
+        return { x: subX, y: subY, width: subW, height: subH };
+      }
+
+      const imgData = ctx.getImageData(subX, subY, subW, subH);
+      const data = imgData.data;
+
+      let minX = subW;
+      let maxX = 0;
+      let minY = subH;
+      let maxY = 0;
+      let count = 0;
+
+      for (let y = 0; y < subH; y += 2) {
+        for (let x = 0; x < subW; x += 2) {
+          const idx = (y * subW + x) * 4;
+          const r = data[idx];
+          const g = data[idx + 1];
+          const b = data[idx + 2];
+          const a = data[idx + 3];
+
+          const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+          // Mapa de calor: detectar píxeles no blancos/fondo de la credencial
+          if (a > 30 && (lum < 245 || Math.abs(r - g) > 12 || Math.abs(g - b) > 12)) {
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+            count++;
+          }
+        }
+      }
+
+      if (count < 50 || maxX <= minX || maxY <= minY) {
+        const bw = Math.round(subW * 0.88);
+        const bh = Math.round(bw / targetAspect);
+        return {
+          x: subX + Math.round((subW - bw) / 2),
+          y: subY + Math.round((subH - bh) / 2),
+          width: bw,
+          height: bh,
+        };
+      }
+
+      const rawW = maxX - minX;
+      const rawH = maxY - minY;
+      const padX = Math.round(rawW * 0.02);
+      const padY = Math.round(rawH * 0.02);
+
+      let finalX = Math.max(0, minX - padX);
+      let finalY = Math.max(0, minY - padY);
+      let finalW = Math.min(subW - finalX, rawW + padX * 2);
+      let finalH = Math.min(subH - finalY, rawH + padY * 2);
+
+      // Sanitizar aspecto ID-1
+      const currentAspect = finalW / finalH;
+      if (Math.abs(currentAspect - targetAspect) > 0.25) {
+        if (currentAspect < targetAspect) {
+          finalW = Math.round(finalH * targetAspect);
+        } else {
+          finalH = Math.round(finalW / targetAspect);
+        }
+      }
+
+      return {
+        x: subX + finalX,
+        y: subY + finalY,
+        width: Math.min(w - (subX + finalX), finalW),
+        height: Math.min(h - (subY + finalY), finalH),
+      };
+    };
+
+    const halfH = Math.floor(h / 2);
+    const topSubBox = getSubRegionCardBox(0, 0, w, halfH);
+    const bottomSubBox = getSubRegionCardBox(0, halfH, w, h - halfH);
+
+    let frenteBox = topSubBox;
+    let reversoBox = bottomSubBox;
+
+    // OCR Rápido de clasificación Frontal vs Trasero
+    try {
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker(['spa']);
+
+      const cTop = cropAndScaleCanvas(canvas, topSubBox, false);
+      const cBottom = cropAndScaleCanvas(canvas, bottomSubBox, false);
+
+      const rTop = await worker.recognize(cTop);
+      const rBottom = await worker.recognize(cBottom);
+      await worker.terminate();
+
+      const tTop = (rTop.data?.text || '').toUpperCase();
+      const tBottom = (rBottom.data?.text || '').toUpperCase();
+
+      const topIsFront =
+        tTop.includes('INSTITUTO') ||
+        tTop.includes('ELECTORAL') ||
+        tTop.includes('CREDENCIAL') ||
+        tTop.includes('DOMICILIO') ||
+        tTop.includes('NOMBRE') ||
+        tTop.includes('CURP') ||
+        tTop.includes('CLAVE');
+
+      const bottomIsFront =
+        tBottom.includes('INSTITUTO') ||
+        tBottom.includes('ELECTORAL') ||
+        tBottom.includes('CREDENCIAL') ||
+        tBottom.includes('DOMICILIO') ||
+        tBottom.includes('NOMBRE') ||
+        tBottom.includes('CURP') ||
+        tBottom.includes('CLAVE');
+
+      if (bottomIsFront && !topIsFront) {
+        frenteBox = bottomSubBox;
+        reversoBox = topSubBox;
+      } else {
+        frenteBox = topSubBox;
+        reversoBox = bottomSubBox;
+      }
+    } catch (err) {
+      console.warn('Error en clasificación OCR:', err);
+    }
+
+    frenteCanvas = cropAndScaleCanvas(canvas, frenteBox, false);
+    reversoCanvas = cropAndScaleCanvas(canvas, reversoBox, false);
+  }
+
+  // 3. Crear canvas oficial de salida (Formato vertical Carta 1600 x 2200 px para expediente)
+  // Cada mitad (1100 px alto) acomoda una cara en el 100% de su espacio disponible
+  const outputW = 1600;
+  const outputH = 2200;
+  const outputCanvas = document.createElement('canvas');
+  outputCanvas.width = outputW;
+  outputCanvas.height = outputH;
+  const outCtx = outputCanvas.getContext('2d')!;
+
+  // Fondo blanco perfecto
+  outCtx.fillStyle = '#FFFFFF';
+  outCtx.fillRect(0, 0, outputW, outputH);
+
+  const halfPageH = outputH / 2; // 1100 px
+  const marginX = 60;
+  const targetW = outputW - marginX * 2; // 1480 px
+
+  // --- SECCIÓN SUPERIOR: CARA FRONTAL EN EL 100% DE LA MITAD SUPERIOR ---
+  const drawH1 = targetW / targetAspect; // ~933.7 px
+  const drawX1 = marginX;
+  const drawY1 = (halfPageH - drawH1) / 2; // Centrado exacto en los 1100px superiores
+
+  outCtx.strokeStyle = '#CBD5E1';
+  outCtx.lineWidth = 3;
+  outCtx.strokeRect(drawX1 - 2, drawY1 - 2, targetW + 4, drawH1 + 4);
+  outCtx.drawImage(frenteCanvas, 0, 0, frenteCanvas.width, frenteCanvas.height, drawX1, drawY1, targetW, drawH1);
+
+  // --- LÍNEA CORTE/DIVISORIA CENTRAL ---
+  outCtx.strokeStyle = '#94A3B8';
+  outCtx.lineWidth = 2;
+  outCtx.setLineDash([12, 12]);
+  outCtx.beginPath();
+  outCtx.moveTo(40, halfPageH);
+  outCtx.lineTo(outputW - 40, halfPageH);
+  outCtx.stroke();
+  outCtx.setLineDash([]);
+
+  // --- SECCIÓN INFERIOR: CARA TRASERA EN EL 100% DE LA MITAD INFERIOR ---
+  const drawH2 = targetW / targetAspect;
+  const drawX2 = marginX;
+  const drawY2 = halfPageH + (halfPageH - drawH2) / 2; // Centrado exacto en los 1100px inferiores
+
+  outCtx.strokeStyle = '#CBD5E1';
+  outCtx.lineWidth = 3;
+  outCtx.strokeRect(drawX2 - 2, drawY2 - 2, targetW + 4, drawH2 + 4);
+  outCtx.drawImage(reversoCanvas, 0, 0, reversoCanvas.width, reversoCanvas.height, drawX2, drawY2, targetW, drawH2);
+
+  const blob: Blob = await new Promise((resolve) => {
+    outputCanvas.toBlob((b) => resolve(b || new Blob()), 'image/png', 0.95);
+  });
+
+  return new File([blob], `INE_Ampliada_200_${Date.now()}.png`, { type: 'image/png' });
 }

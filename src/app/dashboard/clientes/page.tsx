@@ -3,8 +3,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Cliente, TipoTramite, TramiteRetiroDesempleo, TramiteMejoravit, TramiteAltaMedicaImss } from '@/types/cliente';
-import { runOcrWithHeatmap, parseIneOcrText, IneParsedData } from '@/utils/ineOcrParser';
+import { runOcrWithHeatmap, parseIneOcrText, generateIneAmpliada200File, IneParsedData } from '@/utils/ineOcrParser';
 import { generateAndUploadOfficialCurpPdf } from '@/utils/curpPdfGenerator';
+import { ESTADOS_MEXICO } from '@/constants/estadosMexico';
 import {
   Users,
   Plus,
@@ -40,8 +41,12 @@ import {
   Share2,
   ArrowLeft,
   User,
-  UserCheck
+  UserCheck,
+  Edit,
+  MapPin
 } from 'lucide-react';
+
+import { generateInmuebleFotosPdf } from '@/utils/inmuebleFotosPdfGenerator';
 
 export default function ClientesPage() {
   const supabase = createClient();
@@ -51,12 +56,7 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [showFullDetails, setShowFullDetails] = useState(false);
-  const [clienteTramites, setClienteTramites] = useState<{
-    retiro?: TramiteRetiroDesempleo[];
-    mejoravit?: TramiteMejoravit[];
-    altaMedica?: TramiteAltaMedicaImss[];
-  }>({});
-  const [loadingTramites, setLoadingTramites] = useState(false);
+  const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
 
   // Form State Cliente
   const [formCliente, setFormCliente] = useState({
@@ -65,8 +65,104 @@ export default function ClientesPage() {
     apellido_materno: '',
     telefono: '',
     email: '',
+    estado: 'Jalisco',
     notas: '',
   });
+
+  const [estadoSearchQuery, setEstadoSearchQuery] = useState('');
+  const [isEstadoDropdownOpen, setIsEstadoDropdownOpen] = useState(false);
+
+  // Modal de Gestión de 5 Fotos del Inmueble (Mejoravit)
+  const [inmuebleFotosModal, setInmuebleFotosModal] = useState<{
+    tramiteId: string;
+    existingPdfUrl?: string;
+    fotos: string[]; // Lista de DataURLs o URLs
+  } | null>(null);
+  const [savingFotosPdf, setSavingFotosPdf] = useState(false);
+
+  // Modal de Marcado Manual de 4 Puntos para INE Frontal y Trasera
+  const [manualIneCropModal, setManualIneCropModal] = useState<{
+    tramiteId: string;
+    imageUrl: string;
+    step: 'frente' | 'reverso';
+    frentePoints: { x: number; y: number }[];
+    reversoPoints: { x: number; y: number }[];
+  } | null>(null);
+  const [processingManualCrop, setProcessingManualCrop] = useState(false);
+
+  // Modal de Credenciales Portal Infonavit (Requisito 9)
+  const [infonavitCredsModal, setInfonavitCredsModal] = useState<{
+    tramiteId: string;
+    nss: string;
+    password: string;
+  } | null>(null);
+  const [savingInfonavitCreds, setSavingInfonavitCreds] = useState(false);
+
+  const openManualIneCropper = async (tramiteId: string, imageUrl: string) => {
+    // Calcular puntos iniciales por defecto (subcuadro centrado en la mitad superior e inferior)
+    let w = 1000;
+    let h = 1400;
+
+    try {
+      if (imageUrl.toLowerCase().includes('.pdf')) {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const resp = await fetch(imageUrl);
+        const buffer = await resp.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const page = await doc.getPage(1);
+        const vp = page.getViewport({ scale: 2.0 });
+        w = vp.width;
+        h = vp.height;
+      } else {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = imageUrl;
+        await new Promise((res) => { img.onload = res; img.onerror = res; });
+        w = img.naturalWidth || img.width || 1000;
+        h = img.naturalHeight || img.height || 1400;
+      }
+    } catch {}
+
+    const halfH = h / 2;
+    const cardW = Math.round(w * 0.8);
+    const cardH = Math.round(cardW / 1.585);
+    const marginX = Math.round((w - cardW) / 2);
+
+    // Frontal: centrado en la mitad superior
+    const frenteY = Math.round((halfH - cardH) / 2);
+    const defaultFrente = [
+      { x: marginX, y: frenteY },
+      { x: marginX + cardW, y: frenteY },
+      { x: marginX + cardW, y: frenteY + cardH },
+      { x: marginX, y: frenteY + cardH },
+    ];
+
+    // Trasera: centrado en la mitad inferior
+    const reversoY = Math.round(halfH + (halfH - cardH) / 2);
+    const defaultReverso = [
+      { x: marginX, y: reversoY },
+      { x: marginX + cardW, y: reversoY },
+      { x: marginX + cardW, y: reversoY + cardH },
+      { x: marginX, y: reversoY + cardH },
+    ];
+
+    setManualIneCropModal({
+      tramiteId,
+      imageUrl,
+      step: 'frente',
+      frentePoints: defaultFrente,
+      reversoPoints: defaultReverso,
+    });
+  };
+  const [clienteTramites, setClienteTramites] = useState<{
+    retiro?: TramiteRetiroDesempleo[];
+    mejoravit?: TramiteMejoravit[];
+    altaMedica?: TramiteAltaMedicaImss[];
+  }>({});
+  const [loadingTramites, setLoadingTramites] = useState(false);
+
+
 
   const [crearTramiteInicial, setCrearTramiteInicial] = useState(false);
   const [tipoTramiteInicial, setTipoTramiteInicial] = useState<TipoTramite>('retiro_desempleo');
@@ -605,6 +701,22 @@ export default function ClientesPage() {
     }
   };
 
+  const handleEditCliente = (cli: Cliente) => {
+    setEditingClienteId(cli.id);
+    setFormCliente({
+      nombre: cli.nombre || '',
+      apellido_paterno: cli.apellido_paterno || '',
+      apellido_materno: cli.apellido_materno || '',
+      telefono: cli.telefono || '',
+      email: cli.email || '',
+      estado: cli.estado || 'Jalisco',
+      notas: cli.notas || '',
+    });
+    setCrearTramiteInicial(false);
+    setFeedbackMsg(null);
+    setIsModalOpen(true);
+  };
+
   const handleSubmitCliente = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -622,91 +734,120 @@ export default function ClientesPage() {
     const fullApellidos = [pat, mat].filter(Boolean).join(' ');
 
     try {
-      // 1. Guardar cliente
-      const { data: clienteData, error: clienteError } = await supabase
-        .from('clientes')
-        .insert([{
-          nombre: formCliente.nombre.trim(),
-          apellido_paterno: pat || null,
-          apellido_materno: mat || null,
-          apellidos: fullApellidos,
-          telefono: formCliente.telefono.trim() || null,
-          email: formCliente.email.trim() || null,
-          notas: formCliente.notas.trim() || null,
-        }])
-        .select()
-        .single();
+      if (editingClienteId) {
+        // Modo Edición
+        const { data: updatedData, error: updateErr } = await supabase
+          .from('clientes')
+          .update({
+            nombre: formCliente.nombre.trim(),
+            apellido_paterno: pat || null,
+            apellido_materno: mat || null,
+            apellidos: fullApellidos,
+            telefono: formCliente.telefono.trim() || null,
+            email: formCliente.email.trim() || null,
+            estado: formCliente.estado || 'Jalisco',
+            notas: formCliente.notas.trim() || null,
+          })
+          .eq('id', editingClienteId)
+          .select()
+          .single();
 
-      if (clienteError) {
-        throw new Error(clienteError.message);
-      }
+        if (updateErr) throw new Error(updateErr.message);
 
-      // 2. Trámite Inicial Opcional
-      if (crearTramiteInicial && clienteData) {
-        const clienteId = clienteData.id;
-
-        if (tipoTramiteInicial === 'retiro_desempleo') {
-          await supabase.from('tramites_retiro_desempleo').insert([{
-            cliente_id: clienteId,
-            semanas_cotizadas: formRetiro.semanas_cotizadas ? parseInt(formRetiro.semanas_cotizadas) : null,
-            ultimo_salario_registrado: formRetiro.ultimo_salario_registrado ? parseFloat(formRetiro.ultimo_salario_registrado) : null,
-            validado_inactivo_imss: formRetiro.validado_inactivo_imss,
-            req_ine_vigente: formRetiro.req_ine_vigente,
-            req_comprobante_domicilio: formRetiro.req_comprobante_domicilio,
-            req_curp: formRetiro.req_curp,
-            req_constancia_situacion_fiscal: formRetiro.req_constancia_situacion_fiscal,
-            req_reporte_semanas_imss: formRetiro.req_reporte_semanas_imss,
-            req_app_aforemovil_instalada: formRetiro.req_app_aforemovil_instalada,
-            req_registro_aforemovil_realizado: formRetiro.req_registro_aforemovil_realizado,
-            req_saldo_visible_aforemovil: formRetiro.req_saldo_visible_aforemovil,
-            req_tiene_semanas_descontadas: formRetiro.req_tiene_semanas_descontadas,
-            req_anexo_sindo: formRetiro.req_anexo_sindo,
-            observaciones: formRetiro.observaciones || null,
-          }]);
-        } else if (tipoTramiteInicial === 'mejoravit') {
-          await supabase.from('tramites_mejoravit').insert([{
-            cliente_id: clienteId,
-            req_ine_normal: formMejoravit.req_ine_normal,
-            req_ine_ampliada_200: formMejoravit.req_ine_ampliada_200,
-            req_curp_actualizada: formMejoravit.req_curp_actualizada,
-            req_acta_nacimiento: formMejoravit.req_acta_nacimiento,
-            req_comprobante_domicilio: formMejoravit.req_comprobante_domicilio,
-            comprobante_familiar_anexo_acta: formMejoravit.comprobante_familiar_anexo_acta,
-            req_estado_cuenta_bancario: formMejoravit.req_estado_cuenta_bancario,
-            req_constancia_situacion_fiscal: formMejoravit.req_constancia_situacion_fiscal,
-            req_3_referencias_personales: formMejoravit.req_3_referencias_personales,
-            nss_portal_infonavit: formMejoravit.nss_portal_infonavit || null,
-            password_portal_infonavit: formMejoravit.password_portal_infonavit || null,
-            req_portal_infonavit_validado: formMejoravit.req_portal_infonavit_validado,
-            req_fotos_inmueble_5: formMejoravit.req_fotos_inmueble_5,
-            observaciones: formMejoravit.observaciones || null,
-          }]);
-        } else if (tipoTramiteInicial === 'alta_medica_imss') {
-          await supabase.from('tramites_alta_medica_imss').insert([{
-            cliente_id: clienteId,
-            clinica_umf_asignada: formAltaMedica.clinica_umf_asignada || null,
-            turno_preferido: formAltaMedica.turno_preferido,
-            codigo_postal_clinica: formAltaMedica.codigo_postal_clinica || null,
-            modalidad_aseguramiento: formAltaMedica.modalidad_aseguramiento,
-            req_curp_validada: formAltaMedica.req_curp_validada,
-            req_comprobante_domicilio_reciente: formAltaMedica.req_comprobante_domicilio_reciente,
-            req_identificacion_oficial: formAltaMedica.req_identificacion_oficial,
-            req_fotografia_infantil: formAltaMedica.req_fotografia_infantil,
-            req_cartilla_nacional_salud: formAltaMedica.req_cartilla_nacional_salud,
-            req_alta_patronal_vigente: formAltaMedica.req_alta_patronal_vigente,
-            observaciones: formAltaMedica.observaciones || null,
-          }]);
+        setFeedbackMsg({ type: 'success', text: 'Información del cliente actualizada correctamente.' });
+        if (selectedCliente && selectedCliente.id === editingClienteId && updatedData) {
+          setSelectedCliente(updatedData);
         }
+      } else {
+        // Modo Creación
+        const { data: clienteData, error: clienteError } = await supabase
+          .from('clientes')
+          .insert([{
+            nombre: formCliente.nombre.trim(),
+            apellido_paterno: pat || null,
+            apellido_materno: mat || null,
+            apellidos: fullApellidos,
+            telefono: formCliente.telefono.trim() || null,
+            email: formCliente.email.trim() || null,
+            estado: formCliente.estado || 'Jalisco',
+            notas: formCliente.notas.trim() || null,
+          }])
+          .select()
+          .single();
+
+        if (clienteError) {
+          throw new Error(clienteError.message);
+        }
+
+        // 2. Trámite Inicial Opcional
+        if (crearTramiteInicial && clienteData) {
+          const clienteId = clienteData.id;
+
+          if (tipoTramiteInicial === 'retiro_desempleo') {
+            await supabase.from('tramites_retiro_desempleo').insert([{
+              cliente_id: clienteId,
+              semanas_cotizadas: formRetiro.semanas_cotizadas ? parseInt(formRetiro.semanas_cotizadas) : null,
+              ultimo_salario_registrado: formRetiro.ultimo_salario_registrado ? parseFloat(formRetiro.ultimo_salario_registrado) : null,
+              validado_inactivo_imss: formRetiro.validado_inactivo_imss,
+              req_ine_vigente: formRetiro.req_ine_vigente,
+              req_comprobante_domicilio: formRetiro.req_comprobante_domicilio,
+              req_curp: formRetiro.req_curp,
+              req_constancia_situacion_fiscal: formRetiro.req_constancia_situacion_fiscal,
+              req_reporte_semanas_imss: formRetiro.req_reporte_semanas_imss,
+              req_app_aforemovil_instalada: formRetiro.req_app_aforemovil_instalada,
+              req_registro_aforemovil_realizado: formRetiro.req_registro_aforemovil_realizado,
+              req_saldo_visible_aforemovil: formRetiro.req_saldo_visible_aforemovil,
+              req_tiene_semanas_descontadas: formRetiro.req_tiene_semanas_descontadas,
+              req_anexo_sindo: formRetiro.req_anexo_sindo,
+              observaciones: formRetiro.observaciones || null,
+            }]);
+          } else if (tipoTramiteInicial === 'mejoravit') {
+            await supabase.from('tramites_mejoravit').insert([{
+              cliente_id: clienteId,
+              req_ine_normal: formMejoravit.req_ine_normal,
+              req_ine_ampliada_200: formMejoravit.req_ine_ampliada_200,
+              req_curp_actualizada: formMejoravit.req_curp_actualizada,
+              req_acta_nacimiento: formMejoravit.req_acta_nacimiento,
+              req_comprobante_domicilio: formMejoravit.req_comprobante_domicilio,
+              comprobante_familiar_anexo_acta: formMejoravit.comprobante_familiar_anexo_acta,
+              req_estado_cuenta_bancario: formMejoravit.req_estado_cuenta_bancario,
+              req_constancia_situacion_fiscal: formMejoravit.req_constancia_situacion_fiscal,
+              req_3_referencias_personales: formMejoravit.req_3_referencias_personales,
+              nss_portal_infonavit: formMejoravit.nss_portal_infonavit || null,
+              password_portal_infonavit: formMejoravit.password_portal_infonavit || null,
+              req_portal_infonavit_validado: formMejoravit.req_portal_infonavit_validado,
+              req_fotos_inmueble_5: formMejoravit.req_fotos_inmueble_5,
+              observaciones: formMejoravit.observaciones || null,
+            }]);
+          } else if (tipoTramiteInicial === 'alta_medica_imss') {
+            await supabase.from('tramites_alta_medica_imss').insert([{
+              cliente_id: clienteId,
+              clinica_umf_asignada: formAltaMedica.clinica_umf_asignada || null,
+              turno_preferido: formAltaMedica.turno_preferido,
+              codigo_postal_clinica: formAltaMedica.codigo_postal_clinica || null,
+              modalidad_aseguramiento: formAltaMedica.modalidad_aseguramiento,
+              req_curp_validada: formAltaMedica.req_curp_validada,
+              req_comprobante_domicilio_reciente: formAltaMedica.req_comprobante_domicilio_reciente,
+              req_identificacion_oficial: formAltaMedica.req_identificacion_oficial,
+              req_fotografia_infantil: formAltaMedica.req_fotografia_infantil,
+              req_cartilla_nacional_salud: formAltaMedica.req_cartilla_nacional_salud,
+              req_alta_patronal_vigente: formAltaMedica.req_alta_patronal_vigente,
+              observaciones: formAltaMedica.observaciones || null,
+            }]);
+          }
+        }
+        setFeedbackMsg({ type: 'success', text: 'Cliente registrado exitosamente.' });
       }
 
-      setFeedbackMsg({ type: 'success', text: 'Cliente registrado exitosamente.' });
       setIsModalOpen(false);
+      setEditingClienteId(null);
       setFormCliente({
         nombre: '',
         apellido_paterno: '',
         apellido_materno: '',
         telefono: '',
         email: '',
+        estado: 'Jalisco',
         notas: '',
       });
       fetchClientes();
@@ -727,219 +868,464 @@ export default function ClientesPage() {
     );
   });
 
+  const [uploadingDocKey, setUploadingDocKey] = useState<string | null>(null);
+  const [modalViewerDoc, setModalViewerDoc] = useState<{ url: string; title: string } | null>(null);
+  const [generatingAmpliada200, setGeneratingAmpliada200] = useState<boolean>(false);
+
+  const handleDownloadInline = async (url: string, title: string) => {
+    try {
+      const res = await fetch(url);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      const ext = url.split('.').pop()?.split('?')[0] || 'pdf';
+      link.download = `${title.replace(/[^a-zA-Z0-9_-]/g, '_')}.${ext}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = title;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handleGenerateIneAmpliada200 = async (trId: string, reqIneNormalUrl?: string | null) => {
+    const ineSourceUrl = reqIneNormalUrl || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url;
+    if (!ineSourceUrl) {
+      setFeedbackMsg({ type: 'error', text: 'Primero debes subir o escanear la INE Normal (requisito 1).' });
+      return;
+    }
+
+    setGeneratingAmpliada200(true);
+    setFeedbackMsg({ type: 'success', text: 'Detectando ambas caras con mapa de calor y generando INE Ampliada al 200%...' });
+
+    try {
+      const generatedFile = await generateIneAmpliada200File(ineSourceUrl);
+      await handleUploadReqDocument('mejoravit', trId, 'req_ine_ampliada_200', generatedFile);
+      setFeedbackMsg({ type: 'success', text: '¡INE Ampliada al 200% generada con mapa de calor y adjuntada exitosamente!' });
+    } catch (err: any) {
+      console.error('Error generando INE ampliada al 200%:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al generar INE ampliada: ${err.message || 'Error desconocido'}` });
+    } finally {
+      setGeneratingAmpliada200(false);
+    }
+  };
+
+  const handleUploadReqDocument = async (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    file: File
+  ) => {
+    if (!selectedCliente) return;
+    setUploadingDocKey(`${tramiteId}_${reqKey}`);
+    try {
+      const ext = file.name.split('.').pop() || 'png';
+      const filePath = `${selectedCliente.id}/${tramiteTipo}/${tramiteId}/${reqKey}_${Date.now()}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('ine_documents')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('ine_documents')
+        .getPublicUrl(filePath);
+
+      let currentTramite: any = null;
+      let table = '';
+      if (tramiteTipo === 'retiro') {
+        currentTramite = clienteTramites.retiro?.find((t) => t.id === tramiteId);
+        table = 'tramites_retiro_desempleo';
+      } else if (tramiteTipo === 'mejoravit') {
+        currentTramite = clienteTramites.mejoravit?.find((t) => t.id === tramiteId);
+        table = 'tramites_mejoravit';
+      } else if (tramiteTipo === 'altaMedica') {
+        currentTramite = clienteTramites.altaMedica?.find((t) => t.id === tramiteId);
+        table = 'tramites_alta_medica_imss';
+      }
+
+      const currentDocs = currentTramite?.documentos_urls || {};
+      const updatedDocs = { ...currentDocs, [reqKey]: publicUrl };
+
+      const updatePayload: Record<string, any> = {
+        [reqKey]: true,
+        documentos_urls: updatedDocs,
+      };
+
+      const { error: updateErr } = await supabase
+        .from(table)
+        .update(updatePayload)
+        .eq('id', tramiteId);
+
+      if (updateErr) throw updateErr;
+
+      setFeedbackMsg({ type: 'success', text: 'Documento subido y requisito marcado como completado.' });
+      await fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error uploading requirement document:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al subir el documento: ${err.message || 'Error desconocido'}` });
+    } finally {
+      setUploadingDocKey(null);
+    }
+  };
+
+  const renderChecklistRow = (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    label: string,
+    isCompleted: boolean,
+    existingDocUrl?: string | null,
+    numberTag?: number,
+    extraAction?: React.ReactNode
+  ) => {
+    const isUploading = uploadingDocKey === `${tramiteId}_${reqKey}`;
+    const docUrl =
+      existingDocUrl ||
+      (tramiteTipo === 'retiro' && reqKey === 'req_curp' ? selectedCliente?.curp_document_url : null) ||
+      ((reqKey === 'req_ine_vigente' || reqKey === 'req_ine_normal')
+        ? selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url
+        : null);
+    const completed = isCompleted || !!docUrl;
+
+    return (
+      <div
+        key={reqKey}
+        className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
+          completed
+            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-slate-800 dark:text-slate-100'
+            : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+        }`}
+      >
+        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+          {numberTag ? (
+            <span
+              className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                completed ? 'bg-emerald-600 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+              }`}
+            >
+              {numberTag}
+            </span>
+          ) : completed ? (
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          ) : (
+            <XCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          )}
+          <span className="font-semibold truncate leading-tight">{label}</span>
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          {extraAction}
+
+          {docUrl ? (
+            <>
+              {/* Visualizar en Modal Inline (sin salir de la página) */}
+              <button
+                type="button"
+                onClick={() => setModalViewerDoc({ url: docUrl, title: label })}
+                title="Visualizar documento aquí mismo"
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-md transition-colors cursor-pointer"
+              >
+                <Eye className="w-3 h-3" />
+                <span>Ver</span>
+              </button>
+
+              {/* Descargar Inline (sin abrir pestaña nueva) */}
+              <button
+                type="button"
+                onClick={() => handleDownloadInline(docUrl, label)}
+                title="Descargar documento"
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md transition-colors cursor-pointer"
+              >
+                <Download className="w-3 h-3" />
+                <span>Descargar</span>
+              </button>
+
+              {/* Cambiar / Reemplazar */}
+              <label
+                title="Cambiar o reemplazar archivo"
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-md transition-colors cursor-pointer"
+              >
+                {isUploading ? (
+                  <div className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                )}
+                <span>{isUploading ? '...' : 'Cambiar'}</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleUploadReqDocument(tramiteTipo, tramiteId, reqKey, f);
+                  }}
+                />
+              </label>
+            </>
+          ) : (
+            /* Subir Archivo */
+            <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-all cursor-pointer">
+              {isUploading ? (
+                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Upload className="w-3 h-3" />
+              )}
+              <span>{isUploading ? 'Subiendo...' : 'Subir Archivo'}</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                disabled={isUploading}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleUploadReqDocument(tramiteTipo, tramiteId, reqKey, f);
+                }}
+              />
+            </label>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderTramitesChecklist = () => (
     <div>
-      <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-        <Sparkles className="w-5 h-5 text-indigo-500" />
-        Expediente y Requisitos Registrados
+      <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2.5 flex items-center gap-1.5">
+        <Sparkles className="w-4 h-4 text-indigo-500" />
+        Tabla de Expediente & Requisitos
       </h3>
 
       {loadingTramites ? (
-        <div className="flex items-center justify-center p-8 text-xs text-slate-400">
+        <div className="flex items-center justify-center p-4 text-xs text-slate-400">
           <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-2" />
           Cargando expediente...
         </div>
       ) : (
-        <div className="space-y-5">
-          {/* 1. RETIRO POR DESEMPLEO (Checklist Exacto Imagen 1) */}
+        <div className="space-y-3">
+          {/* 1. RETIRO POR DESEMPLEO (Tabla Compacta 2 Columnas) */}
           {clienteTramites.retiro && clienteTramites.retiro.length > 0 && (
             clienteTramites.retiro.map((tr) => (
-              <div key={tr.id} className="p-5 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/30 dark:bg-emerald-950/20 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-emerald-200/60 dark:border-emerald-900/40">
-                  <div className="flex items-center gap-2">
-                    <Banknote className="w-5 h-5 text-emerald-600" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-emerald-300">
+              <div key={tr.id} className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/20 space-y-2.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200/60 dark:border-emerald-900/40">
+                  <div className="flex items-center gap-1.5">
+                    <Banknote className="w-4 h-4 text-emerald-600" />
+                    <span className="font-bold text-xs text-slate-900 dark:text-emerald-300">
                       Retiro por Desempleo
                     </span>
                   </div>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 uppercase font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 uppercase font-semibold">
                     {tr.estado}
                   </span>
                 </div>
 
-                {/* Datos del Cliente */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-white dark:bg-slate-800 p-3 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                {/* Datos Compactos */}
+                <div className="flex items-center justify-between gap-2 text-[11px] bg-white/80 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
                   <div>
-                    <span className="text-slate-400 block font-medium">Semanas Cotizadas:</span>
+                    <span className="text-slate-400 font-medium mr-1">Semanas:</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">{tr.semanas_cotizadas || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block font-medium">Último Salario:</span>
+                    <span className="text-slate-400 font-medium mr-1">Salario:</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">${tr.ultimo_salario_registrado || '0.00'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block font-medium">Estatus IMSS:</span>
-                    <span className={`inline-flex items-center gap-1 font-semibold ${tr.validado_inactivo_imss ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {tr.validado_inactivo_imss ? '✓ Validado Inactivo' : '⏳ Pendiente Validar'}
+                    <span className={`font-semibold text-[10px] ${tr.validado_inactivo_imss ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {tr.validado_inactivo_imss ? '✓ Inactivo IMSS' : '⏳ Pendiente IMSS'}
                     </span>
                   </div>
                 </div>
 
-                {/* Documentación Escaneada a Color & AforeMóvil */}
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                    Documentación (Escaneada a Color) & AforeMóvil:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_vigente ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_ine_vigente ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>INE Vigente</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_app_aforemovil_instalada ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_app_aforemovil_instalada ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>App AforeMóvil instalada</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_comprobante_domicilio ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Comprobante de domicilio</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_registro_aforemovil_realizado ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_registro_aforemovil_realizado ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Registro en AforeMóvil realizado</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_curp ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>CURP</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_saldo_visible_aforemovil ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_saldo_visible_aforemovil ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Saldo visible en AforeMóvil</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_constancia_situacion_fiscal ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_constancia_situacion_fiscal ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Constancia de Situación Fiscal</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_anexo_sindo ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_anexo_sindo ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Anexo SINDO (Semanas Descontadas)</span>
-                    </div>
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 sm:col-span-2 ${tr.req_reporte_semanas_imss ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-300 text-emerald-800 dark:text-emerald-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      {tr.req_reporte_semanas_imss ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" /> : <XCircle className="w-4 h-4 text-slate-400 shrink-0" />}
-                      <span>Semanas Cotizadas (Reporte del IMSS)</span>
-                    </div>
-                  </div>
+                {/* Grid 2 Columnas para Requisitos */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                  {renderChecklistRow('retiro', tr.id, 'req_ine_vigente', 'INE Vigente', tr.req_ine_vigente, tr.documentos_urls?.req_ine_vigente)}
+                  {renderChecklistRow('retiro', tr.id, 'req_app_aforemovil_instalada', 'App AforeMóvil', tr.req_app_aforemovil_instalada, tr.documentos_urls?.req_app_aforemovil_instalada)}
+                  {renderChecklistRow('retiro', tr.id, 'req_comprobante_domicilio', 'Comp. Domicilio', tr.req_comprobante_domicilio, tr.documentos_urls?.req_comprobante_domicilio)}
+                  {renderChecklistRow('retiro', tr.id, 'req_registro_aforemovil_realizado', 'Registro AforeMóvil', tr.req_registro_aforemovil_realizado, tr.documentos_urls?.req_registro_aforemovil_realizado)}
+                  {renderChecklistRow('retiro', tr.id, 'req_curp', 'CURP Certificada', tr.req_curp, tr.documentos_urls?.req_curp)}
+                  {renderChecklistRow('retiro', tr.id, 'req_saldo_visible_aforemovil', 'Saldo AforeMóvil', tr.req_saldo_visible_aforemovil, tr.documentos_urls?.req_saldo_visible_aforemovil)}
+                  {renderChecklistRow('retiro', tr.id, 'req_constancia_situacion_fiscal', 'Situación Fiscal (SAT)', tr.req_constancia_situacion_fiscal, tr.documentos_urls?.req_constancia_situacion_fiscal)}
+                  {renderChecklistRow('retiro', tr.id, 'req_anexo_sindo', 'Anexo SINDO', tr.req_anexo_sindo, tr.documentos_urls?.req_anexo_sindo)}
+                  {renderChecklistRow('retiro', tr.id, 'req_reporte_semanas_imss', 'Reporte Semanas IMSS', tr.req_reporte_semanas_imss, tr.documentos_urls?.req_reporte_semanas_imss)}
                 </div>
               </div>
             ))
           )}
 
-          {/* 2. MEJORAVIT INFONAVIT (Checklist Exacto 10 Puntos Imagen 2) */}
+          {/* 2. MEJORAVIT INFONAVIT (Tabla Compacta 2 Columnas) */}
           {clienteTramites.mejoravit && clienteTramites.mejoravit.length > 0 && (
-            clienteTramites.mejoravit.map((tr) => (
-              <div key={tr.id} className="p-5 rounded-2xl border border-red-200 dark:border-red-900/50 bg-red-50/30 dark:bg-red-950/20 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-red-200/60 dark:border-red-900/40">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-5 h-5 text-red-600" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-red-300">
-                      Expediente Mejoravit (Infonavit)
+            clienteTramites.mejoravit.map((tr) => {
+              const normalIneUrl = tr.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url;
+              const btnGetIne200 = normalIneUrl ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateIneAmpliada200(tr.id, normalIneUrl)}
+                    disabled={generatingAmpliada200}
+                    title="Detectar mapa de calor y generar ampliada al 200% desde la INE Normal"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-md shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {generatingAmpliada200 ? (
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Sparkles className="w-3 h-3 text-amber-200" />
+                    )}
+                    <span>{generatingAmpliada200 ? 'Procesando...' : 'Generar 200%'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openManualIneCropper(tr.id, normalIneUrl)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-all cursor-pointer"
+                    title="Marcar manualmente los 4 puntos de la frontal y trasera"
+                  >
+                    <ScanLine className="w-3 h-3" />
+                    <span>Manual</span>
+                  </button>
+                </div>
+              ) : null;
+
+              return (
+                <div key={tr.id} className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/20 space-y-2.5">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-red-200/60 dark:border-red-900/40">
+                    <div className="flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-red-600" />
+                      <span className="font-bold text-xs text-slate-900 dark:text-red-300">
+                        Expediente Mejoravit (Infonavit)
+                      </span>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 uppercase font-semibold">
+                      {tr.estado}
                     </span>
                   </div>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 uppercase font-semibold">
-                    {tr.estado}
-                  </span>
-                </div>
 
-                {/* 10 Puntos de Documentación */}
-                <div className="space-y-2">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2">
-                    Lista de Documentos Requeridos:
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_normal ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">1</span>
-                      <span className="truncate">INE Normal (Frente y reverso)</span>
-                    </div>
+                  {/* Grid 2 Columnas para 10 Requisitos */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                    {renderChecklistRow('mejoravit', tr.id, 'req_ine_normal', '1. INE Normal', tr.req_ine_normal, tr.documentos_urls?.req_ine_normal, 1)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_estado_cuenta_bancario', '6. Edo. Cuenta Bancario', tr.req_estado_cuenta_bancario, tr.documentos_urls?.req_estado_cuenta_bancario, 6)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_ine_ampliada_200', '2. INE Ampliada 200%', tr.req_ine_ampliada_200, tr.documentos_urls?.req_ine_ampliada_200, 2, btnGetIne200)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_constancia_situacion_fiscal', '7. Situación Fiscal (SAT)', tr.req_constancia_situacion_fiscal, tr.documentos_urls?.req_constancia_situacion_fiscal, 7)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_curp_actualizada', '3. CURP Actualizada', tr.req_curp_actualizada, tr.documentos_urls?.req_curp_actualizada, 3)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_3_referencias_personales', '8. 3 Referencias Personales', tr.req_3_referencias_personales, tr.documentos_urls?.req_3_referencias_personales, 8)}
+                    {renderChecklistRow('mejoravit', tr.id, 'req_acta_nacimiento', '4. Acta de Nacimiento', tr.req_acta_nacimiento, tr.documentos_urls?.req_acta_nacimiento, 4)}
 
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_estado_cuenta_bancario ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">6</span>
-                      <span className="truncate">Edo. Cuenta Bancario (Último mes)</span>
-                    </div>
+                    {/* 9. Credenciales Infonavit (Modal de Captura de NSS y Contraseña) */}
+                    <div
+                      className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
+                        tr.req_portal_infonavit_validado || (tr.nss_portal_infonavit && tr.password_portal_infonavit)
+                          ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-slate-800 dark:text-slate-100'
+                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span
+                          className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                            tr.req_portal_infonavit_validado || (tr.nss_portal_infonavit && tr.password_portal_infonavit)
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          9
+                        </span>
+                        <div className="flex flex-col truncate">
+                          <span className="font-semibold truncate leading-tight">9. Credenciales Infonavit</span>
+                          {(tr.nss_portal_infonavit || tr.password_portal_infonavit) && (
+                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
+                              NSS: {tr.nss_portal_infonavit || '---'} | Pass: ••••••••
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_ine_ampliada_200 ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">2</span>
-                      <span className="truncate">INE Ampliada al 200%</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInfonavitCredsModal({
+                            tramiteId: tr.id,
+                            nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
+                            password: tr.password_portal_infonavit || '',
+                          });
+                        }}
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md shadow-sm transition-all cursor-pointer ${
+                          tr.nss_portal_infonavit && tr.password_portal_infonavit
+                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
+                        }`}
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        <span>{tr.nss_portal_infonavit && tr.password_portal_infonavit ? 'Ver / Editar' : 'Ingresar Datos'}</span>
+                      </button>
                     </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_constancia_situacion_fiscal ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">7</span>
-                      <span className="truncate">Constancia Situación Fiscal (SAT)</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp_actualizada ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">3</span>
-                      <span className="truncate">CURP Actualizada</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_3_referencias_personales ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">8</span>
-                      <span className="truncate">3 Referencias Personales</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_acta_nacimiento ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">4</span>
-                      <span className="truncate">Acta de Nacimiento</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_portal_infonavit_validado ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">9</span>
-                      <span className="truncate">NSS y Contraseña Portal Infonavit</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">5</span>
-                      <span className="truncate">Comp. Domicilio (Último mes)</span>
-                    </div>
-
-                    <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_fotos_inmueble_5 ? 'bg-red-50 dark:bg-red-950/40 border-red-300 text-red-900 dark:text-red-200' : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-400'}`}>
-                      <span className="w-5 h-5 rounded-full bg-red-600 text-white font-bold text-[10px] flex items-center justify-center shrink-0">10</span>
-                      <span className="truncate">Fotos Inmueble (3 int. / 2 ext.)</span>
-                    </div>
+                    {renderChecklistRow('mejoravit', tr.id, 'req_comprobante_domicilio', '5. Comp. Domicilio', tr.req_comprobante_domicilio, tr.documentos_urls?.req_comprobante_domicilio, 5)}
+                    {renderChecklistRow(
+                      'mejoravit',
+                      tr.id,
+                      'req_fotos_inmueble_5',
+                      '10. Fotos Inmueble (5)',
+                      tr.req_fotos_inmueble_5,
+                      tr.documentos_urls?.req_fotos_inmueble_5,
+                      10,
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setInmuebleFotosModal({
+                            tramiteId: tr.id,
+                            existingPdfUrl: tr.documentos_urls?.req_fotos_inmueble_5,
+                            fotos: [],
+                          });
+                        }}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow-sm transition-all cursor-pointer mr-1"
+                        title="Subir y ordenar hasta 5 fotos para generar el PDF automáticamente"
+                      >
+                        <Camera className="w-3 h-3" />
+                        <span>{tr.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
 
-          {/* 3. ALTA MÉDICA IMSS */}
+          {/* 3. ALTA MÉDICA IMSS (Tabla Compacta 2 Columnas) */}
           {clienteTramites.altaMedica && clienteTramites.altaMedica.length > 0 && (
             clienteTramites.altaMedica.map((tr) => (
-              <div key={tr.id} className="p-5 rounded-2xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/30 dark:bg-sky-950/20 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-sky-200/60 dark:border-sky-900/40">
-                  <div className="flex items-center gap-2">
-                    <HeartPulse className="w-5 h-5 text-sky-600" />
-                    <span className="font-bold text-sm text-slate-900 dark:text-sky-300">
-                      Alta Médica IMSS ({tr.clinica_umf_asignada || 'Clínica/UMF'})
+              <div key={tr.id} className="p-3 rounded-xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/20 dark:bg-sky-950/20 space-y-2.5">
+                <div className="flex items-center justify-between pb-1.5 border-b border-sky-200/60 dark:border-sky-900/40">
+                  <div className="flex items-center gap-1.5">
+                    <HeartPulse className="w-4 h-4 text-sky-600" />
+                    <span className="font-bold text-xs text-slate-900 dark:text-sky-300">
+                      Alta Médica IMSS ({tr.clinica_umf_asignada || 'UMF'})
                     </span>
                   </div>
-                  <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 uppercase font-semibold">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 uppercase font-semibold">
                     {tr.estado}
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_curp_validada ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
-                    {tr.req_curp_validada ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
-                    <span>CURP Validada</span>
-                  </div>
-                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_comprobante_domicilio_reciente ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
-                    {tr.req_comprobante_domicilio_reciente ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
-                    <span>Comprobante Domicilio Reciente</span>
-                  </div>
-                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_identificacion_oficial ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
-                    {tr.req_identificacion_oficial ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
-                    <span>Identificación Oficial Vigente</span>
-                  </div>
-                  <div className={`p-2.5 rounded-lg border flex items-center gap-2 ${tr.req_cartilla_nacional_salud ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-300 text-sky-900 dark:text-sky-200' : 'bg-white dark:bg-slate-800 border-slate-200 text-slate-400'}`}>
-                    {tr.req_cartilla_nacional_salud ? <CheckCircle2 className="w-4 h-4 text-sky-600" /> : <XCircle className="w-4 h-4 text-slate-400" />}
-                    <span>Cartilla Nacional de Salud</span>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                  {renderChecklistRow('altaMedica', tr.id, 'req_curp_validada', 'CURP Validada', tr.req_curp_validada, tr.documentos_urls?.req_curp_validada)}
+                  {renderChecklistRow('altaMedica', tr.id, 'req_comprobante_domicilio_reciente', 'Comp. Domicilio Reciente', tr.req_comprobante_domicilio_reciente, tr.documentos_urls?.req_comprobante_domicilio_reciente)}
+                  {renderChecklistRow('altaMedica', tr.id, 'req_identificacion_oficial', 'Identificación Oficial', tr.req_identificacion_oficial, tr.documentos_urls?.req_identificacion_oficial)}
+                  {renderChecklistRow('altaMedica', tr.id, 'req_fotografia_infantil', 'Fotografía Infantil', tr.req_fotografia_infantil, tr.documentos_urls?.req_fotografia_infantil)}
+                  {renderChecklistRow('altaMedica', tr.id, 'req_cartilla_nacional_salud', 'Cartilla de Salud', tr.req_cartilla_nacional_salud, tr.documentos_urls?.req_cartilla_nacional_salud)}
+                  {renderChecklistRow('altaMedica', tr.id, 'req_alta_patronal_vigente', 'Alta Patronal Vigente', tr.req_alta_patronal_vigente, tr.documentos_urls?.req_alta_patronal_vigente)}
                 </div>
               </div>
             ))
           )}
 
           {(!clienteTramites.retiro?.length && !clienteTramites.mejoravit?.length && !clienteTramites.altaMedica?.length) && (
-            <div className="p-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs">
+            <div className="p-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs">
               Este cliente aún no cuenta con trámites registrados.
             </div>
           )}
@@ -1005,139 +1391,12 @@ export default function ClientesPage() {
             </div>
           </div>
 
-          {/* Client Info Header Card */}
-          <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-800 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {selectedCliente.nombre} {[selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || ''}
-                </h2>
-                <div className="flex flex-wrap items-center gap-2 mt-3">
-                  {selectedCliente.curp ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg">
-                      CURP: {selectedCliente.curp}
-                    </span>
-                  ) : null}
-
-                  {/* 1. Botón para abrir RENAPO oficial y copiar la CURP */}
-                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenGobMxCurp()}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
-                      title="Copia la CURP al portapapeles y abre el portal oficial gob.mx/curp"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5" />
-                      <span>Obtener Original en RENAPO (gob.mx)</span>
-                    </button>
-                  )}
-
-                  {/* 2. Botón para subir y guardar el PDF original descargado de RENAPO */}
-                  <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Adjuntar PDF Original RENAPO</span>
-                    <input
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleUploadCurpPdf(f);
-                      }}
-                    />
-                  </label>
-
-                  {/* 3. Ver PDF guardado en el expediente */}
-                  {selectedCliente.curp_document_url && (
-                    <a
-                      href={selectedCliente.curp_document_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg transition-colors"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                      <span>Ver Constancia PDF</span>
-                    </a>
-                  )}
-
-                  {/* 4. Alternativa: Generar PDF Certificado en el sistema */}
-                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadCurpOfficial()}
-                      disabled={downloadingCurp}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs transition-colors cursor-pointer"
-                      title="Generar constancia local con formato oficial"
-                    >
-                      <FileDown className="w-3.5 h-3.5" />
-                      <span>Generar PDF</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Banner de Escucha Activa al abrir gob.mx */}
-                {waitingCurpDownload && (
-                  <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3 text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                      </span>
-                      <span className="text-emerald-900 dark:text-emerald-200 font-medium">
-                        <strong>Escuchando descarga:</strong> Descarga la CURP en gob.mx y arrastra el archivo PDF a cualquier parte de esta ventana (o presiona <strong>Ctrl + V</strong>) para anexarla al instante.
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <label className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] rounded-lg cursor-pointer font-semibold transition-colors">
-                        <span>Seleccionar Archivo</span>
-                        <input
-                          type="file"
-                          accept="application/pdf"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) handleUploadCurpPdf(f);
-                          }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setWaitingCurpDownload(false)}
-                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {curpSuccessMsg && (
-                  <p className={`text-[11px] mt-1.5 ${curpSuccessMsg.includes('Error') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}`}>
-                    {curpSuccessMsg}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-200 dark:border-slate-700 text-xs">
-              <div>
-                <span className="text-slate-400 block font-medium">Teléfono:</span>
-                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.telefono || 'No especificado'}</span>
-              </div>
-              <div>
-                <span className="text-slate-400 block font-medium">Correo Electrónico:</span>
-                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.email || 'No especificado'}</span>
-              </div>
-              {selectedCliente.notas && (
-                <div className="sm:col-span-2 lg:col-span-3 p-3.5 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <span className="text-slate-400 block font-medium mb-1">Notas / Observaciones:</span>
-                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedCliente.notas}</p>
-                </div>
-              )}
-            </div>
+          {/* 1. PRIMER ELEMENTO QUE SALE AL ENTRAR AL EXPEDIENTE: EL CHECKLIST DE DOCUMENTOS REQUERIDOS */}
+          <div className="p-6 bg-slate-50/50 dark:bg-slate-800/40 rounded-3xl border border-slate-200/80 dark:border-slate-700/80">
+            {renderTramitesChecklist()}
           </div>
 
-          {/* INE Upload & OCR Module */}
+          {/* 2. INE Upload & OCR Module */}
           <div className="bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1488,8 +1747,137 @@ export default function ClientesPage() {
             )}
           </div>
 
-          {/* Expedientes de Trámites */}
-          {renderTramitesChecklist()}
+          {/* 3. Client Info Header Card & Detalle General */}
+          <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-800 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {selectedCliente.nombre} {[selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || ''}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-3">
+                  {selectedCliente.curp ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg">
+                      CURP: {selectedCliente.curp}
+                    </span>
+                  ) : null}
+
+                  {/* 1. Botón para abrir RENAPO oficial y copiar la CURP */}
+                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenGobMxCurp()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
+                      title="Copia la CURP al portapapeles y abre el portal oficial gob.mx/curp"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Obtener Original en RENAPO (gob.mx)</span>
+                    </button>
+                  )}
+
+                  {/* 2. Botón para subir y guardar el PDF original descargado de RENAPO */}
+                  <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Adjuntar PDF Original RENAPO</span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handleUploadCurpPdf(f);
+                      }}
+                    />
+                  </label>
+
+                  {/* 3. Ver PDF guardado en el expediente */}
+                  {selectedCliente.curp_document_url && (
+                    <a
+                      href={selectedCliente.curp_document_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Ver Constancia PDF</span>
+                    </a>
+                  )}
+
+                  {/* 4. Alternativa: Generar PDF Certificado en el sistema */}
+                  {(selectedCliente.curp || ocrSuccessData?.curp) && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadCurpOfficial()}
+                      disabled={downloadingCurp}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 text-xs transition-colors cursor-pointer"
+                      title="Generar constancia local con formato oficial"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Generar PDF</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Banner de Escucha Activa al abrir gob.mx */}
+                {waitingCurpDownload && (
+                  <div className="mt-3 p-3 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 rounded-xl flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-emerald-900 dark:text-emerald-200 font-medium">
+                        <strong>Escuchando descarga:</strong> Descarga la CURP en gob.mx y arrastra el archivo PDF a cualquier parte de esta ventana (o presiona <strong>Ctrl + V</strong>) para anexarla al instante.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] rounded-lg cursor-pointer font-semibold transition-colors">
+                        <span>Seleccionar Archivo</span>
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) handleUploadCurpPdf(f);
+                          }}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setWaitingCurpDownload(false)}
+                        className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {curpSuccessMsg && (
+                  <p className={`text-[11px] mt-1.5 ${curpSuccessMsg.includes('Error') ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}`}>
+                    {curpSuccessMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-5 pt-4 border-t border-slate-200 dark:border-slate-700 text-xs">
+              <div>
+                <span className="text-slate-400 block font-medium">Teléfono:</span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.telefono || 'No especificado'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block font-medium">Correo Electrónico:</span>
+                <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.email || 'No especificado'}</span>
+              </div>
+              {selectedCliente.notas && (
+                <div className="sm:col-span-2 lg:col-span-3 p-3.5 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <span className="text-slate-400 block font-medium mb-1">Notas / Observaciones:</span>
+                  <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedCliente.notas}</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         /* VISTA HABITUAL: LISTA DE CLIENTES (IZQ) + CHECKLIST RÁPIDO (DER) */
@@ -1558,6 +1946,18 @@ export default function ClientesPage() {
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
+                            handleEditCliente(cliente);
+                          }}
+                          title="Editar información básica del cliente"
+                          className="px-2 py-1 text-xs font-semibold rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <Edit className="w-3 h-3 text-indigo-500" />
+                          <span>Editar</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
                             handleSelectCliente(cliente, true);
                           }}
                           title="Abrir expediente y detalles completos"
@@ -1609,19 +2009,35 @@ export default function ClientesPage() {
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
                         {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
                         {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
+                        {selectedCliente.estado && (
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            {selectedCliente.estado}
+                          </span>
+                        )}
                         {selectedCliente.curp && <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">🆔 {selectedCliente.curp}</span>}
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowFullDetails(true)}
-                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer shrink-0"
-                  >
-                    <UserCheck className="w-4 h-4" />
-                    <span>Ver Expediente Completo (INE, RENAPO, Datos)</span>
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleEditCliente(selectedCliente)}
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-100 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5 text-indigo-500" />
+                      <span>Editar Datos</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowFullDetails(true)}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer shrink-0"
+                    >
+                      <UserCheck className="w-4 h-4" />
+                      <span>Ver Expediente Completo</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Checklist de Trámites */}
@@ -1632,17 +2048,20 @@ export default function ClientesPage() {
         </div>
       )}
 
-      {/* Modal Registro Cliente */}
+      {/* Modal Registro / Edición Cliente */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-blue-600" />
-                Registrar Nuevo Cliente & Expediente
+                {editingClienteId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-blue-600" />}
+                {editingClienteId ? 'Editar Información del Cliente' : 'Registrar Nuevo Cliente & Expediente'}
               </h2>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingClienteId(null);
+                }}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -1722,6 +2141,62 @@ export default function ClientesPage() {
                       className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
+
+                  {/* NUEVO CAMPO: ESTADO DE LA REPÚBLICA MEXICANA CON BUSCADOR */}
+                  <div className="sm:col-span-2 relative">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      Estado de la República Mexicana *
+                    </label>
+
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={formCliente.estado}
+                        onFocus={() => setIsEstadoDropdownOpen(true)}
+                        onChange={(e) => {
+                          setFormCliente({ ...formCliente, estado: e.target.value });
+                          setEstadoSearchQuery(e.target.value);
+                          setIsEstadoDropdownOpen(true);
+                        }}
+                        placeholder="Buscar estado de México..."
+                        className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-800 dark:text-slate-100"
+                      />
+                      <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                    </div>
+
+                    {isEstadoDropdownOpen && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1 text-xs">
+                        {ESTADOS_MEXICO.filter((st) =>
+                          st.toLowerCase().includes((estadoSearchQuery || formCliente.estado).toLowerCase())
+                        ).length === 0 ? (
+                          <div className="p-2 text-slate-400 italic text-center">No se encontró ningún estado matching</div>
+                        ) : (
+                          ESTADOS_MEXICO.filter((st) =>
+                            st.toLowerCase().includes((estadoSearchQuery || formCliente.estado).toLowerCase())
+                          ).map((st) => (
+                            <button
+                              type="button"
+                              key={st}
+                              onClick={() => {
+                                setFormCliente({ ...formCliente, estado: st });
+                                setEstadoSearchQuery(st);
+                                setIsEstadoDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
+                                formCliente.estado === st
+                                  ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300'
+                                  : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              }`}
+                            >
+                              <span>{st}</span>
+                              {formCliente.estado === st && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Notas / Observaciones <span className="text-slate-400 text-[10px] font-normal">(opcional)</span>
@@ -1748,7 +2223,7 @@ export default function ClientesPage() {
                       className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                      Asignar Trámite Inicial y Checklist de Documentos
+                      {editingClienteId ? 'Agregar o Cambiar Trámite / Checklist' : 'Asignar Trámite Inicial y Checklist de Documentos'}
                     </span>
                   </label>
                 </div>
@@ -2134,6 +2609,756 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Visualizador de Documentos Inline (Misma Página) */}
+      {modalViewerDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
+                <Eye className="w-4 h-4 text-blue-600" />
+                <span>Visualizador: {modalViewerDoc.title}</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadInline(modalViewerDoc.url, modalViewerDoc.title)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Descargar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalViewerDoc(null)}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 bg-slate-950 flex items-center justify-center overflow-auto p-2">
+              {modalViewerDoc.url.toLowerCase().match(/\.(png|jpg|jpeg|webp|gif)$/) || !modalViewerDoc.url.toLowerCase().includes('.pdf') ? (
+                <img src={modalViewerDoc.url} alt={modalViewerDoc.title} className="max-h-full max-w-full object-contain rounded-lg" />
+              ) : (
+                <iframe src={modalViewerDoc.url} title={modalViewerDoc.title} className="w-full h-full rounded-lg border-0" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Fotos Inmueble (5) - Carga, Reordenación y Generación de PDF */}
+      {inmuebleFotosModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-indigo-600" />
+                  Fotografías del Inmueble (Hasta 5 Imágenes)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  El sistema empaquetará las imágenes en un PDF oficial de 2 imágenes por hoja (ocupando la mitad de cada hoja).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInmuebleFotosModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barra de Acciones Globales */}
+            <div className="flex items-center justify-between gap-3 flex-wrap p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Imágenes cargadas: <strong className="text-indigo-600 dark:text-indigo-400">{inmuebleFotosModal.fotos.length} / 5</strong>
+              </span>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Reemplazar / Agregar todas */}
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>{inmuebleFotosModal.fotos.length > 0 ? 'Cambiar Todas las Fotos' : 'Cargar Fotos (Selección múltiple)'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || []).slice(0, 5);
+                      if (files.length === 0) return;
+                      const promises = files.map((f) => {
+                        return new Promise<string>((resolve) => {
+                          const reader = new FileReader();
+                          reader.onload = (ev) => resolve(ev.target?.result as string);
+                          reader.readAsDataURL(f);
+                        });
+                      });
+                      Promise.all(promises).then((dataUrls) => {
+                        setInmuebleFotosModal({
+                          ...inmuebleFotosModal,
+                          fotos: dataUrls,
+                        });
+                      });
+                    }}
+                  />
+                </label>
+
+                {inmuebleFotosModal.fotos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setInmuebleFotosModal({ ...inmuebleFotosModal, fotos: [] })}
+                    className="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-red-100 hover:text-red-700 dark:hover:bg-red-950/60 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Vaciar Lista
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Grid de 5 Fotos con Miniaturas, Reordenación y Cambiar Individual */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {[0, 1, 2, 3, 4].map((idx) => {
+                const fotoSrc = inmuebleFotosModal.fotos[idx];
+                const isInteriores = idx < 3;
+                const slotLabel = isInteriores ? `Foto ${idx + 1} (Interior)` : `Foto ${idx + 1} (Exterior)`;
+
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-2xl border flex flex-col justify-between space-y-2 relative transition-all ${
+                      fotoSrc
+                        ? 'bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-900/60 shadow-sm'
+                        : 'bg-slate-50 dark:bg-slate-900 border-dashed border-slate-300 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                      <span>{slotLabel}</span>
+                      {fotoSrc && (
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                          Posición {idx + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    {fotoSrc ? (
+                      <div className="relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 h-36 bg-slate-950 flex items-center justify-center group">
+                        <img src={fotoSrc} alt={`Foto ${idx + 1}`} className="object-contain h-36 w-full" />
+                      </div>
+                    ) : (
+                      <div className="h-36 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-slate-400 text-xs space-y-1">
+                        <Camera className="w-7 h-7 text-slate-300 dark:text-slate-700" />
+                        <span className="text-[11px]">Sin foto {idx + 1}</span>
+                      </div>
+                    )}
+
+                    {/* Controles por ranura: Mover a la izquierda/derecha y Cambiar foto individual */}
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-slate-100 dark:border-slate-700/60">
+                      <div className="flex items-center gap-1">
+                        {/* Mover Izquierda / Arriba */}
+                        <button
+                          type="button"
+                          disabled={!fotoSrc || idx === 0}
+                          onClick={() => {
+                            const newFotos = [...inmuebleFotosModal.fotos];
+                            const temp = newFotos[idx];
+                            newFotos[idx] = newFotos[idx - 1];
+                            newFotos[idx - 1] = temp;
+                            setInmuebleFotosModal({ ...inmuebleFotosModal, fotos: newFotos });
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          title="Mover foto a la posición anterior"
+                        >
+                          ←
+                        </button>
+                        {/* Mover Derecha / Abajo */}
+                        <button
+                          type="button"
+                          disabled={!fotoSrc || idx === inmuebleFotosModal.fotos.length - 1}
+                          onClick={() => {
+                            const newFotos = [...inmuebleFotosModal.fotos];
+                            const temp = newFotos[idx];
+                            newFotos[idx] = newFotos[idx + 1];
+                            newFotos[idx + 1] = temp;
+                            setInmuebleFotosModal({ ...inmuebleFotosModal, fotos: newFotos });
+                          }}
+                          className="px-2 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                          title="Mover foto a la posición siguiente"
+                        >
+                          →
+                        </button>
+                      </div>
+
+                      {/* Cambiar foto individual */}
+                      <label className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg cursor-pointer transition-colors">
+                        <Upload className="w-3 h-3 text-indigo-500" />
+                        <span>{fotoSrc ? 'Cambiar' : 'Subir'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(e) => {
+                            const f = e.target.files?.[0];
+                            if (f) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const newFotos = [...inmuebleFotosModal.fotos];
+                                newFotos[idx] = ev.target?.result as string;
+                                setInmuebleFotosModal({ ...inmuebleFotosModal, fotos: newFotos });
+                              };
+                              reader.readAsDataURL(f);
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Acciones de Confirmación y Generación de PDF */}
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setInmuebleFotosModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={savingFotosPdf || inmuebleFotosModal.fotos.filter(Boolean).length === 0}
+                onClick={async () => {
+                  if (!inmuebleFotosModal || !selectedCliente) return;
+                  const validFotos = inmuebleFotosModal.fotos.filter(Boolean);
+                  if (validFotos.length === 0) {
+                    alert('Debes seleccionar al menos 1 foto.');
+                    return;
+                  }
+
+                  setSavingFotosPdf(true);
+                  try {
+                    // Generar PDF con 2 imagenes por hoja
+                    const pdfFile = await generateInmuebleFotosPdf(validFotos, `fotos_inmueble_${selectedCliente.id}.pdf`);
+                    
+                    // Subir PDF al Storage y actualizar la base de datos
+                    await handleUploadReqDocument('mejoravit', inmuebleFotosModal.tramiteId, 'req_fotos_inmueble_5', pdfFile);
+
+                    setFeedbackMsg({
+                      type: 'success',
+                      text: `¡PDF de Fotos del Inmueble (${validFotos.length} imágenes) generado y adjuntado al expediente exitosamente!`,
+                    });
+                    setInmuebleFotosModal(null);
+                  } catch (err: any) {
+                    console.error('Error al generar PDF de Fotos:', err);
+                    setFeedbackMsg({
+                      type: 'error',
+                      text: `Error al generar PDF de fotos: ${err.message || 'Error desconocido'}`,
+                    });
+                  } finally {
+                    setSavingFotosPdf(false);
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all cursor-pointer"
+              >
+                {savingFotosPdf ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Generando PDF y Guardando...</span>
+                  </>
+                ) : (
+                  <>
+                    <FileText className="w-4 h-4" />
+                    <span>Generar PDF (2 Fotos por Hoja) & Guardar en Expediente</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Marcado Manual de 4 Puntos INE (Frontal y Trasera) */}
+      {manualIneCropModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl p-6 my-6 space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <ScanLine className="w-5 h-5 text-blue-600" />
+                  <span>
+                    Marcar 4 Puntos de la INE ({manualIneCropModal.step === 'frente' ? '1. Cara FRONTAL' : '2. Cara TRASERA'})
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Haz clic en las 4 esquinas de la cara en orden: Top-Left (arriba izq), Top-Right (arriba der), Bottom-Right (abajo der), Bottom-Left (abajo izq).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setManualIneCropModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barra de progreso de los 4 puntos */}
+            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
+                  Puntos marcados ({manualIneCropModal.step === 'frente' ? 'Frontal' : 'Trasera'}):
+                </span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm">
+                  {manualIneCropModal.step === 'frente' ? manualIneCropModal.frentePoints.length : manualIneCropModal.reversoPoints.length} / 4
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (manualIneCropModal.step === 'frente') {
+                      setManualIneCropModal({ ...manualIneCropModal, frentePoints: [] });
+                    } else {
+                      setManualIneCropModal({ ...manualIneCropModal, reversoPoints: [] });
+                    }
+                  }}
+                  className="px-3 py-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 text-slate-800 dark:text-slate-200 font-semibold rounded-lg transition-colors cursor-pointer"
+                >
+                  Reiniciar Puntos
+                </button>
+                {manualIneCropModal.step === 'reverso' && (
+                  <button
+                    type="button"
+                    onClick={() => setManualIneCropModal({ ...manualIneCropModal, step: 'frente' })}
+                    className="px-3 py-1 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold rounded-lg transition-colors cursor-pointer"
+                  >
+                    ← Volver a Frontal
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Contenedor Canvas Interactivo con Marcado de Puntos */}
+            <div className="flex-1 bg-slate-950 rounded-2xl relative overflow-hidden flex items-center justify-center p-2 min-h-[420px]">
+              <ManualPointsCanvas
+                imageUrl={manualIneCropModal.imageUrl}
+                points={manualIneCropModal.step === 'frente' ? manualIneCropModal.frentePoints : manualIneCropModal.reversoPoints}
+                onPointsChange={(updatedPts) => {
+                  if (manualIneCropModal.step === 'frente') {
+                    setManualIneCropModal({ ...manualIneCropModal, frentePoints: updatedPts });
+                  } else {
+                    setManualIneCropModal({ ...manualIneCropModal, reversoPoints: updatedPts });
+                  }
+                }}
+              />
+            </div>
+
+            {/* Botones de Paso / Confirmación */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setManualIneCropModal(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              {manualIneCropModal.step === 'frente' ? (
+                <button
+                  type="button"
+                  disabled={manualIneCropModal.frentePoints.length < 4}
+                  onClick={() => setManualIneCropModal({ ...manualIneCropModal, step: 'reverso' })}
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  Siguiente: Marcar 4 Puntos de la Trasera →
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={manualIneCropModal.reversoPoints.length < 4 || processingManualCrop}
+                  onClick={async () => {
+                    if (manualIneCropModal.frentePoints.length < 4 || manualIneCropModal.reversoPoints.length < 4) return;
+                    setProcessingManualCrop(true);
+                    try {
+                      const generatedFile = await generateIneAmpliada200File(manualIneCropModal.imageUrl, {
+                        frente: manualIneCropModal.frentePoints as any,
+                        reverso: manualIneCropModal.reversoPoints as any,
+                      });
+                      await handleUploadReqDocument('mejoravit', manualIneCropModal.tramiteId, 'req_ine_ampliada_200', generatedFile);
+                      setFeedbackMsg({
+                        type: 'success',
+                        text: '¡INE Ampliada al 200% generada con tus 4 puntos marcados y adjuntada exitosamente!',
+                      });
+                      setManualIneCropModal(null);
+                    } catch (err: any) {
+                      console.error('Error al generar INE manual al 200%:', err);
+                      setFeedbackMsg({
+                        type: 'error',
+                        text: `Error al generar INE ampliada manual: ${err.message || 'Error desconocido'}`,
+                      });
+                    } finally {
+                      setProcessingManualCrop(false);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 disabled:opacity-40 transition-all cursor-pointer"
+                >
+                  {processingManualCrop ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Generando INE Ampliada al 200%...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Generar INE Ampliada al 200% con Puntos Marcados</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Captura de Credenciales Infonavit (NSS y Contraseña) */}
+      {infonavitCredsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-red-600" />
+                  <span>Credenciales del Portal Infonavit</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Ingresa el Número de Seguro Social (NSS) y Contraseña del cliente para validar el portal de Infonavit.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInfonavitCredsModal(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!selectedCliente || !infonavitCredsModal) return;
+                setSavingInfonavitCreds(true);
+                try {
+                  const hasCreds = !!(infonavitCredsModal.nss.trim() && infonavitCredsModal.password.trim());
+
+                  const { error: updateErr } = await supabase
+                    .from('tramites_mejoravit')
+                    .update({
+                      nss_portal_infonavit: infonavitCredsModal.nss.trim() || null,
+                      password_portal_infonavit: infonavitCredsModal.password.trim() || null,
+                      req_portal_infonavit_validado: hasCreds,
+                    })
+                    .eq('id', infonavitCredsModal.tramiteId);
+
+                  if (updateErr) throw updateErr;
+
+                  setFeedbackMsg({
+                    type: 'success',
+                    text: '¡Credenciales del Portal Infonavit guardadas exitosamente!',
+                  });
+                  await fetchTramites(selectedCliente.id);
+                  setInfonavitCredsModal(null);
+                } catch (err: any) {
+                  console.error('Error al guardar credenciales Infonavit:', err);
+                  setFeedbackMsg({
+                    type: 'error',
+                    text: `Error al guardar credenciales: ${err.message || 'Error desconocido'}`,
+                  });
+                } finally {
+                  setSavingInfonavitCreds(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Número de Seguro Social (NSS) *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={infonavitCredsModal.nss}
+                  onChange={(e) => setInfonavitCredsModal({ ...infonavitCredsModal, nss: e.target.value })}
+                  placeholder="ej: 12345678901"
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Contraseña Portal Mi Cuenta Infonavit *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={infonavitCredsModal.password}
+                  onChange={(e) => setInfonavitCredsModal({ ...infonavitCredsModal, password: e.target.value })}
+                  placeholder="Ingresa la contraseña del portal..."
+                  className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-red-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setInfonavitCredsModal(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingInfonavitCreds}
+                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md shadow-red-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingInfonavitCreds ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Guardar Credenciales</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
+/**
+ * Componente Canvas Interactivo para arrastrar (Drag & Drop) los 4 puntos de ajuste
+ */
+function ManualPointsCanvas({
+  imageUrl,
+  points,
+  onPointsChange,
+}: {
+  imageUrl: string;
+  points: { x: number; y: number }[];
+  onPointsChange: (pts: { x: number; y: number }[]) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [imgObj, setImgObj] = useState<HTMLImageElement | null>(null);
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [initialPointsOnDrag, setInitialPointsOnDrag] = useState<{ x: number; y: number }[] | null>(null);
+
+  useEffect(() => {
+    const isPdf = imageUrl.toLowerCase().includes('.pdf');
+    if (isPdf) {
+      import('pdfjs-dist').then(async (pdfjsLib) => {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const resp = await fetch(imageUrl);
+        const buffer = await resp.arrayBuffer();
+        const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const page = await doc.getPage(1);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const c = document.createElement('canvas');
+        c.width = viewport.width;
+        c.height = viewport.height;
+        const ctx = c.getContext('2d')!;
+        await (page as any).render({ canvasContext: ctx, canvas: c, viewport }).promise;
+        const img = new Image();
+        img.src = c.toDataURL();
+        img.onload = () => setImgObj(img);
+      });
+    } else {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = imageUrl;
+      img.onload = () => setImgObj(img);
+    }
+  }, [imageUrl]);
+
+  // Calcular el centro de los 4 puntos
+  const getCenterPoint = (pts: { x: number; y: number }[]) => {
+    if (!pts || pts.length < 4) return { x: 0, y: 0 };
+    const avgX = Math.round((pts[0].x + pts[1].x + pts[2].x + pts[3].x) / 4);
+    const avgY = Math.round((pts[0].y + pts[1].y + pts[2].y + pts[3].y) / 4);
+    return { x: avgX, y: avgY };
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !imgObj) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = imgObj.naturalWidth || imgObj.width;
+    canvas.height = imgObj.naturalHeight || imgObj.height;
+
+    ctx.drawImage(imgObj, 0, 0);
+
+    // Dibujar polígono entre puntos
+    if (points && points.length === 4) {
+      ctx.strokeStyle = '#3B82F6';
+      ctx.lineWidth = Math.max(3, Math.round(canvas.width / 250));
+      ctx.fillStyle = 'rgba(59, 130, 246, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < 4; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      const pointNames = ['1 (Top-Left)', '2 (Top-Right)', '3 (Bottom-Right)', '4 (Bottom-Left)'];
+
+      // Dibujar los 4 puntos de las esquinas
+      points.forEach((pt, idx) => {
+        const radius = Math.max(10, Math.round(canvas.width / 120));
+        ctx.fillStyle = activePointIndex === idx ? '#F59E0B' : '#EF4444';
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FFFFFF';
+        ctx.lineWidth = Math.max(2, Math.round(canvas.width / 300));
+        ctx.stroke();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `bold ${Math.max(13, Math.round(canvas.width / 65))}px sans-serif`;
+        ctx.fillText(pointNames[idx], pt.x + radius + 4, pt.y + 4);
+      });
+
+      // Dibujar Tirador Central (Mover Todo)
+      const center = getCenterPoint(points);
+      const centerRadius = Math.max(14, Math.round(canvas.width / 90));
+      ctx.fillStyle = activePointIndex === 99 ? '#10B981' : '#6366F1';
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, centerRadius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = Math.max(3, Math.round(canvas.width / 250));
+      ctx.stroke();
+
+      // Cruz central en el punto para indicar movimiento global
+      ctx.strokeStyle = '#FFFFFF';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(center.x - centerRadius / 2, center.y);
+      ctx.lineTo(center.x + centerRadius / 2, center.y);
+      ctx.moveTo(center.x, center.y - centerRadius / 2);
+      ctx.lineTo(center.x, center.y + centerRadius / 2);
+      ctx.stroke();
+
+      ctx.fillStyle = '#FFFFFF';
+      ctx.font = `bold ${Math.max(14, Math.round(canvas.width / 60))}px sans-serif`;
+      ctx.fillText('❖ Mover Cuadro Completo', center.x + centerRadius + 6, center.y + 5);
+    }
+  }, [imgObj, points, activePointIndex]);
+
+  const getCanvasCoords = (clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {
+      x: Math.round((clientX - rect.left) * scaleX),
+      y: Math.round((clientY - rect.top) * scaleY),
+    };
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || !points || points.length < 4) return;
+    const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+    const canvasW = canvasRef.current.width;
+    const clickThreshold = Math.max(30, Math.round(canvasW / 30));
+
+    // 1. Probar si se hizo clic en el Tirador Central (Mover Todo)
+    const center = getCenterPoint(points);
+    const centerDist = Math.hypot(center.x - x, center.y - y);
+    if (centerDist < clickThreshold * 1.5) {
+      setActivePointIndex(99); // 99 es el código para Mover Todo
+      setDragStartPos({ x, y });
+      setInitialPointsOnDrag([...points]);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      return;
+    }
+
+    // 2. Probar si se hizo clic en alguna de las 4 esquinas
+    let foundIdx: number | null = null;
+    let minDist = Infinity;
+    points.forEach((pt, idx) => {
+      const dist = Math.hypot(pt.x - x, pt.y - y);
+      if (dist < clickThreshold && dist < minDist) {
+        minDist = dist;
+        foundIdx = idx;
+      }
+    });
+
+    if (foundIdx !== null) {
+      setActivePointIndex(foundIdx);
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    }
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointIndex === null || !points) return;
+    const { x, y } = getCanvasCoords(e.clientX, e.clientY);
+
+    // Mover todo el cuadro
+    if (activePointIndex === 99 && dragStartPos && initialPointsOnDrag) {
+      const deltaX = x - dragStartPos.x;
+      const deltaY = y - dragStartPos.y;
+
+      const updated = initialPointsOnDrag.map((pt) => ({
+        x: pt.x + deltaX,
+        y: pt.y + deltaY,
+      }));
+      onPointsChange(updated);
+      return;
+    }
+
+    // Mover una esquina individual
+    const updated = [...points];
+    updated[activePointIndex] = { x, y };
+    onPointsChange(updated);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointIndex !== null) {
+      setActivePointIndex(null);
+      setDragStartPos(null);
+      setInitialPointsOnDrag(null);
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
+
+  return (
+    <canvas
+      ref={canvasRef}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      className="max-h-[70vh] max-w-full object-contain cursor-grab active:cursor-grabbing rounded-lg shadow-xl touch-none"
+    />
+  );
+}
+

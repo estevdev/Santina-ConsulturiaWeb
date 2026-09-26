@@ -20,11 +20,13 @@ export interface Cliente {
   telefono?: string | null;
   email?: string | null;
   direccion?: string | null;
+  estado?: string | null;
   notas?: string | null;
   ine_frente_url?: string | null;
   ine_reverso_url?: string | null;
   ine_completa_url?: string | null;
   curp_document_url?: string | null;
+  documentos_urls?: Record<string, string> | null;
   ine_ocr_raw?: Record<string, any> | null;
   creado_por?: string | null;
   created_at?: string;
@@ -56,6 +58,7 @@ export interface TramiteRetiroDesempleo {
   req_tiene_semanas_descontadas: boolean;
   req_anexo_sindo: boolean;
   
+  documentos_urls?: Record<string, string> | null;
   observaciones?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -109,6 +112,7 @@ export interface TramiteMejoravit {
   req_fotos_inmueble_5: boolean;
   fotos_inmueble_urls?: string[];
   
+  documentos_urls?: Record<string, string> | null;
   observaciones?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -131,6 +135,7 @@ export interface TramiteAltaMedicaImss {
   req_cartilla_nacional_salud: boolean;
   req_alta_patronal_vigente: boolean;
   
+  documentos_urls?: Record<string, string> | null;
   observaciones?: string | null;
   created_at?: string;
   updated_at?: string;

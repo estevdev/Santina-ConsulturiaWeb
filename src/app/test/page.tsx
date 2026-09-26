@@ -19,7 +19,9 @@ import {
   Camera,
   SwitchCamera,
   ScanLine,
-  X
+  X,
+  Edit3,
+  Move
 } from 'lucide-react';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
@@ -67,6 +69,13 @@ export default function TestJscanifyPage() {
   // Estado Imagen Combinada y PDF
   const [combinedDataUrl, setCombinedDataUrl] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+
+  // Estado Modal Editor Manual de 4 Puntos (Márgenes)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editStepTarget, setEditStepTarget] = useState<'front' | 'back'>('front');
+  const [manualPoints, setManualPoints] = useState<{ x: number; y: number }[]>([]);
+  const [activePointIndex, setActivePointIndex] = useState<number | null>(null);
+  const editorCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Refs DOM
   const frontOrigImgRef = useRef<HTMLImageElement | null>(null);
@@ -252,21 +261,9 @@ export default function TestJscanifyPage() {
     stopCamera();
   };
 
-  // Mejora de contraste de color HD (Color mejorado por defecto)
+  // Mejora de color y preservación de nitidez HD sin quemar tonos ni saturar
   const applyImageEnhancement = (canvas: HTMLCanvasElement): HTMLCanvasElement => {
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return canvas;
-
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imgData.data;
-
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = Math.min(255, Math.max(0, (data[i] - 128) * 1.25 + 128));
-      data[i + 1] = Math.min(255, Math.max(0, (data[i + 1] - 128) * 1.25 + 128));
-      data[i + 2] = Math.min(255, Math.max(0, (data[i + 2] - 128) * 1.25 + 128));
-    }
-
-    ctx.putImageData(imgData, 0, 0);
+    // Retornamos el canvas preservando el rango dinámico y la fidelidad de color original de la captura C++ / OpenCV
     return canvas;
   };
 
@@ -307,9 +304,9 @@ export default function TestJscanifyPage() {
     return canvas;
   };
 
-  // Procesar Imagen Frontal en resolución nativa completa
-  const processFrontImage = () => {
-    if (!frontOrigImgRef.current || !isLoaded || !window.jscanify || !window.cv) return;
+  // Procesar Imagen Frontal (Envío de foto nativa al servidor para orientación EXIF y 4K HD)
+  const processFrontImage = async () => {
+    if (!frontOrigImgRef.current || !frontImageSrc) return;
 
     try {
       setProcessingFront(true);
@@ -320,65 +317,54 @@ export default function TestJscanifyPage() {
       setFrontCornerPoints(null);
       setFrontExtractedDataUrl(null);
 
+      // 1. Mostrar vista previa resaltada en UI cliente
       const img = frontOrigImgRef.current;
-      if (!img.naturalWidth || !img.naturalHeight) return;
-
-      const srcCanvas = document.createElement('canvas');
-      srcCanvas.width = img.naturalWidth;
-      srcCanvas.height = img.naturalHeight;
-      const sCtx = srcCanvas.getContext('2d');
-      if (!sCtx) return;
-      sCtx.drawImage(img, 0, 0);
-
-      const scanner = new window.jscanify();
-
-      try {
-        const highlightedCanvas = scanner.highlightPaper(srcCanvas);
-        if (highlightedCanvas && frontHighlightedRef.current) {
-          highlightedCanvas.style.maxWidth = '100%';
-          highlightedCanvas.style.height = 'auto';
-          highlightedCanvas.className = 'rounded-lg border border-slate-700 shadow-md max-h-[300px] object-contain mx-auto';
-          frontHighlightedRef.current.appendChild(highlightedCanvas);
+      if (img.naturalWidth && img.naturalHeight) {
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = img.naturalWidth;
+        srcCanvas.height = img.naturalHeight;
+        const sCtx = srcCanvas.getContext('2d');
+        if (sCtx) {
+          sCtx.drawImage(img, 0, 0);
+          if (isLoaded && window.jscanify && window.cv) {
+            try {
+              const scanner = new window.jscanify();
+              const highlightedCanvas = scanner.highlightPaper(srcCanvas);
+              if (highlightedCanvas && frontHighlightedRef.current) {
+                highlightedCanvas.style.maxWidth = '100%';
+                highlightedCanvas.style.height = 'auto';
+                highlightedCanvas.className = 'rounded-lg border border-slate-700 shadow-md max-h-[300px] object-contain mx-auto';
+                frontHighlightedRef.current.appendChild(highlightedCanvas);
+              }
+            } catch (e) {
+              console.warn('jscanify highlight error:', e);
+            }
+          }
         }
-      } catch (hlErr) {
-        console.warn('No se pudo resaltar el borde frontal:', hlErr);
       }
 
-      let extractedCanvas: HTMLCanvasElement | null = null;
-      try {
-        extractedCanvas = scanner.extractPaper(srcCanvas, targetWidth, targetHeight);
-      } catch (extractErr) {
-        console.warn('jscanify extractPaper error (frontal), aplicando respaldo:', extractErr);
-      }
+      // 2. Enviar la FOTO ORIGINAL completa al Servidor Node.js Sharp C++
+      // Esto garantiza que la rotación EXIF de móviles se haga en C++ y no haga zoom a una palabra del texto
+      const res = await fetch('/api/extract-credential', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: frontImageSrc,
+          targetWidth,
+          targetHeight,
+        }),
+      });
 
-      if (!extractedCanvas || extractedCanvas.width === 0 || extractedCanvas.height === 0) {
-        extractedCanvas = fallbackAspectCrop(srcCanvas, targetWidth, targetHeight);
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error en procesamiento del servidor');
 
-      if (extractedCanvas && frontExtractedRef.current) {
-        extractedCanvas = applyImageEnhancement(extractedCanvas);
-        const dataUrl = extractedCanvas.toDataURL('image/png');
-        setFrontExtractedDataUrl(dataUrl);
+      setFrontExtractedDataUrl(data.extractedDataUrl);
 
+      if (frontExtractedRef.current) {
         const previewImg = document.createElement('img');
-        previewImg.src = dataUrl;
+        previewImg.src = data.extractedDataUrl;
         previewImg.className = 'rounded-lg border border-emerald-500/40 shadow-lg shadow-emerald-950/30 max-h-[300px] object-contain mx-auto';
         frontExtractedRef.current.appendChild(previewImg);
-      }
-
-      try {
-        const cvMat = window.cv.imread(srcCanvas);
-        const contour = scanner.findPaperContour(cvMat);
-        if (contour) {
-          const points = scanner.getCornerPoints(contour);
-          setFrontCornerPoints(points);
-          contour.delete();
-        } else {
-          setFrontCornerPoints({ info: 'No se detectó un contorno cerrado claro.' });
-        }
-        cvMat.delete();
-      } catch (contourErr) {
-        setFrontCornerPoints({ error: 'No se pudo obtener las esquinas.' });
       }
     } catch (err: any) {
       console.error('Error procesando frontal:', err);
@@ -388,9 +374,9 @@ export default function TestJscanifyPage() {
     }
   };
 
-  // Procesar Imagen Trasera en resolución nativa completa
-  const processBackImage = () => {
-    if (!backOrigImgRef.current || !isLoaded || !window.jscanify || !window.cv) return;
+  // Procesar Imagen Trasera (Envío de foto nativa al servidor para orientación EXIF y 4K HD)
+  const processBackImage = async () => {
+    if (!backOrigImgRef.current || !backImageSrc) return;
 
     try {
       setProcessingBack(true);
@@ -401,65 +387,53 @@ export default function TestJscanifyPage() {
       setBackCornerPoints(null);
       setBackExtractedDataUrl(null);
 
+      // 1. Mostrar vista previa resaltada en UI cliente
       const img = backOrigImgRef.current;
-      if (!img.naturalWidth || !img.naturalHeight) return;
-
-      const srcCanvas = document.createElement('canvas');
-      srcCanvas.width = img.naturalWidth;
-      srcCanvas.height = img.naturalHeight;
-      const sCtx = srcCanvas.getContext('2d');
-      if (!sCtx) return;
-      sCtx.drawImage(img, 0, 0);
-
-      const scanner = new window.jscanify();
-
-      try {
-        const highlightedCanvas = scanner.highlightPaper(srcCanvas);
-        if (highlightedCanvas && backHighlightedRef.current) {
-          highlightedCanvas.style.maxWidth = '100%';
-          highlightedCanvas.style.height = 'auto';
-          highlightedCanvas.className = 'rounded-lg border border-slate-700 shadow-md max-h-[300px] object-contain mx-auto';
-          backHighlightedRef.current.appendChild(highlightedCanvas);
+      if (img.naturalWidth && img.naturalHeight) {
+        const srcCanvas = document.createElement('canvas');
+        srcCanvas.width = img.naturalWidth;
+        srcCanvas.height = img.naturalHeight;
+        const sCtx = srcCanvas.getContext('2d');
+        if (sCtx) {
+          sCtx.drawImage(img, 0, 0);
+          if (isLoaded && window.jscanify && window.cv) {
+            try {
+              const scanner = new window.jscanify();
+              const highlightedCanvas = scanner.highlightPaper(srcCanvas);
+              if (highlightedCanvas && backHighlightedRef.current) {
+                highlightedCanvas.style.maxWidth = '100%';
+                highlightedCanvas.style.height = 'auto';
+                highlightedCanvas.className = 'rounded-lg border border-slate-700 shadow-md max-h-[300px] object-contain mx-auto';
+                backHighlightedRef.current.appendChild(highlightedCanvas);
+              }
+            } catch (e) {
+              console.warn('jscanify highlight error:', e);
+            }
+          }
         }
-      } catch (hlErr) {
-        console.warn('No se pudo resaltar el borde trasero:', hlErr);
       }
 
-      let extractedCanvas: HTMLCanvasElement | null = null;
-      try {
-        extractedCanvas = scanner.extractPaper(srcCanvas, targetWidth, targetHeight);
-      } catch (extractErr) {
-        console.warn('jscanify extractPaper error (trasera), aplicando respaldo:', extractErr);
-      }
+      // 2. Enviar la FOTO ORIGINAL completa al Servidor Node.js Sharp C++
+      const res = await fetch('/api/extract-credential', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: backImageSrc,
+          targetWidth,
+          targetHeight,
+        }),
+      });
 
-      if (!extractedCanvas || extractedCanvas.width === 0 || extractedCanvas.height === 0) {
-        extractedCanvas = fallbackAspectCrop(srcCanvas, targetWidth, targetHeight);
-      }
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error en procesamiento del servidor');
 
-      if (extractedCanvas && backExtractedRef.current) {
-        extractedCanvas = applyImageEnhancement(extractedCanvas);
-        const dataUrl = extractedCanvas.toDataURL('image/png');
-        setBackExtractedDataUrl(dataUrl);
+      setBackExtractedDataUrl(data.extractedDataUrl);
 
+      if (backExtractedRef.current) {
         const previewImg = document.createElement('img');
-        previewImg.src = dataUrl;
+        previewImg.src = data.extractedDataUrl;
         previewImg.className = 'rounded-lg border border-emerald-500/40 shadow-lg shadow-emerald-950/30 max-h-[300px] object-contain mx-auto';
         backExtractedRef.current.appendChild(previewImg);
-      }
-
-      try {
-        const cvMat = window.cv.imread(srcCanvas);
-        const contour = scanner.findPaperContour(cvMat);
-        if (contour) {
-          const points = scanner.getCornerPoints(contour);
-          setBackCornerPoints(points);
-          contour.delete();
-        } else {
-          setBackCornerPoints({ info: 'No se detectó un contorno cerrado claro.' });
-        }
-        cvMat.delete();
-      } catch (contourErr) {
-        setBackCornerPoints({ error: 'No se pudo obtener las esquinas.' });
       }
     } catch (err: any) {
       console.error('Error procesando trasera:', err);
@@ -469,23 +443,195 @@ export default function TestJscanifyPage() {
     }
   };
 
+  // Abrir Modal de Edición de Márgenes de 4 Puntos
+  const openMarginEditor = (step: 'front' | 'back') => {
+    setEditStepTarget(step);
+    const imgSrc = step === 'front' ? frontImageSrc : backImageSrc;
+    if (!imgSrc) return;
+
+    // Inicializar los 4 puntos por defecto cubriendo el área de la credencial con un pequeño margen interior
+    const imgElement = step === 'front' ? frontOrigImgRef.current : backOrigImgRef.current;
+    const w = imgElement?.naturalWidth || 1000;
+    const h = imgElement?.naturalHeight || 630;
+
+    const marginX = w * 0.08;
+    const marginY = h * 0.08;
+
+    setManualPoints([
+      { x: marginX, y: marginY }, // Top-Left
+      { x: w - marginX, y: marginY }, // Top-Right
+      { x: w - marginX, y: h - marginY }, // Bottom-Right
+      { x: marginX, y: h - marginY }, // Bottom-Left
+    ]);
+
+    setIsEditModalOpen(true);
+  };
+
+  // Renderizar Canvas Interactivo de Edición de Márgenes
+  useEffect(() => {
+    if (!isEditModalOpen || !editorCanvasRef.current) return;
+    const imgSrc = editStepTarget === 'front' ? frontImageSrc : backImageSrc;
+    if (!imgSrc) return;
+
+    const canvas = editorCanvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+
+      if (manualPoints.length === 4) {
+        // Dibujar polígono semi-transparente de selección de credencial
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.25)';
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = Math.max(3, Math.round(canvas.width * 0.004));
+
+        ctx.beginPath();
+        ctx.moveTo(manualPoints[0].x, manualPoints[0].y);
+        ctx.lineTo(manualPoints[1].x, manualPoints[1].y);
+        ctx.lineTo(manualPoints[2].x, manualPoints[2].y);
+        ctx.lineTo(manualPoints[3].x, manualPoints[3].y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Dibujar los 4 Puntos / Asideros de Esquinas interactivos
+        const pointRadius = Math.max(12, Math.round(canvas.width * 0.012));
+
+        manualPoints.forEach((pt, index) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pointRadius, 0, 2 * Math.PI);
+          ctx.fillStyle = activePointIndex === index ? '#f43f5e' : '#818cf8';
+          ctx.fill();
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          // Etiqueta del punto
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.max(12, pointRadius * 0.9)}px sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText((index + 1).toString(), pt.x, pt.y);
+        });
+      }
+    };
+    img.src = imgSrc;
+  }, [isEditModalOpen, editStepTarget, manualPoints, activePointIndex, frontImageSrc, backImageSrc]);
+
+  // Aplicar Recorte con Márgenes Personalizados y Avanzar Directamente al Siguiente Paso
+  const applyCustomMarginCrop = async () => {
+    const imgSrc = editStepTarget === 'front' ? frontImageSrc : backImageSrc;
+    if (!imgSrc || manualPoints.length !== 4) return;
+
+    try {
+      if (editStepTarget === 'front') setProcessingFront(true);
+      else setProcessingBack(true);
+
+      setError(null);
+      setIsEditModalOpen(false);
+
+      // Calcular la caja delimitadora (Bounding Box) a partir de los 4 puntos desplazables
+      const xs = manualPoints.map((p) => p.x);
+      const ys = manualPoints.map((p) => p.y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+
+      const cropBox = {
+        left: minX,
+        top: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+      };
+
+      // Enviar la foto original con la caja delimitadora exacta ajustada por el usuario
+      const res = await fetch('/api/extract-credential', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: imgSrc,
+          targetWidth,
+          targetHeight,
+          cropBox,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error en procesamiento con márgenes ajustados');
+
+      if (editStepTarget === 'front') {
+        setFrontExtractedDataUrl(data.extractedDataUrl);
+        if (frontExtractedRef.current) {
+          frontExtractedRef.current.innerHTML = '';
+          const previewImg = document.createElement('img');
+          previewImg.src = data.extractedDataUrl;
+          previewImg.className = 'rounded-lg border border-emerald-500/40 shadow-lg shadow-emerald-950/30 max-h-[300px] object-contain mx-auto';
+          frontExtractedRef.current.appendChild(previewImg);
+        }
+        // Avanzar directamente a la imagen trasera (Paso 2)
+        setCurrentStep('back');
+      } else {
+        setBackExtractedDataUrl(data.extractedDataUrl);
+        if (backExtractedRef.current) {
+          backExtractedRef.current.innerHTML = '';
+          const previewImg = document.createElement('img');
+          previewImg.src = data.extractedDataUrl;
+          previewImg.className = 'rounded-lg border border-emerald-500/40 shadow-lg shadow-emerald-950/30 max-h-[300px] object-contain mx-auto';
+          backExtractedRef.current.appendChild(previewImg);
+        }
+        // Avanzar directamente al Resultado Final Unificado (Paso 3)
+        if (frontExtractedDataUrl) {
+          generateCombinedImage(frontExtractedDataUrl, data.extractedDataUrl);
+        }
+        setCurrentStep('result');
+      }
+    } catch (err: any) {
+      console.error('Error aplicando márgenes personalizados:', err);
+      setError('Error al recortar con los márgenes indicados: ' + (err.message || err));
+    } finally {
+      setProcessingFront(false);
+      setProcessingBack(false);
+    }
+  };
+
   const handleFrontFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      setFrontImageSrc(URL.createObjectURL(file));
-      setFrontExtractedDataUrl(null);
-      if (frontHighlightedRef.current) frontHighlightedRef.current.innerHTML = '';
-      if (frontExtractedRef.current) frontExtractedRef.current.innerHTML = '';
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setFrontImageSrc(result);
+          setFrontExtractedDataUrl(null);
+          if (frontHighlightedRef.current) frontHighlightedRef.current.innerHTML = '';
+          if (frontExtractedRef.current) frontExtractedRef.current.innerHTML = '';
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleBackFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      setBackImageSrc(URL.createObjectURL(file));
-      setBackExtractedDataUrl(null);
-      if (backHighlightedRef.current) backHighlightedRef.current.innerHTML = '';
-      if (backExtractedRef.current) backExtractedRef.current.innerHTML = '';
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        if (result) {
+          setBackImageSrc(result);
+          setBackExtractedDataUrl(null);
+          if (backHighlightedRef.current) backHighlightedRef.current.innerHTML = '';
+          if (backExtractedRef.current) backExtractedRef.current.innerHTML = '';
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -968,12 +1114,20 @@ export default function TestJscanifyPage() {
                 </div>
               )}
 
-              {/* Botón Siguiente */}
+              {/* Botones de Acción Paso 1 */}
               {frontExtractedDataUrl && (
-                <div className="flex justify-end pt-4 border-t border-slate-800">
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-slate-800">
+                  <button
+                    onClick={() => openMarginEditor('front')}
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
+                  >
+                    <Edit3 className="w-4 h-4 text-indigo-400" />
+                    <span>Editar márgenes de la imagen</span>
+                  </button>
+
                   <button
                     onClick={() => setCurrentStep('back')}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center gap-2 shadow-lg shadow-indigo-600/20"
+                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
                   >
                     <span>Continuar a Imagen Trasera</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1093,24 +1247,157 @@ export default function TestJscanifyPage() {
               )}
 
               {/* Navegación Paso 2 */}
-              <div className="flex justify-between items-center pt-4 border-t border-slate-800">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-800">
                 <button
                   onClick={() => setCurrentStep('front')}
-                  className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
                 >
                   <ArrowLeft className="w-4 h-4" />
                   <span>Volver a Frontal</span>
                 </button>
 
                 {backExtractedDataUrl && (
-                  <button
-                    onClick={goToResultStep}
-                    className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center gap-2 shadow-lg shadow-emerald-600/20"
-                  >
-                    <span>Generar Archivo Unificado</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                  <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
+                    <button
+                      onClick={() => openMarginEditor('back')}
+                      className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
+                    >
+                      <Edit3 className="w-4 h-4 text-indigo-400" />
+                      <span>Editar márgenes de la imagen</span>
+                    </button>
+
+                    <button
+                      onClick={goToResultStep}
+                      className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+                    >
+                      <span>Generar Archivo Unificado</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL INTERACTIVO: EDITOR MANUAL DE MÁRGENES DE 4 PUNTOS */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200">
+            <div className="w-full max-w-4xl flex items-center justify-between z-10 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-base">
+                <Edit3 className="w-5 h-5" />
+                <span>Editar Márgenes Manuales ({editStepTarget === 'front' ? 'Imagen Frontal' : 'Imagen Trasera'})</span>
+              </div>
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="bg-slate-800 hover:bg-rose-950 hover:text-rose-400 text-slate-400 p-2.5 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Canvas interactivo de ajuste manual de puntos */}
+            <div className="relative w-full max-w-4xl my-auto max-h-[70vh] bg-black rounded-2xl overflow-auto border border-slate-800 flex items-center justify-center p-2">
+              <canvas
+                ref={editorCanvasRef}
+                className="max-w-full max-h-[65vh] object-contain rounded-lg cursor-crosshair shadow-2xl"
+                onMouseDown={(e) => {
+                  if (!editorCanvasRef.current) return;
+                  const rect = editorCanvasRef.current.getBoundingClientRect();
+                  const scaleX = editorCanvasRef.current.width / rect.width;
+                  const scaleY = editorCanvasRef.current.height / rect.height;
+                  const clickX = (e.clientX - rect.left) * scaleX;
+                  const clickY = (e.clientY - rect.top) * scaleY;
+
+                  let closestIdx = 0;
+                  let minDist = Infinity;
+                  manualPoints.forEach((pt, idx) => {
+                    const dist = Math.hypot(pt.x - clickX, pt.y - clickY);
+                    if (dist < minDist) {
+                      minDist = dist;
+                      closestIdx = idx;
+                    }
+                  });
+
+                  setActivePointIndex(closestIdx);
+                  const updated = [...manualPoints];
+                  updated[closestIdx] = { x: clickX, y: clickY };
+                  setManualPoints(updated);
+                }}
+                onMouseMove={(e) => {
+                  if (activePointIndex === null || !editorCanvasRef.current) return;
+                  const rect = editorCanvasRef.current.getBoundingClientRect();
+                  const scaleX = editorCanvasRef.current.width / rect.width;
+                  const scaleY = editorCanvasRef.current.height / rect.height;
+                  const moveX = (e.clientX - rect.left) * scaleX;
+                  const moveY = (e.clientY - rect.top) * scaleY;
+
+                  const updated = [...manualPoints];
+                  updated[activePointIndex] = { x: moveX, y: moveY };
+                  setManualPoints(updated);
+                }}
+                onMouseUp={() => setActivePointIndex(null)}
+                onTouchStart={(e) => {
+                  if (!editorCanvasRef.current || e.touches.length === 0) return;
+                  const rect = editorCanvasRef.current.getBoundingClientRect();
+                  const scaleX = editorCanvasRef.current.width / rect.width;
+                  const scaleY = editorCanvasRef.current.height / rect.height;
+                  const touch = e.touches[0];
+                  const touchX = (touch.clientX - rect.left) * scaleX;
+                  const touchY = (touch.clientY - rect.top) * scaleY;
+
+                  let closestIdx = 0;
+                  let minDist = Infinity;
+                  manualPoints.forEach((pt, idx) => {
+                    const dist = Math.hypot(pt.x - touchX, pt.y - touchY);
+                    if (dist < minDist) {
+                      minDist = dist;
+                      closestIdx = idx;
+                    }
+                  });
+
+                  setActivePointIndex(closestIdx);
+                  const updated = [...manualPoints];
+                  updated[closestIdx] = { x: touchX, y: touchY };
+                  setManualPoints(updated);
+                }}
+                onTouchMove={(e) => {
+                  if (activePointIndex === null || !editorCanvasRef.current || e.touches.length === 0) return;
+                  const rect = editorCanvasRef.current.getBoundingClientRect();
+                  const scaleX = editorCanvasRef.current.width / rect.width;
+                  const scaleY = editorCanvasRef.current.height / rect.height;
+                  const touch = e.touches[0];
+                  const moveX = (touch.clientX - rect.left) * scaleX;
+                  const moveY = (touch.clientY - rect.top) * scaleY;
+
+                  const updated = [...manualPoints];
+                  updated[activePointIndex] = { x: moveX, y: moveY };
+                  setManualPoints(updated);
+                }}
+                onTouchEnd={() => setActivePointIndex(null)}
+              />
+            </div>
+
+            {/* Barra Inferior de Controles del Editor */}
+            <div className="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 z-10 backdrop-blur-md">
+              <div className="text-xs text-slate-400 flex items-center gap-2">
+                <Move className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Arrastra los 4 puntos numerados sobre las esquinas de tu credencial</span>
+              </div>
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => setIsEditModalOpen(false)}
+                  className="flex-1 sm:flex-initial bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={applyCustomMarginCrop}
+                  className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Aplicar Márgenes Ajustados</span>
+                </button>
               </div>
             </div>
           </div>

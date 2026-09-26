@@ -7,6 +7,7 @@ WORKDIR /app
 
 # 2. Dependencies stage
 FROM base AS deps
+RUN apk add --no-cache python3 make g++ cairo-dev pango-dev jpeg-dev giflib-dev librsvg-dev pixman-dev
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -24,6 +25,7 @@ RUN npm run build
 
 # 4. Production Runner stage
 FROM node:22-alpine AS runner
+RUN apk add --no-cache cairo pango jpeg giflib librsvg pixman
 WORKDIR /app
 
 ENV NODE_ENV=production

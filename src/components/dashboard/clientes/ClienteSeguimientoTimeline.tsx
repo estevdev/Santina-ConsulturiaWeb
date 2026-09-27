@@ -32,6 +32,7 @@ import { Cliente, TramiteMejoravit, TramiteRetiroDesempleo, TramiteAltaMedicaIms
 import { Preset } from '@/types/preset';
 import { ChecklistRow } from './ChecklistRow';
 import { ClienteTramitesState } from './TramitesChecklist';
+import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
 
 interface ClienteSeguimientoTimelineProps {
   selectedCliente: Cliente;
@@ -39,6 +40,7 @@ interface ClienteSeguimientoTimelineProps {
   docPresets: Preset[];
   uploadingDocKey: string | null;
   generatingAmpliada200: boolean;
+  onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
   onViewDoc: (url: string, title: string) => void;
   onDownloadDoc: (url: string, title: string) => void;
   onUploadReqDocument: (
@@ -76,6 +78,7 @@ export function ClienteSeguimientoTimeline({
   docPresets,
   uploadingDocKey,
   generatingAmpliada200,
+  onChangeClienteStatus,
   onViewDoc,
   onDownloadDoc,
   onUploadReqDocument,
@@ -251,6 +254,8 @@ export function ClienteSeguimientoTimeline({
     selectedCliente?.ine_completa_url ||
     selectedCliente?.ine_frente_url;
 
+  const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Banner Superior: Resumen del Trámite & Barra de Progreso */}
@@ -259,7 +264,7 @@ export function ClienteSeguimientoTimeline({
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="px-3 py-1 bg-[#c5a059]/20 text-[#dfba73] text-xs font-black uppercase tracking-wider rounded-xl border border-[#c5a059]/40 flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5" />
                 Modo Seguimiento del Asesor
@@ -267,6 +272,26 @@ export function ClienteSeguimientoTimeline({
               <span className="text-xs text-zinc-400 font-mono">
                 Folio: <strong className="text-white">{tramiteId ? tramiteId.slice(0, 8).toUpperCase() : 'SIN-FOLIO'}</strong>
               </span>
+
+              {onChangeClienteStatus ? (
+                <select
+                  value={selectedCliente.estado_cliente || 'interesado'}
+                  onChange={(e) => onChangeClienteStatus(selectedCliente.id, e.target.value)}
+                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border focus:outline-none cursor-pointer transition-all ${currentStatusConfig.badgeClass}`}
+                  title="Cambiar estatus del cliente"
+                >
+                  {ESTADOS_CLIENTE.map((est) => (
+                    <option key={est.value} value={est.value} className="bg-zinc-900 text-white">
+                      {est.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className={`text-xs font-bold px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${currentStatusConfig.badgeClass}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${currentStatusConfig.dotClass}`} />
+                  {currentStatusConfig.label}
+                </span>
+              )}
             </div>
 
             <h2 className="text-2xl font-black text-white tracking-tight">

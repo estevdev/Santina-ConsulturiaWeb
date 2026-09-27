@@ -56,6 +56,7 @@ export default function ClientesPage() {
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [isModoSeguimiento, setIsModoSeguimiento] = useState(true);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
+  const [activeStatusFilter, setActiveStatusFilter] = useState<string>('todos');
 
   // Form State Cliente
   const [formCliente, setFormCliente] = useState<FormClienteData>({
@@ -65,6 +66,7 @@ export default function ClientesPage() {
     telefono: '',
     email: '',
     estado: 'Jalisco',
+    estado_cliente: 'interesado',
     notas: '',
   });
 
@@ -291,11 +293,142 @@ export default function ClientesPage() {
       telefono: cli.telefono || '',
       email: cli.email || '',
       estado: cli.estado || 'Jalisco',
+      estado_cliente: cli.estado_cliente || 'interesado',
       notas: cli.notas || '',
     });
     setCrearTramiteInicial(false);
     setFeedbackMsg(null);
     setIsModalOpen(true);
+  };
+
+  const handleUpdateEstadoCliente = async (clienteId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ estado_cliente: newStatus })
+        .eq('id', clienteId);
+
+      if (error) throw error;
+
+      setClientes((prev) =>
+        prev.map((c) => (c.id === clienteId ? { ...c, estado_cliente: newStatus as any } : c))
+      );
+
+      if (selectedCliente && selectedCliente.id === clienteId) {
+        setSelectedCliente((prev) => (prev ? { ...prev, estado_cliente: newStatus as any } : null));
+      }
+
+      setFeedbackMsg({ type: 'success', text: `Estado del cliente actualizado a "${newStatus}".` });
+    } catch (err: any) {
+      console.error('Error actualizando estado del cliente:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al actualizar estado: ${err.message || 'Error desconocido'}` });
+    }
+  };
+
+  const handleSoftDeleteCliente = async (cliente: Cliente) => {
+    if (user?.role !== 'admin') {
+      alert('Solo los administradores pueden enviar clientes a la papelera.');
+      return;
+    }
+    const confirmed = window.confirm(
+      `¿Estás seguro de enviar a "${cliente.nombre} ${cliente.apellido_paterno || ''}" a la papelera de reciclaje?\nPodrás restaurarlo o eliminarlo permanentemente después.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('clientes')
+        .update({ deleted_at: nowIso })
+        .eq('id', cliente.id);
+
+      if (error) throw error;
+
+      setClientes((prev) =>
+        prev.map((c) => (c.id === cliente.id ? { ...c, deleted_at: nowIso } : c))
+      );
+
+      if (selectedCliente?.id === cliente.id) {
+        setSelectedCliente(null);
+        setShowFullDetails(false);
+      }
+
+      setFeedbackMsg({
+        type: 'success',
+        text: `El cliente "${cliente.nombre}" ha sido movido a la papelera.`,
+      });
+    } catch (err: any) {
+      console.error('Error al enviar cliente a la papelera:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al mover a papelera: ${err.message || 'Error desconocido'}` });
+    }
+  };
+
+  const handleRestoreCliente = async (cliente: Cliente) => {
+    if (user?.role !== 'admin') {
+      alert('Solo los administradores pueden restaurar clientes.');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('clientes')
+        .update({ deleted_at: null })
+        .eq('id', cliente.id);
+
+      if (error) throw error;
+
+      setClientes((prev) =>
+        prev.map((c) => (c.id === cliente.id ? { ...c, deleted_at: null } : c))
+      );
+
+      if (selectedCliente?.id === cliente.id) {
+        setSelectedCliente((prev) => (prev ? { ...prev, deleted_at: null } : null));
+      }
+
+      setFeedbackMsg({
+        type: 'success',
+        text: `El cliente "${cliente.nombre}" ha sido restaurado exitosamente.`,
+      });
+    } catch (err: any) {
+      console.error('Error al restaurar cliente:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al restaurar: ${err.message || 'Error desconocido'}` });
+    }
+  };
+
+  const handlePermanentDeleteCliente = async (cliente: Cliente) => {
+    if (user?.role !== 'admin') {
+      alert('Solo los administradores pueden eliminar clientes definitivamente.');
+      return;
+    }
+    const confirmed = window.confirm(
+      `⚠️ ¡ADVERTENCIA DE ELIMINACIÓN PERMANENTE!\n\n¿Estás completamente seguro de borrar a "${cliente.nombre} ${cliente.apellido_paterno || ''}" y todos sus trámites y expedientes?\n\nEsta acción NO se puede deshacer.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await Promise.all([
+        supabase.from('tramites_retiro_desempleo').delete().eq('cliente_id', cliente.id),
+        supabase.from('tramites_mejoravit').delete().eq('cliente_id', cliente.id),
+        supabase.from('tramites_alta_medica_imss').delete().eq('cliente_id', cliente.id),
+      ]);
+
+      const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
+      if (error) throw error;
+
+      setClientes((prev) => prev.filter((c) => c.id !== cliente.id));
+
+      if (selectedCliente?.id === cliente.id) {
+        setSelectedCliente(null);
+        setShowFullDetails(false);
+      }
+
+      setFeedbackMsg({
+        type: 'success',
+        text: `El cliente "${cliente.nombre}" ha sido eliminado permanentemente de la base de datos.`,
+      });
+    } catch (err: any) {
+      console.error('Error al borrar permanentemente:', err);
+      setFeedbackMsg({ type: 'error', text: `Error al eliminar cliente: ${err.message || 'Error desconocido'}` });
+    }
   };
 
   const handleSubmitCliente = async (e: React.FormEvent) => {
@@ -326,6 +459,7 @@ export default function ClientesPage() {
             telefono: formCliente.telefono.trim() || null,
             email: formCliente.email.trim() || null,
             estado: formCliente.estado || 'Jalisco',
+            estado_cliente: formCliente.estado_cliente || 'interesado',
             notas: formCliente.notas.trim() || null,
           })
           .eq('id', editingClienteId)
@@ -349,6 +483,7 @@ export default function ClientesPage() {
             telefono: formCliente.telefono.trim() || null,
             email: formCliente.email.trim() || null,
             estado: formCliente.estado || 'Jalisco',
+            estado_cliente: formCliente.estado_cliente || 'interesado',
             notas: formCliente.notas.trim() || null,
             creado_por: user?.id || null,
             creado_por_nombre: user?.name || null,
@@ -1270,45 +1405,10 @@ export default function ClientesPage() {
     }
   };
 
+  const papeleraCount = clientes.filter((c) => Boolean(c.deleted_at)).length;
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0d0e12] p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-[#c5a059]" />
-            Gestión de Clientes & Expedientes
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Checklist de requisitos oficiales para Retiro por Desempleo, Mejoravit Infonavit y Alta Médica IMSS.
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            {user?.role === 'admin' ? (
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/30 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
-                Vista Administrador (Viendo todos los clientes)
-              </span>
-            ) : (
-              <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-[#c5a059]" />
-                Vista Asesor: {user?.name || user?.email || 'Mi cuenta'} (Mis clientes registrados)
-              </span>
-            )}
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            setFeedbackMsg(null);
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-sm font-medium rounded-xl shadow-md shadow-amber-500/20 transition-all cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          Nuevo Cliente
-        </button>
-      </div>
-
       {/* Main Content Layout */}
       {showFullDetails && selectedCliente ? (
         <ClienteFullDetails
@@ -1318,6 +1418,12 @@ export default function ClientesPage() {
           downloadingBundle={downloadingBundle}
           isModoSeguimiento={isModoSeguimiento}
           onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
+          onChangeClienteStatus={handleUpdateEstadoCliente}
+          onDeleteCliente={handleSoftDeleteCliente}
+          onNewCliente={() => {
+            setFeedbackMsg(null);
+            setIsModalOpen(true);
+          }}
           timelineComponent={
             <ClienteSeguimientoTimeline
               selectedCliente={selectedCliente}
@@ -1325,6 +1431,7 @@ export default function ClientesPage() {
               docPresets={docPresets}
               uploadingDocKey={uploadingDocKey}
               generatingAmpliada200={generatingAmpliada200}
+              onChangeClienteStatus={handleUpdateEstadoCliente}
               onViewDoc={(url, title) => setModalViewerDoc({ url, title })}
               onDownloadDoc={handleDownloadInline}
               onUploadReqDocument={handleUploadReqDocument}
@@ -1427,8 +1534,19 @@ export default function ClientesPage() {
             selectedCliente={selectedCliente}
             showFullDetails={showFullDetails}
             currentUserRole={user?.role}
+            activeStatusFilter={activeStatusFilter}
+            onStatusFilterChange={setActiveStatusFilter}
             onSelectCliente={handleSelectCliente}
             onEditCliente={handleEditCliente}
+            onDeleteCliente={handleSoftDeleteCliente}
+            onRestoreCliente={handleRestoreCliente}
+            onPermanentDeleteCliente={handlePermanentDeleteCliente}
+            onChangeClienteStatus={handleUpdateEstadoCliente}
+            papeleraCount={papeleraCount}
+            onNewCliente={() => {
+              setFeedbackMsg(null);
+              setIsModalOpen(true);
+            }}
           />
 
           <ClienteQuickView
@@ -1436,6 +1554,8 @@ export default function ClientesPage() {
             currentUserRole={user?.role}
             onOpenShareModal={openShareCredentialsModal}
             onEditCliente={handleEditCliente}
+            onChangeClienteStatus={handleUpdateEstadoCliente}
+            onDeleteCliente={handleSoftDeleteCliente}
             onViewFullDetails={() => {
               setShowFullDetails(true);
               setIsModoSeguimiento(true);

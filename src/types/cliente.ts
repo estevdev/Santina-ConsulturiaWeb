@@ -8,6 +8,14 @@ export type EstadoTramite =
 
 export type TipoTramite = 'retiro_desempleo' | 'mejoravit' | 'alta_medica_imss';
 
+export type EstadoCliente = 
+  | 'interesado' 
+  | 'en_proceso' 
+  | 'documentacion_pendiente' 
+  | 'cita_programada' 
+  | 'terminado' 
+  | 'cancelado';
+
 export interface Cliente {
   id: string;
   nombre: string;
@@ -21,6 +29,8 @@ export interface Cliente {
   email?: string | null;
   direccion?: string | null;
   estado?: string | null;
+  estado_cliente?: EstadoCliente | string | null;
+  deleted_at?: string | null;
   notas?: string | null;
   ine_frente_url?: string | null;
   ine_reverso_url?: string | null;

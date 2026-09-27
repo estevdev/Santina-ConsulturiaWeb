@@ -10,9 +10,11 @@ import {
   Edit,
   MapPin,
   GitCommit,
-  CheckCircle,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import { Cliente, TramiteMejoravit } from '@/types/cliente';
+import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
 
 interface ClienteFullDetailsProps {
   selectedCliente: Cliente;
@@ -22,10 +24,13 @@ interface ClienteFullDetailsProps {
   isModoSeguimiento?: boolean;
   onToggleModoSeguimiento?: () => void;
   timelineComponent?: React.ReactNode;
+  onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
+  onDeleteCliente?: (cliente: Cliente) => void;
   onBack: () => void;
   onOpenDownloadModal: () => void;
   onOpenShareModal: (cliente: Cliente) => void;
   onEditCliente: (cliente: Cliente) => void;
+  onNewCliente?: () => void;
   children: React.ReactNode;
 }
 
@@ -37,12 +42,17 @@ export function ClienteFullDetails({
   isModoSeguimiento = true,
   onToggleModoSeguimiento,
   timelineComponent,
+  onChangeClienteStatus,
+  onDeleteCliente,
   onBack,
   onOpenDownloadModal,
   onOpenShareModal,
   onEditCliente,
+  onNewCliente,
   children,
 }: ClienteFullDetailsProps) {
+  const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
+
   return (
     <div className="bg-white dark:bg-[#0d0e12] rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-md p-6 lg:p-8 space-y-8 animate-in fade-in duration-200">
       {/* Barra superior de navegación / regreso */}
@@ -73,11 +83,28 @@ export function ClienteFullDetails({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800 flex items-center gap-1.5">
-            <UserCheck className="w-4 h-4" />
-            Expediente Completo
-          </span>
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Selector de Estado del Cliente */}
+          {onChangeClienteStatus ? (
+            <select
+              value={selectedCliente.estado_cliente || 'interesado'}
+              onChange={(e) => onChangeClienteStatus(selectedCliente.id, e.target.value)}
+              className={`text-xs font-bold px-3 py-1.5 rounded-xl border focus:outline-none cursor-pointer transition-all ${currentStatusConfig.badgeClass}`}
+              title="Cambiar estatus del cliente"
+            >
+              {ESTADOS_CLIENTE.map((est) => (
+                <option key={est.value} value={est.value} className="bg-zinc-900 text-white">
+                  {est.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className={`text-xs font-bold px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${currentStatusConfig.badgeClass}`}>
+              <span className={`w-2 h-2 rounded-full ${currentStatusConfig.dotClass}`} />
+              {currentStatusConfig.label}
+            </span>
+          )}
+
           <button
             type="button"
             onClick={onOpenDownloadModal}
@@ -90,8 +117,31 @@ export function ClienteFullDetails({
             ) : (
               <FileDown className="w-4 h-4" />
             )}
-            <span>Descargar Expediente Completo (2 PDFs)</span>
+            <span>Descargar Expediente (2 PDFs)</span>
           </button>
+
+          {onNewCliente && (
+            <button
+              type="button"
+              onClick={onNewCliente}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              title="Registrar un nuevo cliente"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Nuevo Cliente</span>
+            </button>
+          )}
+
+          {currentUserRole === 'admin' && onDeleteCliente && (
+            <button
+              type="button"
+              onClick={() => onDeleteCliente(selectedCliente)}
+              title="Enviar cliente a la papelera de reciclaje"
+              className="p-2 text-zinc-400 hover:text-rose-400 hover:bg-rose-950/40 rounded-xl border border-zinc-800 hover:border-rose-900/50 transition-all cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -156,6 +206,14 @@ export function ClienteFullDetails({
             <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Apellido Materno:</span>
             <span className="font-bold text-sm text-slate-900 dark:text-white block mt-0.5">
               {selectedCliente.apellido_materno || 'Sin registrar'}
+            </span>
+          </div>
+
+          <div className="p-3.5 bg-white dark:bg-[#0d0e12]/80 rounded-xl border border-slate-200 dark:border-slate-700/80">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Estatus del Cliente:</span>
+            <span className={`font-bold text-xs inline-flex items-center gap-1 mt-1 px-2.5 py-0.5 rounded-lg border ${currentStatusConfig.badgeClass}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${currentStatusConfig.dotClass}`} />
+              {currentStatusConfig.label}
             </span>
           </div>
 

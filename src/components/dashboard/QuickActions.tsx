@@ -11,7 +11,7 @@ export default function QuickActions() {
       description: 'Define coordenadas de zonas, textos enriquecidos y tipografía para PDFs recurrentes.',
       href: '/dashboard/pdf-preset-studio?action=create',
       icon: PlusCircle,
-      gradient: 'from-blue-600 to-indigo-600',
+      gradient: 'from-[#c5a059] to-[#9a7b38]',
       badge: 'Constructor',
     },
     {
@@ -32,7 +32,7 @@ export default function QuickActions() {
           <Link
             key={idx}
             href={act.href}
-            className="group relative bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all overflow-hidden flex flex-col justify-between"
+            className="group relative bg-white dark:bg-[#0d0e12] rounded-2xl p-6 border border-slate-200/80 dark:border-zinc-800 shadow-sm hover:shadow-lg hover:border-slate-300 dark:hover:border-slate-700 transition-all overflow-hidden flex flex-col justify-between"
           >
             <div className="flex items-start justify-between mb-4">
               <div
@@ -46,7 +46,7 @@ export default function QuickActions() {
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white group-hover:text-[#c5a059] dark:group-hover:text-[#c5a059] transition-colors">
                 {act.title}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
@@ -54,7 +54,7 @@ export default function QuickActions() {
               </p>
             </div>
 
-            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center text-xs font-semibold text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300">
+            <div className="mt-5 pt-4 border-t border-slate-100 dark:border-zinc-800/80 flex items-center text-xs font-semibold text-[#c5a059] dark:text-[#c5a059] group-hover:text-[#c5a059] dark:group-hover:text-[#c5a059]">
               <span>Acceder ahora</span>
               <ArrowRight className="w-3.5 h-3.5 ml-1.5 group-hover:translate-x-1 transition-transform" />
             </div>

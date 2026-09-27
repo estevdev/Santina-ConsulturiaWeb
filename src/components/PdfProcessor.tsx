@@ -63,6 +63,7 @@ export default function PdfProcessor({
   const [ocrProgress, setOcrProgress] = useState<{ current: number; total: number; name: string } | null>(null);
   const [ocrStatusMessage, setOcrStatusMessage] = useState<string | null>(null);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [presetSelectionModalOpen, setPresetSelectionModalOpen] = useState(false);
 
   useEffect(() => {
     if (initialPreset) {
@@ -294,17 +295,10 @@ export default function PdfProcessor({
       return;
     }
 
-    const zonesWithDefaults: FieldZone[] = activeZones.map((z) => {
-      const richVal = fieldValues[z.id];
-      if (richVal && typeof richVal === 'object') {
-        const lineFormats = extractLineFormatsFromRichTextValue(richVal, z);
-        return {
-          ...z,
-          defaultRichValue: richVal,
-          lineFormats: lineFormats.length > 0 ? lineFormats : z.lineFormats,
-        };
-      }
-      return z;
+    // Guardar la estructura limpia de las zonas (coordenadas X, Y, W, H, tipografía, etc.) sin almacenar datos de relleno temporales
+    const cleanZones: FieldZone[] = activeZones.map((z) => {
+      const { defaultRichValue, lineFormats, ...cleanZone } = z as any;
+      return cleanZone as FieldZone;
     });
 
     if (selectedPresetId && selectedPresetId !== 'custom') {
@@ -312,12 +306,12 @@ export default function PdfProcessor({
       if (existingPreset) {
         const updatedPreset: Preset = {
           ...existingPreset,
-          zones: zonesWithDefaults,
+          zones: cleanZones,
           updatedAt: Date.now(),
         };
         savePreset(updatedPreset);
         if (onSavePreset) onSavePreset(updatedPreset);
-        setSaveSuccessMessage(`Plantilla "${existingPreset.name}" actualizada con éxito.`);
+        setSaveSuccessMessage(`Plantilla "${existingPreset.name}" actualizada con éxito (zonas y coordenadas guardadas).`);
         setTimeout(() => setSaveSuccessMessage(null), 4000);
         return;
       }
@@ -330,7 +324,7 @@ export default function PdfProcessor({
         name: newPresetName.trim(),
         description: `Creado desde procesador el ${new Date().toLocaleDateString()}`,
         identifierKeywords: [],
-        zones: zonesWithDefaults,
+        zones: cleanZones,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -347,7 +341,7 @@ export default function PdfProcessor({
   return (
     <div className="space-y-6 pb-12">
       {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0d0e12] p-4 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}
@@ -389,8 +383,8 @@ export default function PdfProcessor({
         {/* Panel Izquierdo: Configuración de campos y editor WYSIWYG */}
         <div className="lg:col-span-5 space-y-5">
           {/* Carga de Archivo */}
-          <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
-            <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div className="bg-white dark:bg-[#0d0e12] p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-3 transition-colors">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-zinc-800 pb-2">
               1. Documento PDF
             </h3>
 
@@ -406,19 +400,32 @@ export default function PdfProcessor({
                 htmlFor="processor-pdf-upload"
                 className="cursor-pointer flex flex-col items-center justify-center gap-2"
               >
-                <Upload className="w-7 h-7 text-blue-600 dark:text-blue-400" />
+                <Upload className="w-7 h-7 text-[#c5a059] dark:text-[#c5a059]" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                   {selectedFile ? selectedFile.name : 'Subir archivo PDF'}
                 </span>
                 <span className="text-xs text-slate-400 dark:text-slate-500">PDF con texto o escaneado (auto-OCR al cargar)</span>
               </label>
             </div>
+
+            {/* BOTÓN 1-CLIC DE PRUEBA: Abre modal de selección de plantilla */}
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => setPresetSelectionModalOpen(true)}
+                className="w-full py-2.5 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                title="Selecciona qué plantilla de contrato deseas cargar y autollenar para pruebas"
+              >
+                <Sparkles className="w-4 h-4 text-amber-200" />
+                <span>⚡ Cargar PDF de Prueba + Auto-rellenar Todo (1-Clic)</span>
+              </button>
+            </div>
           </div>
 
           {/* Selector de Preset y Modo de dibujo */}
           {selectedFile && (
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
-              <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
+            <div className="bg-white dark:bg-[#0d0e12] p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-3 transition-colors">
+              <div className="flex justify-between items-center border-b border-slate-100 dark:border-zinc-800 pb-2">
                 <h3 className="font-semibold text-slate-900 dark:text-white text-sm">
                   2. Configuración de Plantilla
                 </h3>
@@ -436,7 +443,7 @@ export default function PdfProcessor({
                 <select
                   value={selectedPresetId}
                   onChange={(e) => handlePresetSelect(e.target.value)}
-                  className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                  className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 >
                   <option value="custom">✏️ Personalizado (Definir o agregar zonas)</option>
                   <optgroup label="Presets Guardados">
@@ -467,7 +474,7 @@ export default function PdfProcessor({
                     <button
                       onClick={() => runOcrForZones(selectedFile, activeZones, true)}
                       disabled={isBatchOcrRunning}
-                      className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors disabled:opacity-50 cursor-pointer"
+                      className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl bg-[#9a7b38] dark:bg-[#9a7b38]/60 text-[#dfba73] dark:text-[#dfba73] border border-stone-200 dark:border-stone-800/60 hover:bg-[#9a7b38] dark:hover:bg-[#9a7b38]/50 transition-colors disabled:opacity-50 cursor-pointer"
                       title="Re-extraer texto de todas las zonas usando OCR"
                     >
                       {isBatchOcrRunning ? (
@@ -497,11 +504,11 @@ export default function PdfProcessor({
 
               {/* Botón para guardar posiciones y cambios en la plantilla */}
               {activeZones.length > 0 && (
-                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 flex-wrap">
+                <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
                   <button
                     type="button"
                     onClick={handleSavePresetChanges}
-                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-all cursor-pointer"
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-[#c5a059] hover:bg-[#c5a059] text-white shadow-xs transition-all cursor-pointer"
                     title="Guardar las nuevas posiciones y dimensiones de las zonas en la plantilla para futuras cargas"
                   >
                     <Save className="w-3.5 h-3.5" />
@@ -529,20 +536,20 @@ export default function PdfProcessor({
           {ocrStatusMessage && (
             <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 transition-all animate-fade-in ${
               isBatchOcrRunning 
-                ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-800/60 text-blue-800 dark:text-blue-300' 
+                ? 'bg-[#c5a059] dark:bg-[#c5a059]/60 border-[#c5a059] dark:border-[#c5a059]/60 text-[#c5a059] dark:text-[#c5a059]' 
                 : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/60 text-emerald-800 dark:text-emerald-300'
             }`}>
               {isBatchOcrRunning ? (
-                <RefreshCw className="w-4 h-4 animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
+                <RefreshCw className="w-4 h-4 animate-spin text-[#c5a059] dark:text-[#c5a059] shrink-0" />
               ) : (
                 <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
               )}
               <div className="flex-1">
                 <span className="font-semibold">{ocrStatusMessage}</span>
                 {ocrProgress && (
-                  <div className="w-full bg-blue-200 dark:bg-blue-900/60 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                  <div className="w-full bg-[#c5a059] dark:bg-[#c5a059]/60 h-1.5 rounded-full mt-1.5 overflow-hidden">
                     <div 
-                      className="bg-blue-600 h-full transition-all duration-300 rounded-full"
+                      className="bg-[#c5a059] h-full transition-all duration-300 rounded-full"
                       style={{ width: `${(ocrProgress.current / ocrProgress.total) * 100}%` }}
                     />
                   </div>
@@ -553,12 +560,63 @@ export default function PdfProcessor({
 
           {/* Campos de Edición con Editor WYSIWYG individual */}
           {selectedFile && (
-            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-              <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center justify-between">
+            <div className="bg-white dark:bg-[#0d0e12] p-5 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-4 transition-colors">
+              <h3 className="font-semibold text-slate-900 dark:text-white text-sm border-b border-slate-100 dark:border-zinc-800 pb-2 flex items-center justify-between gap-2 flex-wrap">
                 <span>3. Contenido y Formato de Zonas ({activeZones.length})</span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
-                  Modifica los textos detectados
-                </span>
+                
+                {activeZones.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const mockSignatureDataUrl =
+                        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAYAAADRF78XAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADbSURBVHhe7cExAQAAAMKg9U9tCj8gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAzGvAAFIQyS8AAAAAElFTkSuQmCC';
+
+                      const newValues: ProcessedFieldValues = { ...fieldValues };
+
+                      activeZones.forEach((zone) => {
+                        const isSig =
+                          zone.isSignature ||
+                          zone.name.toLowerCase().includes('rubrica') ||
+                          zone.name.toLowerCase().includes('firma');
+
+                        if (isSig) {
+                          newValues[zone.id] = mockSignatureDataUrl;
+                        } else {
+                          const nameLower = zone.name.toLowerCase();
+                          let valStr = '';
+
+                          if (nameLower.includes('dia')) valStr = '26';
+                          else if (nameLower.includes('mes')) valStr = '09';
+                          else if (nameLower.includes('año') || nameLower.includes('anio')) valStr = '2026';
+                          else if (nameLower.includes('curp')) valStr = 'HERJ950815HDFRR09';
+                          else if (nameLower.includes('nss')) valStr = '12948573610';
+                          else if (nameLower.includes('rfc')) valStr = 'HERJ950815AB1';
+                          else if (nameLower.includes('tel')) valStr = '3312345678';
+                          else if (nameLower.includes('monto') || nameLower.includes('salario') || nameLower.includes('honorarios')) valStr = '15,000.00';
+                          else if (nameLower.includes('porcentaje')) valStr = '15%';
+                          else if (nameLower.includes('letra')) valStr = 'QUINCE MIL PESOS 00/100 M.N.';
+                          else if (nameLower.includes('banco')) valStr = 'BBVA Bancomer';
+                          else if (nameLower.includes('clabe')) valStr = '012320012345678901';
+                          else if (nameLower.includes('direccion') || nameLower.includes('domicilio')) valStr = 'Av. Vallarta #1234, Col. Americana';
+                          else if (nameLower.includes('empresa') || nameLower.includes('patron')) valStr = 'Consultores S.A. de C.V.';
+                          else if (nameLower.includes('cliente') || nameLower.includes('nombre')) valStr = 'JUAN CARLOS HERNÁNDEZ LÓPEZ';
+                          else valStr = `DATO ${zone.name}`;
+
+                          const richVal = createFormattedRichTextFromExtractedText(valStr, zone);
+                          newValues[zone.id] = richVal;
+                        }
+                      });
+
+                      setFieldValues(newValues);
+                      setDownloadUrl(null);
+                    }}
+                    className="px-2.5 py-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-xs font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                    title="Botón temporal de prueba para auto-rellenar todas las zonas del preset con datos sintéticos"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>⚡ Rellenar Automático (Prueba)</span>
+                  </button>
+                )}
               </h3>
 
               {activeZones.length === 0 ? (
@@ -577,8 +635,8 @@ export default function PdfProcessor({
                         onClick={() => setSelectedZoneId(zone.id)}
                         className={`p-3.5 rounded-2xl border transition-all ${
                           isSelected
-                            ? 'border-blue-500 bg-blue-50/20 dark:bg-blue-950/30 ring-1 ring-blue-400'
-                            : 'border-slate-200 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700'
+                            ? 'border-[#c5a059] bg-[#c5a059]/20 dark:bg-[#c5a059]/30 ring-1 ring-amber-400'
+                            : 'border-slate-200 dark:border-zinc-800 bg-slate-50/40 dark:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-700'
                         }`}
                       >
                         {/* Título de la zona */}
@@ -589,11 +647,145 @@ export default function PdfProcessor({
                             onChange={(e) =>
                               handleUpdateZone(zone.id, { name: e.target.value })
                             }
-                            className="font-semibold text-xs text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 focus:outline-none"
+                            className="font-semibold text-xs text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#c5a059] focus:outline-none"
                           />
                           <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded font-medium">
                             Pág. {zone.pageNumber || 1}
                           </span>
+                        </div>
+
+                        {/* Asignación de quien debe rellenar el campo: CLIENTE o ASESOR y Tipo Firma */}
+                        <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-slate-400">Rellena:</span>
+                            <div className="inline-flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateZone(zone.id, { filledBy: 'cliente' });
+                                }}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                                  (zone.filledBy || 'cliente') === 'cliente'
+                                    ? 'bg-blue-600 text-white shadow-xs'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                                }`}
+                              >
+                                <span>👤 Cliente</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateZone(zone.id, { filledBy: 'asesor' });
+                                }}
+                                className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                                  zone.filledBy === 'asesor'
+                                    ? 'bg-purple-600 text-white shadow-xs'
+                                    : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
+                                }`}
+                              >
+                                <span>👔 Asesor</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUpdateZone(zone.id, { isSignature: !zone.isSignature });
+                            }}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                              zone.isSignature || zone.name.toLowerCase().includes('rubrica') || zone.name.toLowerCase().includes('firma')
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="Marcar este campo como Firma / Rúbrica en trazo"
+                          >
+                            <span>✍️ Es Firma</span>
+                          </button>
+                        </div>
+
+                        {/* Coordenadas editables manualmente (X, Y, W, H) */}
+                        <div className="mt-2 mb-2 space-y-1 p-2 rounded-xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                            <span>Página {zone.pageNumber || 1}</span>
+                            <span className="font-bold text-amber-600 dark:text-amber-400">Posición y Tamaño (%)</span>
+                          </div>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 shadow-xs" title="Coordenada X (%)">
+                              <span className="font-bold text-slate-400 text-[10px]">X:</span>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={zone.x}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  handleUpdateZone(zone.id, { x: isNaN(val) ? 0 : val });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-transparent text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none font-mono"
+                              />
+                              <span className="text-[10px] text-slate-400">%</span>
+                            </div>
+
+                            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 shadow-xs" title="Coordenada Y (%)">
+                              <span className="font-bold text-slate-400 text-[10px]">Y:</span>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={zone.y}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  handleUpdateZone(zone.id, { y: isNaN(val) ? 0 : val });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-transparent text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none font-mono"
+                              />
+                              <span className="text-[10px] text-slate-400">%</span>
+                            </div>
+
+                            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 shadow-xs" title="Ancho W (%)">
+                              <span className="font-bold text-slate-400 text-[10px]">W:</span>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                max="100"
+                                value={zone.width}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  handleUpdateZone(zone.id, { width: isNaN(val) ? 1 : val });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-transparent text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none font-mono"
+                              />
+                              <span className="text-[10px] text-slate-400">%</span>
+                            </div>
+
+                            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 shadow-xs" title="Alto H (%)">
+                              <span className="font-bold text-slate-400 text-[10px]">H:</span>
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0.1"
+                                max="100"
+                                value={zone.height}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  handleUpdateZone(zone.id, { height: isNaN(val) ? 1 : val });
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="w-full bg-transparent text-slate-800 dark:text-slate-100 text-xs font-semibold focus:outline-none font-mono"
+                              />
+                              <span className="text-[10px] text-slate-400">%</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Editor de Texto con selección parcial y toolbar */}
@@ -616,7 +808,7 @@ export default function PdfProcessor({
         </div>
 
         {/* Panel Derecho: Visor de PDF con Vista Previa en Tiempo Real */}
-        <div className="lg:col-span-7 flex flex-col items-center bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm min-h-[650px] transition-colors">
+        <div className="lg:col-span-7 flex flex-col items-center bg-white dark:bg-[#0d0e12] p-6 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm min-h-[650px] transition-colors">
           {!selectedFile ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-400 dark:text-slate-500 my-auto">
               <AlertCircle className="w-12 h-12 mb-2 stroke-1 text-slate-300 dark:text-slate-600" />
@@ -626,7 +818,7 @@ export default function PdfProcessor({
           ) : (
             <div className="w-full flex flex-col items-center">
               {/* Controles de página y botón de alternar Ver Original / Ver Editado */}
-              <div className="flex flex-wrap justify-between items-center w-full mb-4 pb-3 border-b border-slate-100 dark:border-slate-800 text-sm gap-2">
+              <div className="flex flex-wrap justify-between items-center w-full mb-4 pb-3 border-b border-slate-100 dark:border-zinc-800 text-sm gap-2">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -668,7 +860,7 @@ export default function PdfProcessor({
               </div>
 
               {/* Visor Interactivo en Vivo */}
-              <div className="w-full flex justify-center bg-slate-100/70 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200/60 dark:border-slate-800/80 overflow-auto">
+              <div className="w-full flex justify-center bg-slate-100/70 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200/60 dark:border-zinc-800/80 overflow-auto">
                 <CanvasPdfViewer
                   pdfFile={selectedFile}
                   currentPage={currentPage}
@@ -687,6 +879,139 @@ export default function PdfProcessor({
           )}
         </div>
       </div>
+
+      {/* Modal de Selección de Plantilla de Contrato para Prueba */}
+      {presetSelectionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Selecciona la Plantilla de Contrato a Probar
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPresetSelectionModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Elige cuál de las plantillas deseas cargar con su PDF base y autollenar con datos de prueba:
+            </p>
+
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+              {presets.length === 0 ? (
+                <p className="text-xs text-slate-400 italic text-center py-4">No hay plantillas registradas.</p>
+              ) : (
+                presets.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={async () => {
+                      setPresetSelectionModalOpen(false);
+                      try {
+                        setOcrStatusMessage(`Cargando PDF de prueba para "${p.name}"...`);
+                        let pdfBuf: ArrayBuffer | null = null;
+
+                        if (p.samplePdfUrl) {
+                          const res = await fetch(p.samplePdfUrl);
+                          if (res.ok) pdfBuf = await res.arrayBuffer();
+                        }
+
+                        if (!pdfBuf) {
+                          alert(`La plantilla "${p.name}" no tiene un PDF base de muestra subido en Supabase.`);
+                          setOcrStatusMessage(null);
+                          return;
+                        }
+
+                        const dummyFile = new File([pdfBuf], `${p.name.replace(/[^a-zA-Z0-9_-]/g, '_')}_Prueba.pdf`, { type: 'application/pdf' });
+                        setSelectedFile(dummyFile);
+                        setSelectedPresetId(p.id);
+                        setActiveZones([...p.zones]);
+                        setIsDrawingMode(false);
+
+                        // Generar autollenado de prueba
+                        const mockSignatureDataUrl =
+                          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAYAAADRF78XAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADbSURBVHhe7cExAQAAAMKg9U9tCj8gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAzGvAAFIQyS8AAAAAElFTkSuQmCC';
+
+                        const newValues: ProcessedFieldValues = {};
+                        p.zones.forEach((zone) => {
+                          const isSig =
+                            zone.isSignature ||
+                            zone.name.toLowerCase().includes('rubrica') ||
+                            zone.name.toLowerCase().includes('firma');
+
+                          if (isSig) {
+                            newValues[zone.id] = mockSignatureDataUrl;
+                          } else {
+                            const nameLower = zone.name.toLowerCase();
+                            let valStr = '';
+
+                            if (nameLower.includes('dia')) valStr = '26';
+                            else if (nameLower.includes('mes')) valStr = '09';
+                            else if (nameLower.includes('año') || nameLower.includes('anio')) valStr = '2026';
+                            else if (nameLower.includes('curp')) valStr = 'HERJ950815HDFRR09';
+                            else if (nameLower.includes('nss')) valStr = '12948573610';
+                            else if (nameLower.includes('rfc')) valStr = 'HERJ950815AB1';
+                            else if (nameLower.includes('tel')) valStr = '3312345678';
+                            else if (nameLower.includes('monto') || nameLower.includes('salario') || nameLower.includes('honorarios')) valStr = '15,000.00';
+                            else if (nameLower.includes('porcentaje')) valStr = '15%';
+                            else if (nameLower.includes('letra')) valStr = 'QUINCE MIL PESOS 00/100 M.N.';
+                            else if (nameLower.includes('banco')) valStr = 'BBVA Bancomer';
+                            else if (nameLower.includes('clabe')) valStr = '012320012345678901';
+                            else if (nameLower.includes('direccion') || nameLower.includes('domicilio')) valStr = 'Av. Vallarta #1234, Col. Americana';
+                            else if (nameLower.includes('empresa') || nameLower.includes('patron')) valStr = 'Consultores S.A. de C.V.';
+                            else if (nameLower.includes('cliente') || nameLower.includes('nombre')) valStr = 'JUAN CARLOS HERNÁNDEZ LÓPEZ';
+                            else valStr = `DATO ${zone.name}`;
+
+                            newValues[zone.id] = createFormattedRichTextFromExtractedText(valStr, zone);
+                          }
+                        });
+
+                        setFieldValues(newValues);
+                        setOcrStatusMessage(`¡PDF de prueba (${p.name}) cargado y autollenado con éxito!`);
+                        setTimeout(() => setOcrStatusMessage(null), 3500);
+                      } catch (err: any) {
+                        console.error('Error cargando PDF de prueba:', err);
+                        alert('Error al cargar PDF de prueba.');
+                        setOcrStatusMessage(null);
+                      }
+                    }}
+                    className="w-full text-left p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-between cursor-pointer group"
+                  >
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 block">
+                        📄 {p.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        {p.zones.length} zonas configuradas {p.targetTramiteType ? `• (${p.targetTramiteType})` : ''}
+                      </span>
+                    </div>
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-xl">
+                      ⚡ Cargar esta
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPresetSelectionModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

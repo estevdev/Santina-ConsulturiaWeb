@@ -4,6 +4,33 @@
 
 :root {
   color-scheme: dark light;
+
+  /* Santina Theme Brand Palette Variables */
+  --bg-app: #08080a;
+  --bg-card: #0d0e12;
+  --border-card: rgba(255, 255, 255, 0.08);
+
+  --brand-gold: #c5a059;
+  --brand-gold-hover: #d5b069;
+  --brand-gold-dark: #9a7b38;
+  --brand-gold-light: #dfba73;
+  --brand-gold-bg: rgba(197, 160, 89, 0.12);
+  --brand-gold-border: rgba(197, 160, 89, 0.3);
+
+  /* Target brand alias mapped to gold theme (legacy blue replaced) */
+  --color-primary: var(--brand-gold);
+  --color-primary-hover: var(--brand-gold-hover);
+  --color-primary-bg: var(--brand-gold-bg);
+  --color-primary-border: var(--brand-gold-border);
+}
+
+@theme {
+  --color-brand-gold: #c5a059;
+  --color-brand-hover: #d5b069;
+  --color-brand-dark: #9a7b38;
+  --color-brand-light: #dfba73;
+  --color-bg-app: #08080a;
+  --color-bg-card: #0d0e12;
 }
 
 html.dark {
@@ -15,8 +42,8 @@ html:not(.dark) {
 }
 
 body {
-  background-color: #090d16;
-  color: #f1f5f9;
+  background-color: var(--bg-app);
+  color: #f8fafc;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 

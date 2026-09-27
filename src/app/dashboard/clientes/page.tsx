@@ -1108,23 +1108,23 @@ export default function ClientesPage() {
         key={reqKey}
         className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
           completed
-            ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-slate-800 dark:text-slate-100'
-            : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+            ? 'bg-zinc-900/90 border-[#c5a059]/30 text-white'
+            : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300'
         }`}
       >
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {numberTag ? (
             <span
               className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
-                completed ? 'bg-emerald-600 text-white' : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                completed ? 'bg-[#c5a059] text-zinc-950' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
               }`}
             >
               {numberTag}
             </span>
           ) : completed ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
           ) : (
-            <XCircle className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <XCircle className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
           )}
           <span className="font-semibold truncate leading-tight">{label}</span>
         </div>
@@ -1139,7 +1139,7 @@ export default function ClientesPage() {
                 type="button"
                 onClick={() => setModalViewerDoc({ url: docUrl, title: label })}
                 title="Visualizar documento aquí mismo"
-                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/60 dark:hover:bg-emerald-800 text-emerald-800 dark:text-emerald-200 rounded-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-emerald-950/70 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/60 rounded-lg transition-colors cursor-pointer"
               >
                 <Eye className="w-3 h-3" />
                 <span>Ver</span>
@@ -1150,7 +1150,7 @@ export default function ClientesPage() {
                 type="button"
                 onClick={() => handleDownloadInline(docUrl, label)}
                 title="Descargar documento"
-                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/60 dark:hover:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg transition-colors cursor-pointer"
               >
                 <Download className="w-3 h-3" />
                 <span>Descargar</span>
@@ -1159,12 +1159,12 @@ export default function ClientesPage() {
               {/* Cambiar / Reemplazar */}
               <label
                 title="Cambiar o reemplazar archivo"
-                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-md transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg transition-colors cursor-pointer"
               >
                 {isUploading ? (
-                  <div className="w-3 h-3 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <Upload className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                  <Upload className="w-3 h-3 text-zinc-400" />
                 )}
                 <span>{isUploading ? '...' : 'Cambiar'}</span>
                 <input
@@ -1181,9 +1181,9 @@ export default function ClientesPage() {
             </>
           ) : (
             /* Subir Archivo */
-            <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-all cursor-pointer">
+            <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 rounded-lg shadow-sm transition-all cursor-pointer">
               {isUploading ? (
-                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
               ) : (
                 <Upload className="w-3 h-3" />
               )}
@@ -1213,7 +1213,7 @@ export default function ClientesPage() {
     if (matching.length === 0) return null;
 
     return (
-      <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 space-y-2">
+      <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-zinc-800/60 space-y-2">
         <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
           <UserCheck className="w-3.5 h-3.5" />
           Documentos / Formatos para Cliente ({matching.length}):
@@ -1249,7 +1249,7 @@ export default function ClientesPage() {
                         href={existingUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                        className="text-[10px] font-semibold text-[#c5a059] dark:text-[#dfba73] hover:underline flex items-center gap-1"
                       >
                         Ver PDF <ExternalLink className="w-3 h-3" />
                       </a>
@@ -1321,13 +1321,13 @@ export default function ClientesPage() {
   const renderTramitesChecklist = () => (
     <div>
       <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2.5 flex items-center gap-1.5">
-        <Sparkles className="w-4 h-4 text-indigo-500" />
+        <Sparkles className="w-4 h-4 text-[#dfba73]" />
         Tabla de Expediente & Requisitos
       </h3>
 
       {loadingTramites ? (
         <div className="flex items-center justify-center p-4 text-xs text-slate-400">
-          <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mr-2" />
+          <div className="w-4 h-4 border-2 border-stone-600 border-t-transparent rounded-full animate-spin mr-2" />
           Cargando expediente...
         </div>
       ) : (
@@ -1335,31 +1335,31 @@ export default function ClientesPage() {
           {/* 1. RETIRO POR DESEMPLEO (Tabla Compacta 2 Columnas) */}
           {clienteTramites.retiro && clienteTramites.retiro.length > 0 && (
             clienteTramites.retiro.map((tr) => (
-              <div key={tr.id} className="p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/20 dark:bg-emerald-950/20 space-y-2.5">
-                <div className="flex items-center justify-between pb-1.5 border-b border-emerald-200/60 dark:border-emerald-900/40">
-                  <div className="flex items-center gap-1.5">
-                    <Banknote className="w-4 h-4 text-emerald-600" />
-                    <span className="font-bold text-xs text-slate-900 dark:text-emerald-300">
-                      Retiro por Desempleo
+              <div key={tr.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/80">
+                  <div className="flex items-center gap-2.5">
+                    <img src="/tramite-desempleo.png" alt="AforeMóvil Logo" className="w-6 h-6 object-contain rounded" />
+                    <span className="font-bold text-xs text-white">
+                      Retiro por Desempleo (AforeMóvil)
                     </span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 uppercase font-semibold">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30 uppercase font-bold tracking-wider">
                     {tr.estado}
                   </span>
                 </div>
 
                 {/* Datos Compactos */}
-                <div className="flex items-center justify-between gap-2 text-[11px] bg-white/80 dark:bg-slate-800/80 px-2.5 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-900/30">
+                <div className="flex items-center justify-between gap-2 text-[11px] bg-zinc-900/60 px-3 py-1.5 rounded-xl border border-zinc-800/80">
                   <div>
-                    <span className="text-slate-400 font-medium mr-1">Semanas:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">{tr.semanas_cotizadas || 'N/A'}</span>
+                    <span className="text-zinc-400 font-medium mr-1">Semanas:</span>
+                    <span className="font-semibold text-zinc-200">{tr.semanas_cotizadas || 'N/A'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 font-medium mr-1">Salario:</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">${tr.ultimo_salario_registrado || '0.00'}</span>
+                    <span className="text-zinc-400 font-medium mr-1">Salario:</span>
+                    <span className="font-semibold text-zinc-200">${tr.ultimo_salario_registrado || '0.00'}</span>
                   </div>
                   <div>
-                    <span className={`font-semibold text-[10px] ${tr.validado_inactivo_imss ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    <span className={`font-semibold text-[10px] ${tr.validado_inactivo_imss ? 'text-emerald-400' : 'text-amber-400'}`}>
                       {tr.validado_inactivo_imss ? '✓ Inactivo IMSS' : '⏳ Pendiente IMSS'}
                     </span>
                   </div>
@@ -1394,12 +1394,12 @@ export default function ClientesPage() {
                     onClick={() => handleGenerateIneAmpliada200(tr.id, normalIneUrl)}
                     disabled={generatingAmpliada200}
                     title="Detectar mapa de calor y generar ampliada al 200% desde la INE Normal"
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white rounded-md shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-50"
                   >
                     {generatingAmpliada200 ? (
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <div className="w-3 h-3 border-2 border-[#dfba73] border-t-transparent rounded-full animate-spin" />
                     ) : (
-                      <Sparkles className="w-3 h-3 text-amber-200" />
+                      <Sparkles className="w-3 h-3 text-[#dfba73]" />
                     )}
                     <span>{generatingAmpliada200 ? 'Procesando...' : 'Generar 200%'}</span>
                   </button>
@@ -1407,7 +1407,7 @@ export default function ClientesPage() {
                   <button
                     type="button"
                     onClick={() => openManualIneCropper(tr.id, normalIneUrl)}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-md shadow-sm transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 rounded-lg shadow-sm transition-all cursor-pointer"
                     title="Marcar manualmente los 4 puntos de la frontal y trasera"
                   >
                     <ScanLine className="w-3 h-3" />
@@ -1417,15 +1417,15 @@ export default function ClientesPage() {
               ) : null;
 
               return (
-                <div key={tr.id} className="p-3 rounded-xl border border-red-200 dark:border-red-900/50 bg-red-50/20 dark:bg-red-950/20 space-y-2.5">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-red-200/60 dark:border-red-900/40">
-                    <div className="flex items-center gap-1.5">
-                      <Building2 className="w-4 h-4 text-red-600" />
-                      <span className="font-bold text-xs text-slate-900 dark:text-red-300">
+                <div key={tr.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/80">
+                    <div className="flex items-center gap-2.5">
+                      <img src="/tramite-mejoravit.png" alt="Mejoravit Logo" className="w-6 h-6 object-contain rounded bg-white p-0.5" />
+                      <span className="font-bold text-xs text-white">
                         Expediente Mejoravit (Infonavit)
                       </span>
                     </div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 uppercase font-semibold">
+                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30 uppercase font-bold tracking-wider">
                       {tr.estado}
                     </span>
                   </div>
@@ -1441,16 +1441,16 @@ export default function ClientesPage() {
                     <div
                       className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
                         tr.req_3_referencias_personales || (tr.referencias_detalle && tr.referencias_detalle.length > 0)
-                          ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-slate-800 dark:text-slate-100'
-                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                          ? 'bg-zinc-900/90 border-[#c5a059]/30 text-white'
+                          : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300'
                       }`}
                     >
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <span
                           className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
                             tr.req_3_referencias_personales || (tr.referencias_detalle && tr.referencias_detalle.length > 0)
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                              ? 'bg-[#c5a059] text-zinc-950'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
                           }`}
                         >
                           8
@@ -1458,7 +1458,7 @@ export default function ClientesPage() {
                         <div className="flex flex-col truncate">
                           <span className="font-semibold truncate leading-tight">8. 3 Referencias Personales</span>
                           {tr.referencias_detalle && tr.referencias_detalle.length > 0 && (
-                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-medium">
+                            <span className="text-[10px] text-emerald-400 font-medium">
                               ✓ {tr.referencias_detalle.filter(r => r.nombre.trim()).length} de 3 referencias registradas
                             </span>
                           )}
@@ -1479,10 +1479,10 @@ export default function ClientesPage() {
                             referencias: initialRefs,
                           });
                         }}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md shadow-sm transition-all cursor-pointer ${
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer ${
                           tr.referencias_detalle && tr.referencias_detalle.length > 0
                             ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
                         }`}
                       >
                         <UserCheck className="w-3 h-3" />
@@ -1492,52 +1492,57 @@ export default function ClientesPage() {
                     {renderChecklistRow('mejoravit', tr.id, 'req_acta_nacimiento', '4. Acta de Nacimiento', tr.req_acta_nacimiento, tr.documentos_urls?.req_acta_nacimiento, 4)}
 
                     {/* 9. Credenciales Infonavit (Modal de Captura de NSS y Contraseña) */}
-                    <div
-                      className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
-                        tr.req_portal_infonavit_validado || (tr.nss_portal_infonavit && tr.password_portal_infonavit)
-                          ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800 text-slate-800 dark:text-slate-100'
-                          : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span
-                          className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
-                            tr.req_portal_infonavit_validado || (tr.nss_portal_infonavit && tr.password_portal_infonavit)
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-300 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                    {(() => {
+                      const isInfonavitDone = tr.req_portal_infonavit_validado || (tr.nss_portal_infonavit && tr.password_portal_infonavit);
+                      return (
+                        <div
+                          className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
+                            isInfonavitDone
+                              ? 'bg-zinc-900/90 border-[#c5a059]/30 text-white'
+                              : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300'
                           }`}
                         >
-                          9
-                        </span>
-                        <div className="flex flex-col truncate">
-                          <span className="font-semibold truncate leading-tight">9. Credenciales Infonavit</span>
-                          {(tr.nss_portal_infonavit || tr.password_portal_infonavit) && (
-                            <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono">
-                              NSS: {tr.nss_portal_infonavit || '---'} | Pass: ••••••••
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            <span
+                              className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                                isInfonavitDone
+                                  ? 'bg-[#c5a059] text-zinc-950'
+                                  : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                              }`}
+                            >
+                              9
                             </span>
-                          )}
-                        </div>
-                      </div>
+                            <div className="flex flex-col truncate">
+                              <span className="font-semibold truncate leading-tight">9. Credenciales Infonavit</span>
+                              {(tr.nss_portal_infonavit || tr.password_portal_infonavit) && (
+                                <span className="text-[10px] text-[#dfba73] font-mono">
+                                  NSS: {tr.nss_portal_infonavit || '---'} | Pass: ••••••••
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setInfonavitCredsModal({
-                            tramiteId: tr.id,
-                            nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
-                            password: tr.password_portal_infonavit || '',
-                          });
-                        }}
-                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-md shadow-sm transition-all cursor-pointer ${
-                          tr.nss_portal_infonavit && tr.password_portal_infonavit
-                            ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            : 'bg-blue-600 hover:bg-blue-700 text-white'
-                        }`}
-                      >
-                        <KeyRound className="w-3 h-3" />
-                        <span>{tr.nss_portal_infonavit && tr.password_portal_infonavit ? 'Ver / Editar' : 'Ingresar Datos'}</span>
-                      </button>
-                    </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInfonavitCredsModal({
+                                tramiteId: tr.id,
+                                nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
+                                password: tr.password_portal_infonavit || '',
+                              });
+                            }}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer ${
+                              isInfonavitDone
+                                ? 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
+                                : 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
+                            }`}
+                          >
+                            <KeyRound className="w-3 h-3 text-[#c5a059]" />
+                            <span>{isInfonavitDone ? 'Ver / Editar' : 'Ingresar Datos'}</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
                     {renderChecklistRow('mejoravit', tr.id, 'req_comprobante_domicilio', '5. Comp. Domicilio', tr.req_comprobante_domicilio, tr.documentos_urls?.req_comprobante_domicilio, 5)}
                     {renderChecklistRow(
                       'mejoravit',
@@ -1556,10 +1561,10 @@ export default function ClientesPage() {
                             fotos: [],
                           });
                         }}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md shadow-sm transition-all cursor-pointer mr-1"
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer mr-1"
                         title="Subir y ordenar hasta 5 fotos para generar el PDF automáticamente"
                       >
-                        <Camera className="w-3 h-3" />
+                        <Camera className="w-3 h-3 text-[#c5a059]" />
                         <span>{tr.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
                       </button>
                     )}
@@ -1574,15 +1579,15 @@ export default function ClientesPage() {
           {/* 3. ALTA MÉDICA IMSS (Tabla Compacta 2 Columnas) */}
           {clienteTramites.altaMedica && clienteTramites.altaMedica.length > 0 && (
             clienteTramites.altaMedica.map((tr) => (
-              <div key={tr.id} className="p-3 rounded-xl border border-sky-200 dark:border-sky-900/50 bg-sky-50/20 dark:bg-sky-950/20 space-y-2.5">
-                <div className="flex items-center justify-between pb-1.5 border-b border-sky-200/60 dark:border-sky-900/40">
-                  <div className="flex items-center gap-1.5">
-                    <HeartPulse className="w-4 h-4 text-sky-600" />
-                    <span className="font-bold text-xs text-slate-900 dark:text-sky-300">
+              <div key={tr.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-slate-700/80">
+                  <div className="flex items-center gap-2.5">
+                    <img src="/tramite-imss.png" alt="IMSS Logo" className="w-6 h-6 object-contain rounded bg-white p-0.5" />
+                    <span className="font-bold text-xs text-white">
                       Alta Médica IMSS ({tr.clinica_umf_asignada || 'UMF'})
                     </span>
                   </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 uppercase font-semibold">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30 uppercase font-bold tracking-wider">
                     {tr.estado}
                   </span>
                 </div>
@@ -1602,7 +1607,7 @@ export default function ClientesPage() {
           )}
 
           {(!clienteTramites.retiro?.length && !clienteTramites.mejoravit?.length && !clienteTramites.altaMedica?.length) && (
-            <div className="p-4 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-slate-400 text-xs">
+            <div className="p-4 text-center border border-dashed border-slate-200 dark:border-zinc-800 rounded-xl text-slate-400 text-xs">
               Este cliente aún no cuenta con trámites registrados.
             </div>
           )}
@@ -1614,10 +1619,10 @@ export default function ClientesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0d0e12] p-6 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2.5">
-            <Users className="w-7 h-7 text-blue-600" />
+            <Users className="w-7 h-7 text-[#c5a059]" />
             Gestión de Clientes & Expedientes
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -1630,7 +1635,7 @@ export default function ClientesPage() {
             setFeedbackMsg(null);
             setIsModalOpen(true);
           }}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-sm font-medium rounded-xl shadow-md shadow-amber-500/20 transition-all cursor-pointer"
         >
           <Plus className="w-4 h-4" />
           Nuevo Cliente
@@ -1640,15 +1645,15 @@ export default function ClientesPage() {
       {/* Main Content Layout */}
       {showFullDetails && selectedCliente ? (
         /* VISTA COMPLETA (OCUPA TODO EL ANCHO DE LA PÁGINA - EXPEDIENTE DETALLADO) */
-        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-md p-6 lg:p-8 space-y-8 animate-in fade-in duration-200">
+        <div className="bg-white dark:bg-[#0d0e12] rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-md p-6 lg:p-8 space-y-8 animate-in fade-in duration-200">
           {/* Barra superior de navegación / regreso */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-zinc-800">
             <button
               type="button"
               onClick={() => setShowFullDetails(false)}
               className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
             >
-              <ArrowLeft className="w-4 h-4 text-blue-600" />
+              <ArrowLeft className="w-4 h-4 text-[#c5a059]" />
               <span>← Volver a la Lista de Clientes & Checklist</span>
             </button>
             <div className="flex items-center gap-3">
@@ -1669,7 +1674,7 @@ export default function ClientesPage() {
           </div>
 
           {/* 1. PRIMER ELEMENTO QUE SALE AL ENTRAR AL EXPEDIENTE: EL CHECKLIST DE DOCUMENTOS REQUERIDOS */}
-          <div className="p-6 bg-slate-50/50 dark:bg-slate-800/40 rounded-3xl border border-slate-200/80 dark:border-slate-700/80">
+          <div className="p-6 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
             {renderTramitesChecklist()}
           </div>
 
@@ -1677,7 +1682,7 @@ export default function ClientesPage() {
           <div className="bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ScanLine className="w-5 h-5 text-blue-600" />
+                <ScanLine className="w-5 h-5 text-[#c5a059]" />
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                     Credencial de Elector (INE) & Extracción OCR
@@ -1690,10 +1695,10 @@ export default function ClientesPage() {
             </div>
 
             {/* BANNER: ESCANEO GUIADO PARA EL CLIENTE DESDE SU CELULAR */}
-            <div className="p-4 bg-gradient-to-r from-blue-900/20 via-indigo-900/20 to-purple-900/20 rounded-2xl border border-blue-200/80 dark:border-blue-800/80 space-y-3">
+            <div className="p-4 bg-gradient-to-r from-[#c5a059]/20 via-stone-900/20 to-purple-900/20 rounded-2xl border border-[#c5a059]/80 dark:border-[#c5a059]/30/80 space-y-3">
               <div className="flex items-start justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
+                  <div className="w-8 h-8 rounded-xl bg-[#c5a059] text-white flex items-center justify-center shadow-md shadow-amber-500/20">
                     <Camera className="w-4 h-4" />
                   </div>
                   <div>
@@ -1720,7 +1725,7 @@ export default function ClientesPage() {
                 <button
                   type="button"
                   onClick={() => handleCopyScanLink()}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   {copiedScanLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copiedScanLink ? '¡Enlace Copiado!' : 'Copiar Link de Escaneo'}</span>
@@ -1742,7 +1747,7 @@ export default function ClientesPage() {
                   rel="noreferrer"
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold rounded-xl transition-all"
                 >
-                  <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                  <ExternalLink className="w-3.5 h-3.5 text-[#c5a059]" />
                   <span>Abrir Escáner de Prueba</span>
                 </a>
 
@@ -1768,13 +1773,13 @@ export default function ClientesPage() {
             </div>
 
             {/* Modalidad de Subida: 1 Hoja Completa vs 2 Fotos Separadas */}
-            <div className="flex items-center gap-2 p-1 bg-slate-200 dark:bg-slate-900 rounded-xl w-fit">
+            <div className="flex items-center gap-2 p-1 bg-slate-200 dark:bg-[#0d0e12] rounded-xl w-fit">
               <button
                 type="button"
                 onClick={() => setIneUploadMode('single')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   ineUploadMode === 'single'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-slate-800 text-[#c5a059] dark:text-[#dfba73] shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1785,7 +1790,7 @@ export default function ClientesPage() {
                 onClick={() => setIneUploadMode('dual')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   ineUploadMode === 'dual'
-                    ? 'bg-white dark:bg-slate-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                    ? 'bg-white dark:bg-slate-800 text-[#c5a059] dark:text-[#dfba73] shadow-sm'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -1795,7 +1800,7 @@ export default function ClientesPage() {
 
             {/* MODO 1: Una Sola Hoja con Ambos Lados */}
             {ineUploadMode === 'single' ? (
-              <div className="p-4 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
+              <div className="p-4 bg-white dark:bg-[#0d0e12] rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
                   Hoja de INE Completa (Frente y Reverso en el mismo documento o foto)
                 </span>
@@ -1812,7 +1817,7 @@ export default function ClientesPage() {
                 )}
 
                 <div>
-                  <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-xs font-semibold bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-slate-700 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-slate-700 rounded-xl transition-all">
+                  <label className="cursor-pointer inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 text-xs font-semibold bg-[#c5a059]/10 dark:bg-slate-800 hover:bg-[#c5a059]/20 dark:hover:bg-slate-700 text-[#c5a059] dark:text-[#dfba73] border border-[#c5a059] dark:border-slate-700 rounded-xl transition-all">
                     <Upload className="w-4 h-4" />
                     {ineCompletaFile ? ineCompletaFile.name : 'Seleccionar Archivo (Foto / Escaneo / PDF)'}
                     <input
@@ -1834,7 +1839,7 @@ export default function ClientesPage() {
               /* MODO 2: Dos Archivos Separados (Frente y Reverso) */
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Frente */}
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                <div className="p-3 bg-white dark:bg-[#0d0e12] rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                   <div>
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                       1. INE Frente
@@ -1871,7 +1876,7 @@ export default function ClientesPage() {
                 </div>
 
                 {/* Reverso */}
-                <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
+                <div className="p-3 bg-white dark:bg-[#0d0e12] rounded-xl border border-slate-200 dark:border-slate-700 flex flex-col justify-between">
                   <div>
                     <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-1">
                       2. INE Reverso
@@ -1918,7 +1923,7 @@ export default function ClientesPage() {
                   processingOcr ||
                   (ineUploadMode === 'single' ? !ineCompletaFile : (!ineFrenteFile && !ineReversoFile))
                 }
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#c5a059] to-[#9a7b38] hover:from-[#c5a059] hover:to-[#9a7b38] text-white text-xs font-semibold rounded-xl shadow-md shadow-amber-500/20 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {processingOcr ? (
                   <>
@@ -1942,8 +1947,8 @@ export default function ClientesPage() {
 
             {/* Resultados OCR Detectados */}
             {ocrSuccessData && (
-              <div className="p-4 bg-blue-50/70 dark:bg-blue-950/40 rounded-xl border border-blue-200 dark:border-blue-900/60 text-xs space-y-3">
-                <p className="font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide flex items-center gap-1.5">
+              <div className="p-4 bg-[#c5a059]/10/70 dark:bg-[#c5a059]/40 rounded-xl border border-[#c5a059] dark:border-[#c5a059]/60 text-xs space-y-3">
+                <p className="font-bold text-[#c5a059] dark:text-[#c5a059] uppercase tracking-wide flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Datos Detectados por OCR:
                 </p>
@@ -1956,11 +1961,11 @@ export default function ClientesPage() {
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">CURP Extraída:</span>
-                    <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{ocrSuccessData.curp || 'No identificada'}</span>
+                    <span className="font-mono font-bold text-[#c5a059] dark:text-[#dfba73]">{ocrSuccessData.curp || 'No identificada'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">Clave Elector:</span>
-                    <span className="font-mono font-bold text-blue-700 dark:text-blue-300">{ocrSuccessData.clave_elector || 'No identificada'}</span>
+                    <span className="font-mono font-bold text-[#c5a059] dark:text-[#dfba73]">{ocrSuccessData.clave_elector || 'No identificada'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">Vigencia / Sección:</span>
@@ -1979,8 +1984,8 @@ export default function ClientesPage() {
                 </div>
 
                 {ocrSuccessData.curp && (
-                  <div className="pt-2.5 border-t border-blue-200/60 dark:border-blue-900/40 flex items-center justify-between flex-wrap gap-2">
-                    <span className="text-[11px] text-blue-900 dark:text-blue-200">
+                  <div className="pt-2.5 border-t border-[#c5a059]/60 dark:border-[#c5a059]/40 flex items-center justify-between flex-wrap gap-2">
+                    <span className="text-[11px] text-[#c5a059] dark:text-[#c5a059]">
                       Constancia de CURP Oficial:
                     </span>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -1993,7 +1998,7 @@ export default function ClientesPage() {
                         <span>Obtener Original en RENAPO (gob.mx)</span>
                       </button>
 
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                      <label className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
                         <Upload className="w-3.5 h-3.5" />
                         <span>Adjuntar PDF Original</span>
                         <input
@@ -2011,11 +2016,11 @@ export default function ClientesPage() {
                 )}
 
                 {ocrSuccessData.raw_text && (
-                  <details className="mt-2 pt-2 border-t border-blue-200/60 dark:border-blue-900/40 text-[11px]">
-                    <summary className="text-blue-600 dark:text-blue-400 cursor-pointer font-medium hover:underline">
+                  <details className="mt-2 pt-2 border-t border-[#c5a059]/60 dark:border-[#c5a059]/40 text-[11px]">
+                    <summary className="text-[#c5a059] dark:text-[#dfba73] cursor-pointer font-medium hover:underline">
                       Ver texto OCR plano extraído
                     </summary>
-                    <pre className="mt-1 p-2 bg-white dark:bg-slate-900 rounded border border-slate-200 dark:border-slate-800 text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
+                    <pre className="mt-1 p-2 bg-white dark:bg-[#0d0e12] rounded border border-slate-200 dark:border-zinc-800 text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
                       {ocrSuccessData.raw_text}
                     </pre>
                   </details>
@@ -2025,7 +2030,7 @@ export default function ClientesPage() {
           </div>
 
           {/* 3. Client Info Header Card & Detalle General */}
-          <div className="bg-gradient-to-r from-slate-50 to-blue-50/40 dark:from-slate-800 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+          <div className="bg-gradient-to-r from-slate-50 to-amber-50/40 dark:from-slate-800 dark:to-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
             <div className="flex items-start justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -2033,7 +2038,7 @@ export default function ClientesPage() {
                 </h2>
                 <div className="flex flex-wrap items-center gap-2 mt-3">
                   {selectedCliente.curp ? (
-                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-lg">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-mono font-bold px-3 py-1.5 bg-[#c5a059]/20 dark:bg-[#c5a059]/60 text-[#c5a059] dark:text-[#dfba73] rounded-lg">
                       CURP: {selectedCliente.curp}
                     </span>
                   ) : null}
@@ -2052,7 +2057,7 @@ export default function ClientesPage() {
                   )}
 
                   {/* 2. Botón para subir y guardar el PDF original descargado de RENAPO */}
-                  <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
+                  <label className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer">
                     <Upload className="w-3.5 h-3.5" />
                     <span>Adjuntar PDF Original RENAPO</span>
                     <input
@@ -2148,7 +2153,7 @@ export default function ClientesPage() {
                 <span className="text-slate-800 dark:text-slate-200 font-semibold">{selectedCliente.email || 'No especificado'}</span>
               </div>
               {selectedCliente.notas && (
-                <div className="sm:col-span-2 lg:col-span-3 p-3.5 bg-white dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div className="sm:col-span-2 lg:col-span-3 p-3.5 bg-white dark:bg-[#0d0e12]/60 rounded-xl border border-slate-200 dark:border-slate-700">
                   <span className="text-slate-400 block font-medium mb-1">Notas / Observaciones:</span>
                   <p className="text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{selectedCliente.notas}</p>
                 </div>
@@ -2160,9 +2165,9 @@ export default function ClientesPage() {
         /* VISTA HABITUAL: LISTA DE CLIENTES (IZQ) + CHECKLIST RÁPIDO (DER) */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Listado de Clientes */}
-          <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[750px]">
+          <div className="lg:col-span-1 bg-white dark:bg-[#0d0e12] rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col h-[750px]">
             {/* Search bar */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+            <div className="p-4 border-b border-slate-200 dark:border-zinc-800">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -2170,7 +2175,7 @@ export default function ClientesPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Buscar por nombre, CURP o NSS..."
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
@@ -2179,7 +2184,7 @@ export default function ClientesPage() {
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {loading ? (
                 <div className="flex items-center justify-center h-48 text-slate-400 text-xs">
-                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mr-2" />
+                  <div className="w-5 h-5 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin mr-2" />
                   Cargando clientes...
                 </div>
               ) : filteredClientes.length === 0 ? (
@@ -2198,24 +2203,24 @@ export default function ClientesPage() {
                       onClick={() => handleSelectCliente(cliente, false)}
                       className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group cursor-pointer ${
                         isSelected
-                          ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-400 dark:border-blue-600 shadow-sm'
-                          : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/60 hover:bg-slate-100 dark:hover:bg-slate-800'
+                          ? 'bg-zinc-800/90 border-[#c5a059]/50 shadow-sm'
+                          : 'bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/50'
                       }`}
                     >
                       <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                        <p className="text-sm font-semibold text-white truncate">
                           {cliente.nombre} {fullApellidos}
                         </p>
                         {cliente.telefono ? (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          <p className="text-xs text-zinc-400 truncate mt-0.5">
                             Tel: {cliente.telefono}
                           </p>
                         ) : cliente.email ? (
-                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                          <p className="text-xs text-zinc-400 truncate mt-0.5">
                             {cliente.email}
                           </p>
                         ) : (
-                          <p className="text-[11px] text-slate-400 italic mt-0.5">Sin contacto registrado</p>
+                          <p className="text-[11px] text-zinc-500 italic mt-0.5">Sin contacto registrado</p>
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
@@ -2226,9 +2231,9 @@ export default function ClientesPage() {
                             handleEditCliente(cliente);
                           }}
                           title="Editar información básica del cliente"
-                          className="px-2 py-1 text-xs font-semibold rounded-lg bg-slate-200/80 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                          className="px-2 py-1 text-xs font-semibold rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition-all cursor-pointer flex items-center gap-1 border border-zinc-700"
                         >
-                          <Edit className="w-3 h-3 text-indigo-500" />
+                          <Edit className="w-3 h-3 text-[#dfba73]" />
                           <span>Editar</span>
                         </button>
                         <button
@@ -2240,14 +2245,14 @@ export default function ClientesPage() {
                           title="Abrir expediente y detalles completos"
                           className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                             isSelected && showFullDetails
-                              ? 'bg-blue-600 text-white shadow-sm'
-                              : 'bg-slate-200/80 hover:bg-blue-600 hover:text-white dark:bg-slate-700 dark:hover:bg-blue-600 text-slate-700 dark:text-slate-200'
+                              ? 'bg-[#c5a059] text-zinc-950 shadow-sm'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
                           }`}
                         >
                           <User className="w-3 h-3" />
                           <span>Detalles</span>
                         </button>
-                        <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'text-blue-600 translate-x-0.5' : 'text-slate-400'}`} />
+                        <ChevronRight className={`w-4 h-4 transition-transform ${isSelected ? 'text-[#c5a059] translate-x-0.5' : 'text-zinc-500'}`} />
                       </div>
                     </div>
                   );
@@ -2257,42 +2262,42 @@ export default function ClientesPage() {
           </div>
 
           {/* Detalle y Trámites del Cliente Seleccionado (Vista Checklist Rápida) */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 h-[750px] overflow-y-auto">
+          <div className="lg:col-span-2 bg-[#0d0e12] rounded-2xl border border-zinc-800 shadow-sm p-6 h-[750px] overflow-y-auto">
             {!selectedCliente ? (
-              <div className="flex flex-col items-center justify-center h-full text-center text-slate-400">
-                <FileCheck2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mb-3" />
-                <p className="text-base font-semibold text-slate-700 dark:text-slate-300">Ningún cliente seleccionado</p>
-                <p className="text-xs text-slate-500 max-w-sm mt-1">
+              <div className="flex flex-col items-center justify-center h-full text-center text-zinc-400">
+                <FileCheck2 className="w-12 h-12 text-zinc-700 mb-3" />
+                <p className="text-base font-semibold text-zinc-300">Ningún cliente seleccionado</p>
+                <p className="text-xs text-zinc-500 max-w-sm mt-1">
                   Selecciona un cliente de la lista para ver el checklist completo de sus documentos y estado de trámites.
                 </p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Header Compacto del Cliente - Vista Checklist Rápida */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-slate-50 dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-800 border border-blue-200/70 dark:border-slate-700 shadow-sm">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-sm">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold text-lg shrink-0 shadow-md shadow-blue-500/20">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-[#c5a059] to-[#dfba73] text-zinc-950 flex items-center justify-center font-bold text-lg shrink-0 shadow-md">
                       {selectedCliente.nombre.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                        <h2 className="text-xl font-bold text-white">
                           {selectedCliente.nombre} {[selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || ''}
                         </h2>
-                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300">
+                        <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30">
                           Checklist
                         </span>
                       </div>
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-1">
                         {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
                         {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
                         {selectedCliente.estado && (
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <span className="font-semibold text-emerald-400 flex items-center gap-1">
                             <MapPin className="w-3.5 h-3.5" />
                             {selectedCliente.estado}
                           </span>
                         )}
-                        {selectedCliente.curp && <span className="font-mono font-semibold text-blue-600 dark:text-blue-400">🆔 {selectedCliente.curp}</span>}
+                        {selectedCliente.curp && <span className="font-mono font-semibold text-[#dfba73]">🆔 {selectedCliente.curp}</span>}
                       </div>
                     </div>
                   </div>
@@ -2301,15 +2306,15 @@ export default function ClientesPage() {
                     <button
                       type="button"
                       onClick={() => handleEditCliente(selectedCliente)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-100 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 transition-all cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-semibold rounded-xl border border-zinc-700 transition-all cursor-pointer"
                     >
-                      <Edit className="w-3.5 h-3.5 text-indigo-500" />
+                      <Edit className="w-3.5 h-3.5 text-[#dfba73]" />
                       <span>Editar Datos</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setShowFullDetails(true)}
-                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-md shadow-blue-500/20 transition-all cursor-pointer shrink-0"
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#c5a059] to-[#9a7b38] hover:from-[#d5b069] hover:to-[#aa8b48] text-zinc-950 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer shrink-0"
                     >
                       <UserCheck className="w-4 h-4" />
                       <span>Ver Expediente Completo</span>
@@ -2328,10 +2333,10 @@ export default function ClientesPage() {
       {/* Modal Registro / Edición Cliente */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                {editingClienteId ? <Edit className="w-5 h-5 text-indigo-600" /> : <Plus className="w-5 h-5 text-blue-600" />}
+                {editingClienteId ? <Edit className="w-5 h-5 text-[#dfba73]" /> : <Plus className="w-5 h-5 text-[#c5a059]" />}
                 {editingClienteId ? 'Editar Información del Cliente' : 'Registrar Nuevo Cliente & Expediente'}
               </h2>
               <button
@@ -2367,7 +2372,7 @@ export default function ClientesPage() {
                       value={formCliente.nombre}
                       onChange={(e) => setFormCliente({ ...formCliente, nombre: e.target.value })}
                       placeholder="ej: Juan Carlos"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -2379,7 +2384,7 @@ export default function ClientesPage() {
                       value={formCliente.apellido_paterno}
                       onChange={(e) => setFormCliente({ ...formCliente, apellido_paterno: e.target.value })}
                       placeholder="ej: Hernández"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -2391,7 +2396,7 @@ export default function ClientesPage() {
                       value={formCliente.apellido_materno}
                       onChange={(e) => setFormCliente({ ...formCliente, apellido_materno: e.target.value })}
                       placeholder="ej: López"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -2403,7 +2408,7 @@ export default function ClientesPage() {
                       value={formCliente.telefono}
                       onChange={(e) => setFormCliente({ ...formCliente, telefono: e.target.value })}
                       placeholder="ej: 55 1234 5678"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -2415,14 +2420,14 @@ export default function ClientesPage() {
                       value={formCliente.email}
                       onChange={(e) => setFormCliente({ ...formCliente, email: e.target.value })}
                       placeholder="cliente@ejemplo.com"
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                     />
                   </div>
 
                   {/* NUEVO CAMPO: ESTADO DE LA REPÚBLICA MEXICANA CON BUSCADOR */}
                   <div className="sm:col-span-2 relative">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-blue-600" />
+                      <MapPin className="w-3.5 h-3.5 text-[#c5a059]" />
                       Estado de la República Mexicana *
                     </label>
 
@@ -2437,7 +2442,7 @@ export default function ClientesPage() {
                           setIsEstadoDropdownOpen(true);
                         }}
                         placeholder="Buscar estado de México..."
-                        className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-800 dark:text-slate-100"
+                        className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-semibold text-slate-800 dark:text-slate-100"
                       />
                       <Search className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
@@ -2462,12 +2467,12 @@ export default function ClientesPage() {
                               }}
                               className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
                                 formCliente.estado === st
-                                  ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-300'
+                                  ? 'bg-[#c5a059]/10 dark:bg-[#c5a059] text-[#c5a059] dark:text-[#dfba73]'
                                   : 'hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
                               }`}
                             >
                               <span>{st}</span>
-                              {formCliente.estado === st && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                              {formCliente.estado === st && <Check className="w-3.5 h-3.5 text-[#c5a059]" />}
                             </button>
                           ))
                         )}
@@ -2483,21 +2488,21 @@ export default function ClientesPage() {
                       value={formCliente.notas}
                       onChange={(e) => setFormCliente({ ...formCliente, notas: e.target.value })}
                       placeholder="Agrega anotaciones o detalles relevantes del cliente..."
-                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                      className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Trámite Inicial y Checklist */}
-              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
                 <div className="flex items-center justify-between mb-3">
                   <label className="flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={crearTramiteInicial}
                       onChange={(e) => setCrearTramiteInicial(e.target.checked)}
-                      className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                      className="w-4 h-4 rounded text-[#c5a059] focus:ring-amber-500 border-slate-300"
                     />
                     <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                       {editingClienteId ? 'Agregar o Cambiar Trámite / Checklist' : 'Asignar Trámite Inicial y Checklist de Documentos'}
@@ -2540,7 +2545,7 @@ export default function ClientesPage() {
                         onClick={() => setTipoTramiteInicial('alta_medica_imss')}
                         className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
                           tipoTramiteInicial === 'alta_medica_imss'
-                            ? 'bg-sky-600 text-white border-sky-600 shadow-md'
+                            ? 'bg-amber-600 text-white border-amber-600 shadow-md'
                             : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
                         }`}
                       >
@@ -2751,7 +2756,7 @@ export default function ClientesPage() {
                               <span><strong>8. 3 Referencias Personales:</strong> Nombre, teléfono y última con parentesco</span>
                             </label>
 
-                            <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2">
+                            <div className="p-2.5 bg-slate-50 dark:bg-[#0d0e12] rounded-lg border border-slate-200 dark:border-zinc-800 space-y-2">
                               <label className="flex items-center gap-2">
                                 <input
                                   type="checkbox"
@@ -2852,7 +2857,7 @@ export default function ClientesPage() {
               </div>
 
               {/* Botón Guardar */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
@@ -2863,7 +2868,7 @@ export default function ClientesPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-5 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 text-xs font-semibold bg-[#c5a059] hover:bg-[#d5b069] text-white rounded-xl shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
                 >
                   {saving ? 'Guardando...' : 'Registrar Cliente & Expediente'}
                 </button>
@@ -2875,8 +2880,8 @@ export default function ClientesPage() {
 
       {/* Overlay Global de Arrastre de PDF (Drag & Drop desde la barra de descargas) */}
       {isDraggingPdf && (
-        <div className="fixed inset-0 z-50 bg-blue-900/70 backdrop-blur-sm flex flex-col items-center justify-center p-6 border-4 border-dashed border-emerald-400 text-white pointer-events-none transition-all">
-          <div className="p-6 bg-slate-900/90 border border-emerald-500/40 rounded-3xl backdrop-blur-md flex flex-col items-center text-center max-w-md shadow-2xl animate-pulse">
+        <div className="fixed inset-0 z-50 bg-[#c5a059]/70 backdrop-blur-sm flex flex-col items-center justify-center p-6 border-4 border-dashed border-emerald-400 text-white pointer-events-none transition-all">
+          <div className="p-6 bg-[#0d0e12]/90 border border-emerald-500/40 rounded-3xl backdrop-blur-md flex flex-col items-center text-center max-w-md shadow-2xl animate-pulse">
             <Upload className="w-16 h-16 mb-3 text-emerald-400 animate-bounce" />
             <h3 className="text-xl font-bold text-white">Suelta la Constancia de CURP aquí</h3>
             <p className="text-xs text-slate-300 mt-2">
@@ -2890,17 +2895,17 @@ export default function ClientesPage() {
       {/* Modal Visualizador de Documentos Inline (Misma Página) */}
       {modalViewerDoc && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-slate-800/80">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white truncate flex items-center gap-2">
-                <Eye className="w-4 h-4 text-blue-600" />
+                <Eye className="w-4 h-4 text-[#c5a059]" />
                 <span>Visualizador: {modalViewerDoc.title}</span>
               </h3>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => handleDownloadInline(modalViewerDoc.url, modalViewerDoc.title)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-semibold rounded-xl shadow-sm cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Descargar</span>
@@ -2928,11 +2933,11 @@ export default function ClientesPage() {
       {/* Modal Fotos Inmueble (5) - Carga, Reordenación y Generación de PDF */}
       {inmuebleFotosModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-3xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-3xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <Camera className="w-5 h-5 text-indigo-600" />
+                  <Camera className="w-5 h-5 text-[#dfba73]" />
                   Fotografías del Inmueble (Hasta 5 Imágenes)
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -2951,12 +2956,12 @@ export default function ClientesPage() {
             {/* Barra de Acciones Globales */}
             <div className="flex items-center justify-between gap-3 flex-wrap p-3 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Imágenes cargadas: <strong className="text-indigo-600 dark:text-indigo-400">{inmuebleFotosModal.fotos.length} / 5</strong>
+                Imágenes cargadas: <strong className="text-[#dfba73] dark:text-[#dfba73]">{inmuebleFotosModal.fotos.length} / 5</strong>
               </span>
 
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Reemplazar / Agregar todas */}
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer">
+                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer">
                   <Upload className="w-3.5 h-3.5" />
                   <span>{inmuebleFotosModal.fotos.length > 0 ? 'Cambiar Todas las Fotos' : 'Cargar Fotos (Selección múltiple)'}</span>
                   <input
@@ -3008,14 +3013,14 @@ export default function ClientesPage() {
                     key={idx}
                     className={`p-3 rounded-2xl border flex flex-col justify-between space-y-2 relative transition-all ${
                       fotoSrc
-                        ? 'bg-white dark:bg-slate-800 border-indigo-200 dark:border-indigo-900/60 shadow-sm'
-                        : 'bg-slate-50 dark:bg-slate-900 border-dashed border-slate-300 dark:border-slate-700'
+                        ? 'bg-white dark:bg-slate-800 border-stone-200 dark:border-stone-900/60 shadow-sm'
+                        : 'bg-slate-50 dark:bg-[#0d0e12] border-dashed border-slate-300 dark:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 dark:text-slate-300">
                       <span>{slotLabel}</span>
                       {fotoSrc && (
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-[#9a7b38] dark:bg-[#9a7b38] text-[#dfba73] dark:text-[#dfba73]">
                           Posición {idx + 1}
                         </span>
                       )}
@@ -3026,7 +3031,7 @@ export default function ClientesPage() {
                         <img src={fotoSrc} alt={`Foto ${idx + 1}`} className="object-contain h-36 w-full" />
                       </div>
                     ) : (
-                      <div className="h-36 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-slate-400 text-xs space-y-1">
+                      <div className="h-36 rounded-xl border border-dashed border-slate-200 dark:border-zinc-800 flex flex-col items-center justify-center text-slate-400 text-xs space-y-1">
                         <Camera className="w-7 h-7 text-slate-300 dark:text-slate-700" />
                         <span className="text-[11px]">Sin foto {idx + 1}</span>
                       </div>
@@ -3070,8 +3075,8 @@ export default function ClientesPage() {
                       </div>
 
                       {/* Cambiar foto individual */}
-                      <label className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-indigo-950 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg cursor-pointer transition-colors">
-                        <Upload className="w-3 h-3 text-indigo-500" />
+                      <label className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 dark:bg-slate-700 hover:bg-[#9a7b38] dark:hover:bg-[#9a7b38] text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg cursor-pointer transition-colors">
+                        <Upload className="w-3 h-3 text-[#dfba73]" />
                         <span>{fotoSrc ? 'Cambiar' : 'Subir'}</span>
                         <input
                           type="file"
@@ -3098,7 +3103,7 @@ export default function ClientesPage() {
             </div>
 
             {/* Acciones de Confirmación y Generación de PDF */}
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-zinc-800">
               <button
                 type="button"
                 onClick={() => setInmuebleFotosModal(null)}
@@ -3140,7 +3145,7 @@ export default function ClientesPage() {
                     setSavingFotosPdf(false);
                   }
                 }}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-stone-600 to-amber-600 hover:from-stone-700 hover:to-amber-700 text-white text-xs font-bold rounded-xl shadow-md shadow-stone-500/20 disabled:opacity-50 transition-all cursor-pointer"
               >
                 {savingFotosPdf ? (
                   <>
@@ -3162,11 +3167,11 @@ export default function ClientesPage() {
       {/* Modal Marcado Manual de 4 Puntos INE (Frontal y Trasera) */}
       {manualIneCropModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-4xl shadow-2xl p-6 my-6 space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-4xl shadow-2xl p-6 my-6 space-y-4 max-h-[92vh] flex flex-col animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <ScanLine className="w-5 h-5 text-blue-600" />
+                  <ScanLine className="w-5 h-5 text-[#c5a059]" />
                   <span>
                     Marcar 4 Puntos de la INE ({manualIneCropModal.step === 'frente' ? '1. Cara FRONTAL' : '2. Cara TRASERA'})
                   </span>
@@ -3185,12 +3190,12 @@ export default function ClientesPage() {
             </div>
 
             {/* Barra de progreso de los 4 puntos */}
-            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 text-xs">
+            <div className="flex items-center justify-between p-3 bg-[#c5a059]/10 dark:bg-slate-800 rounded-2xl border border-[#c5a059] dark:border-slate-700 text-xs">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-blue-900 dark:text-blue-200 uppercase tracking-wide">
+                <span className="font-bold text-[#c5a059] dark:text-[#c5a059] uppercase tracking-wide">
                   Puntos marcados ({manualIneCropModal.step === 'frente' ? 'Frontal' : 'Trasera'}):
                 </span>
-                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-sm">
+                <span className="font-mono font-bold text-[#c5a059] dark:text-[#dfba73] text-sm">
                   {manualIneCropModal.step === 'frente' ? manualIneCropModal.frentePoints.length : manualIneCropModal.reversoPoints.length} / 4
                 </span>
               </div>
@@ -3237,7 +3242,7 @@ export default function ClientesPage() {
             </div>
 
             {/* Botones de Paso / Confirmación */}
-            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-zinc-800">
               <button
                 type="button"
                 onClick={() => setManualIneCropModal(null)}
@@ -3251,7 +3256,7 @@ export default function ClientesPage() {
                   type="button"
                   disabled={manualIneCropModal.frentePoints.length < 4}
                   onClick={() => setManualIneCropModal({ ...manualIneCropModal, step: 'reverso' })}
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-40 transition-all cursor-pointer"
+                  className="px-5 py-2.5 bg-[#c5a059] hover:bg-[#d5b069] text-white text-xs font-bold rounded-xl shadow-md disabled:opacity-40 transition-all cursor-pointer"
                 >
                   Siguiente: Marcar 4 Puntos de la Trasera →
                 </button>
@@ -3306,8 +3311,8 @@ export default function ClientesPage() {
       {/* Modal Captura de Credenciales Infonavit (NSS y Contraseña) */}
       {infonavitCredsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <KeyRound className="w-5 h-5 text-red-600" />
@@ -3391,7 +3396,7 @@ export default function ClientesPage() {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setInfonavitCredsModal(null)}
@@ -3425,11 +3430,11 @@ export default function ClientesPage() {
       {/* Modal Captura de 3 Referencias Personales (Requisito 8) */}
       {referenciasModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-xl shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                  <UserCheck className="w-5 h-5 text-indigo-600" />
+                  <UserCheck className="w-5 h-5 text-[#dfba73]" />
                   <span>8. Captura de 3 Referencias Personales</span>
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -3490,7 +3495,7 @@ export default function ClientesPage() {
                   className="p-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/40 space-y-3"
                 >
                   <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
-                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-sm">
+                    <span className="w-5 h-5 rounded-full bg-[#9a7b38] text-white font-bold text-xs flex items-center justify-center shadow-sm">
                       {idx + 1}
                     </span>
                     <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
@@ -3513,7 +3518,7 @@ export default function ClientesPage() {
                           setReferenciasModal({ ...referenciasModal, referencias: newRefs });
                         }}
                         placeholder="ej: María Carmen Pérez"
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-stone-500 focus:outline-none"
                       />
                     </div>
 
@@ -3531,7 +3536,7 @@ export default function ClientesPage() {
                           setReferenciasModal({ ...referenciasModal, referencias: newRefs });
                         }}
                         placeholder="ej: 33 1234 5678"
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-stone-500 focus:outline-none font-mono"
                       />
                     </div>
 
@@ -3549,14 +3554,14 @@ export default function ClientesPage() {
                           setReferenciasModal({ ...referenciasModal, referencias: newRefs });
                         }}
                         placeholder="ej: Av. Hidalgo #123, Col. Centro, Guadalajara, Jal."
-                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full px-3 py-2 text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-stone-500 focus:outline-none"
                       />
                     </div>
                   </div>
                 </div>
               ))}
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-200 dark:border-zinc-800">
                 <button
                   type="button"
                   onClick={() => setReferenciasModal(null)}
@@ -3567,7 +3572,7 @@ export default function ClientesPage() {
                 <button
                   type="submit"
                   disabled={savingReferencias}
-                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-md shadow-indigo-500/20 disabled:opacity-50 transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold bg-[#9a7b38] hover:bg-[#9a7b38] text-white rounded-xl shadow-md shadow-stone-500/20 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingReferencias ? (
                     <>
@@ -3590,8 +3595,8 @@ export default function ClientesPage() {
       {/* Modal Generar Link de Documento Especial para Cliente */}
       {clientDocModal && clientDocModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+          <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-zinc-800">
               <div>
                 <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
                   <Link2 className="w-5 h-5 text-purple-600" />
@@ -3629,7 +3634,7 @@ export default function ClientesPage() {
                       if (clientDocModal) setClientDocModal({ ...clientDocModal, copied: false });
                     }, 2500);
                   }}
-                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
+                  className="px-3.5 py-2 bg-[#c5a059] hover:bg-[#d5b069] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
                 >
                   {clientDocModal.copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                   <span>{clientDocModal.copied ? '¡Copiado!' : 'Copiar'}</span>

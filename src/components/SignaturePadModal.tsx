@@ -116,9 +116,9 @@ export function SignaturePadModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm p-3 sm:p-4">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-150">
+      <div className="bg-white dark:bg-[#0d0e12] rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[95vh] animate-in zoom-in-95 duration-150">
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-zinc-800 bg-slate-50/50 dark:bg-[#0d0e12]/50">
           <div className="flex items-center gap-2">
             <span className="text-xl">✍️</span>
             <div>
@@ -171,7 +171,7 @@ export function SignaturePadModal({
         </div>
 
         {/* Modal Actions */}
-        <div className="px-5 py-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between gap-3">
+        <div className="px-5 py-4 border-t border-slate-100 dark:border-zinc-800 bg-white dark:bg-[#0d0e12] flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={handleClear}

@@ -156,7 +156,7 @@ export default function PresetBuilder({
   return (
     <div className="space-y-6">
       {/* Barra superior de control */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm transition-colors">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-[#0d0e12] p-4 rounded-2xl border border-slate-200/80 dark:border-zinc-800 shadow-sm transition-colors">
         <div className="flex items-center gap-3">
           <button
             onClick={onCancel}
@@ -186,7 +186,7 @@ export default function PresetBuilder({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm shadow-blue-600/20 cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 bg-[#c5a059] hover:bg-[#c5a059] text-white px-5 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm shadow-amber-600/20 cursor-pointer disabled:opacity-50"
           >
             {isSaving ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -203,8 +203,8 @@ export default function PresetBuilder({
         {/* Panel Izquierdo: Configuración del Preset y Zonas */}
         <div className="lg:col-span-4 space-y-5">
           {/* Metadata del preset */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 transition-colors">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div className="bg-white dark:bg-[#0d0e12] rounded-2xl p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-4 transition-colors">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-zinc-800 pb-2">
               1. Datos de la Plantilla
             </h3>
 
@@ -219,12 +219,12 @@ export default function PresetBuilder({
                   onClick={() => setPresetType('standard')}
                   className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                     presetType === 'standard'
-                      ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/40 text-blue-900 dark:text-blue-200 ring-2 ring-blue-500/20'
+                      ? 'border-[#c5a059] bg-[#c5a059]/60 dark:bg-[#c5a059]/40 text-[#c5a059] dark:text-[#c5a059] ring-2 ring-amber-500/20'
                       : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 font-bold text-xs">
-                    <FileText className="w-4 h-4 text-blue-600" />
+                    <FileText className="w-4 h-4 text-[#c5a059]" />
                     <span>Edición Directa</span>
                   </div>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
@@ -283,7 +283,7 @@ export default function PresetBuilder({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ej: Contrato de Servicios / Solicitud"
-                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
@@ -296,14 +296,14 @@ export default function PresetBuilder({
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
                 placeholder="Breve descripción del uso de esta plantilla..."
-                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 <span className="flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5 text-blue-500" />
+                  <Tag className="w-3.5 h-3.5 text-[#c5a059]" />
                   Palabras Clave para Autodetección
                 </span>
               </label>
@@ -312,7 +312,7 @@ export default function PresetBuilder({
                 value={keywords}
                 onChange={(e) => setKeywords(e.target.value)}
                 placeholder="factura, invoice, recibo (separadas por coma)"
-                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
                 Si el nombre de un PDF contiene estas palabras, se seleccionará automáticamente este preset.
@@ -321,8 +321,8 @@ export default function PresetBuilder({
           </div>
 
           {/* Subir PDF de muestra */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div className="bg-white dark:bg-[#0d0e12] rounded-2xl p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-3 transition-colors">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-zinc-800 pb-2">
               2. PDF Base de Calibración
             </h3>
 
@@ -334,7 +334,7 @@ export default function PresetBuilder({
                 type="file"
                 accept="application/pdf"
                 onChange={handleFileUpload}
-                className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 dark:file:bg-blue-950/60 file:text-blue-700 dark:file:text-blue-300 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/60 cursor-pointer"
+                className="w-full text-xs text-slate-500 dark:text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#c5a059] dark:file:bg-[#c5a059]/60 file:text-[#c5a059] dark:file:text-[#c5a059] hover:file:bg-[#c5a059] dark:hover:file:bg-[#c5a059]/60 cursor-pointer"
               />
             </div>
             {pdfFile && (
@@ -345,10 +345,10 @@ export default function PresetBuilder({
           </div>
 
           {/* Lista de Zonas Configuradas */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3 transition-colors">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+          <div className="bg-white dark:bg-[#0d0e12] rounded-2xl p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-3 transition-colors">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-zinc-800 pb-2">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <LayoutGrid className="w-4 h-4 text-[#c5a059] dark:text-[#c5a059]" />
                 3. Zonas Definidas ({zones.length})
               </h3>
             </div>
@@ -368,13 +368,13 @@ export default function PresetBuilder({
                       key={zone.id}
                       className={`p-3 rounded-xl border transition-all ${
                         isActive
-                          ? 'border-blue-500 bg-blue-50/40 dark:bg-blue-950/30 shadow-sm'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40'
+                          ? 'border-[#c5a059] bg-[#c5a059]/40 dark:bg-[#c5a059]/30 shadow-sm'
+                          : 'border-slate-200 dark:border-zinc-800 bg-slate-50/60 dark:bg-slate-800/40'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2 flex-1">
-                          <span className="w-5 h-5 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center shrink-0">
+                          <span className="w-5 h-5 rounded-full bg-[#c5a059] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
                           <input
@@ -384,7 +384,7 @@ export default function PresetBuilder({
                               handleUpdateZone(zone.id, { name: e.target.value })
                             }
                             onClick={() => setActiveZoneId(zone.id)}
-                            className="text-xs font-semibold text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-blue-500 focus:bg-white dark:focus:bg-slate-800 px-1 py-0.5 rounded flex-1 focus:outline-none"
+                            className="text-xs font-semibold text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#c5a059] focus:bg-white dark:focus:bg-slate-800 px-1 py-0.5 rounded flex-1 focus:outline-none"
                           />
                         </div>
 
@@ -402,7 +402,7 @@ export default function PresetBuilder({
                       </div>
 
                       {/* Asignación de quien debe rellenar el campo: CLIENTE o ASESOR y Tipo Firma */}
-                      <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-slate-800 flex-wrap">
+                      <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-zinc-800 flex-wrap">
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] font-bold text-slate-400">Rellena:</span>
                           <div className="inline-flex p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
@@ -411,7 +411,7 @@ export default function PresetBuilder({
                               onClick={() => handleUpdateZone(zone.id, { filledBy: 'cliente' })}
                               className={`px-2 py-0.5 text-[10px] font-bold rounded-md transition-all cursor-pointer flex items-center gap-1 ${
                                 (zone.filledBy || 'cliente') === 'cliente'
-                                  ? 'bg-blue-600 text-white shadow-xs'
+                                  ? 'bg-[#c5a059] text-white shadow-xs'
                                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
                               }`}
                             >
@@ -449,7 +449,7 @@ export default function PresetBuilder({
                       <div className="mt-2 space-y-1">
                         <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
                           <span>Página {zone.pageNumber}</span>
-                          <span className="font-bold text-blue-600 dark:text-blue-400">Posición y Tamaño (%)</span>
+                          <span className="font-bold text-[#c5a059] dark:text-[#c5a059]">Posición y Tamaño (%)</span>
                         </div>
                         <div className="grid grid-cols-4 gap-1.5">
                           <div className="flex items-center gap-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-1.5 py-1 shadow-xs" title="Coordenada X (%)">
@@ -546,8 +546,8 @@ export default function PresetBuilder({
 
         {/* Panel Derecho: Visor de PDF y canvas de calibración */}
         <div className="lg:col-span-8">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm min-h-[600px] flex flex-col transition-colors">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 gap-2 mb-4">
+          <div className="bg-white dark:bg-[#0d0e12] rounded-2xl p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm min-h-[600px] flex flex-col transition-colors">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800 gap-2 mb-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">
                 Visor Interactivo & Calibración de Zonas
               </h3>
@@ -558,7 +558,7 @@ export default function PresetBuilder({
               </p>
             </div>
 
-            <div className="flex-1 flex items-center justify-center bg-slate-100/70 dark:bg-slate-950/60 rounded-xl p-4 border border-slate-200/60 dark:border-slate-800/80 overflow-auto">
+            <div className="flex-1 flex items-center justify-center bg-slate-100/70 dark:bg-slate-950/60 rounded-xl p-4 border border-slate-200/60 dark:border-zinc-800/80 overflow-auto">
               {pdfFile || pdfArrayBuffer ? (
                 <CanvasPdfViewer
                   pdfFile={pdfFile || pdfArrayBuffer!}
@@ -583,7 +583,7 @@ export default function PresetBuilder({
 
             {/* Paginador si el PDF tiene múltiples páginas */}
             {numPages > 1 && (
-              <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100 dark:border-slate-800 mt-4">
+              <div className="flex items-center justify-center gap-3 pt-4 border-t border-slate-100 dark:border-zinc-800 mt-4">
                 <button
                   disabled={currentPage <= 1}
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}

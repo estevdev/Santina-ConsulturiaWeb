@@ -24,9 +24,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-white">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-400 tracking-wide">Cargando plataforma Santina...</p>
+      <div className="min-h-screen bg-[#08080a] flex flex-col items-center justify-center text-white">
+        <div className="w-10 h-10 border-4 border-[#c5a059] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium text-zinc-400 tracking-wide">Cargando plataforma Santina...</p>
       </div>
     );
   }
@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+    <div className="min-h-screen bg-[#08080a] dark:bg-[#08080a] text-zinc-100 flex transition-colors duration-200">
       {/* Sidebar with Slider/Collapse toggle */}
       <Sidebar
         isOpen={isSidebarOpen}

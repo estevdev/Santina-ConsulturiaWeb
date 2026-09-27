@@ -30,7 +30,7 @@ export default function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-100 dark:border-slate-800 p-8 transition-colors relative">
+    <div className="w-full max-w-md bg-white dark:bg-[#0d0e12] rounded-3xl shadow-2xl border border-slate-100 dark:border-zinc-800 p-8 transition-colors relative">
       {/* Selector de tema en esquina superior */}
       <div className="absolute top-6 right-6">
         <ThemeToggle />
@@ -38,11 +38,15 @@ export default function LoginForm() {
 
       {/* Header */}
       <div className="text-center mb-8 pt-2">
-        <div className="inline-flex items-center justify-center p-3.5 bg-gradient-to-tr from-blue-600 to-indigo-600 text-white rounded-2xl shadow-lg shadow-blue-500/30 mb-4">
-          <FileEdit className="w-7 h-7" />
+        <div className="flex justify-center mb-4">
+          <img
+            src="/logo.png"
+            alt="Consultoría Santina Logo"
+            className="w-20 h-20 object-contain filter drop-shadow-[0_0_12px_rgba(197,160,89,0.3)]"
+          />
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Santina Consultoría</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Plataforma de Gestión & PDF Studio</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Consultoría Santina</h1>
+        <p className="text-xs font-semibold text-[#c5a059] uppercase tracking-widest mt-1">Trámites &bull; Asesoría &bull; Resultados</p>
       </div>
 
       {/* Error Notice */}
@@ -67,7 +71,7 @@ export default function LoginForm() {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="tu-correo@ejemplo.com"
-              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
@@ -84,7 +88,7 @@ export default function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full pl-11 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 text-sm focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
             />
           </div>
         </div>
@@ -92,7 +96,7 @@ export default function LoginForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl shadow-md shadow-blue-500/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+          className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-[#c5a059] to-[#9a7b38] hover:from-[#d5b069] hover:to-[#aa8b48] text-zinc-950 font-bold rounded-xl shadow-md shadow-[#c5a059]/20 hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
         >
           {loading ? (
             <span className="inline-block w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

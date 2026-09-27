@@ -29,7 +29,7 @@ export default function ThemeToggle({ className = '', showLabel = false }: Theme
         {isDark ? (
           <Sun className="w-4 h-4 text-amber-400 transition-transform rotate-0 hover:rotate-45" />
         ) : (
-          <Moon className="w-4 h-4 text-indigo-600 transition-transform -rotate-12 hover:rotate-0" />
+          <Moon className="w-4 h-4 text-[#dfba73] transition-transform -rotate-12 hover:rotate-0" />
         )}
       </div>
       {showLabel && (

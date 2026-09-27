@@ -89,7 +89,7 @@ export default function PresetList({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 p-6 transition-colors">
+    <div className="bg-white dark:bg-[#0d0e12] rounded-2xl shadow-sm border border-slate-200/80 dark:border-zinc-800 p-6 transition-colors">
       {/* Notificación flotante */}
       {notification && (
         <div
@@ -162,7 +162,7 @@ export default function PresetList({
           <button
             type="button"
             onClick={onCreateNew}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm shadow-blue-600/20 cursor-pointer"
+            className="flex items-center gap-2 bg-[#c5a059] hover:bg-[#c5a059] text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm shadow-amber-600/20 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Crear Nuevo Preset</span>
@@ -171,7 +171,7 @@ export default function PresetList({
       </div>
 
       {presets.length === 0 ? (
-        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50">
+        <div className="text-center py-12 border-2 border-dashed border-slate-200 dark:border-zinc-800 rounded-2xl bg-slate-50/50 dark:bg-[#0d0e12]/50">
           <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
           <p className="text-slate-600 dark:text-slate-300 font-medium">No tienes presets guardados</p>
           <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 max-w-sm mx-auto">
@@ -180,7 +180,7 @@ export default function PresetList({
           <div className="mt-4 flex justify-center gap-3">
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 font-medium bg-blue-50 dark:bg-blue-950/60 px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+              className="inline-flex items-center gap-1.5 text-xs text-[#c5a059] dark:text-[#c5a059] font-medium bg-[#c5a059] dark:bg-[#c5a059]/60 px-3 py-1.5 rounded-lg border border-[#c5a059] dark:border-[#c5a059]/60 hover:bg-[#c5a059] dark:hover:bg-[#c5a059]/40"
             >
               <Upload className="w-3.5 h-3.5" />
               Importar archivo .json
@@ -192,11 +192,11 @@ export default function PresetList({
           {presets.map((preset) => (
             <div
               key={preset.id}
-              className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-md transition-all bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between group"
+              className="border border-slate-200 dark:border-zinc-800 rounded-2xl p-4 hover:border-[#c5a059] dark:hover:border-[#c5a059] hover:shadow-md transition-all bg-slate-50/60 dark:bg-slate-800/40 flex flex-col justify-between group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100 group-hover:text-[#c5a059] dark:group-hover:text-[#c5a059] transition-colors">
                     {preset.name}
                   </h3>
                   <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100">
@@ -250,7 +250,7 @@ export default function PresetList({
                     </span>
                   )}
 
-                  <span className="text-[11px] bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-900/60">
+                  <span className="text-[11px] bg-[#c5a059] dark:bg-[#c5a059]/80 text-[#c5a059] dark:text-[#c5a059] px-2 py-0.5 rounded-full font-medium border border-[#c5a059] dark:border-[#c5a059]/60">
                     {preset.zones.length} {preset.zones.length === 1 ? 'Zona' : 'Zonas'}
                   </span>
                   {preset.identifierKeywords?.map((kw, i) => (
@@ -266,7 +266,7 @@ export default function PresetList({
 
               <button
                 onClick={() => onSelectPreset(preset)}
-                className="w-full mt-2 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-blue-600 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 font-semibold text-xs text-slate-700 dark:text-slate-300 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
+                className="w-full mt-2 flex items-center justify-center gap-2 bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-slate-700 hover:border-[#c5a059] dark:hover:border-[#c5a059] hover:text-[#c5a059] dark:hover:text-[#c5a059] font-semibold text-xs text-slate-700 dark:text-slate-300 py-2 rounded-xl transition-all cursor-pointer shadow-sm"
               >
                 Usar este Preset
                 <ArrowRight className="w-3.5 h-3.5" />

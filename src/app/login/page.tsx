@@ -18,16 +18,16 @@ export default function LoginPage() {
   if (isLoading || isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-3 border-[#c5a059] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-200 to-indigo-100 dark:from-slate-950 dark:via-slate-900 dark:to-indigo-950 flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-slate-200 to-[#9a7b38] dark:from-slate-950 dark:via-slate-900 dark:to-[#9a7b38] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-200">
       {/* Subtle Background Glows */}
-      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-blue-500/10 dark:bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-[#c5a059]/10 dark:bg-[#c5a059]/20 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-[#9a7b38]/10 dark:bg-[#9a7b38]/20 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 w-full flex justify-center">
         <LoginForm />

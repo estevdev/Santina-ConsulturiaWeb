@@ -79,9 +79,9 @@ export default function PdfPresetStudioView() {
   return (
     <div className="space-y-6">
       {/* Studio Header Sub-Navbar */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors">
+      <div className="bg-white dark:bg-[#0d0e12] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-colors">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shadow-blue-500/20">
+          <div className="p-2.5 bg-[#c5a059] text-white rounded-xl shadow-md shadow-amber-500/20">
             <FileEdit className="w-5 h-5" />
           </div>
           <div>
@@ -103,7 +103,7 @@ export default function PdfPresetStudioView() {
             }}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeView === 'list'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-[#c5a059] text-white shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >
@@ -118,7 +118,7 @@ export default function PdfPresetStudioView() {
             }}
             className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
               activeView === 'create-preset' || activeView === 'edit-preset'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-[#c5a059] text-white shadow-sm'
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
             }`}
           >

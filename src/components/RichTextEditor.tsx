@@ -73,7 +73,7 @@ export default function RichTextEditor({
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'p-3 min-h-[75px] max-h-[160px] overflow-y-auto text-sm focus:outline-none bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-b-xl border-t-0',
+        class: 'p-3 min-h-[75px] max-h-[160px] overflow-y-auto text-sm focus:outline-none bg-white dark:bg-[#0d0e12] text-slate-900 dark:text-slate-100 rounded-b-xl border-t-0',
       },
     },
     onUpdate: ({ editor }) => {
@@ -129,7 +129,7 @@ export default function RichTextEditor({
   };
 
   return (
-    <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-slate-900 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all">
+    <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0d0e12] focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-[#c5a059] transition-all">
       {/* Barra de herramientas estilo Word */}
       <div className="bg-slate-50 dark:bg-slate-800/80 p-2 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-1.5 select-none">
         
@@ -153,7 +153,7 @@ export default function RichTextEditor({
                 onChange({ html, lines, plainText });
               }
             }}
-            className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200"
+            className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200"
           >
             <option value="Helvetica">Arial / Sans</option>
             <option value="TimesRoman">Times New Roman</option>
@@ -183,7 +183,7 @@ export default function RichTextEditor({
                   onChange({ html, lines, plainText });
                 }
               }}
-              className="w-11 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
+              className="w-11 bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
             />
             <span className="text-[10px] text-slate-400 dark:text-slate-500">pt</span>
           </div>
@@ -197,7 +197,7 @@ export default function RichTextEditor({
                 const newLineHeight = Number(e.target.value) || 1.15;
                 onUpdateZone(zone.id, { lineHeight: newLineHeight });
               }}
-              className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
+              className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
             >
               <option value="0.9">0.9x</option>
               <option value="1.0">1.0x (Sencillo)</option>
@@ -212,12 +212,12 @@ export default function RichTextEditor({
         </div>
 
         {/* Formatos de selección de texto: B, I, U */}
-        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
           <button
             type="button"
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('bold') ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold' : 'text-slate-600 dark:text-slate-300'
+              editor.isActive('bold') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059] font-bold' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Poner en negrita texto seleccionado (Ctrl+B)"
           >
@@ -227,7 +227,7 @@ export default function RichTextEditor({
             type="button"
             onClick={() => editor.chain().focus().toggleItalic().run()}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('italic') ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              editor.isActive('italic') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Poner en cursiva texto seleccionado (Ctrl+I)"
           >
@@ -237,7 +237,7 @@ export default function RichTextEditor({
             type="button"
             onClick={() => editor.chain().focus().toggleUnderline().run()}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('underline') ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              editor.isActive('underline') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Subrayar texto seleccionado (Ctrl+U)"
           >
@@ -246,7 +246,7 @@ export default function RichTextEditor({
         </div>
 
         {/* Alineación */}
-        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
           <button
             type="button"
             onClick={() => {
@@ -255,7 +255,7 @@ export default function RichTextEditor({
             }}
             className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
               editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' }))
-                ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300'
+                ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]'
                 : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Alinear a la izquierda"
@@ -269,7 +269,7 @@ export default function RichTextEditor({
               onUpdateZone(zone.id, { alignment: 'center' });
             }}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive({ textAlign: 'center' }) ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              editor.isActive({ textAlign: 'center' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Centrar"
           >
@@ -282,7 +282,7 @@ export default function RichTextEditor({
               onUpdateZone(zone.id, { alignment: 'right' });
             }}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive({ textAlign: 'right' }) ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              editor.isActive({ textAlign: 'right' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Alinear a la derecha"
           >
@@ -353,13 +353,13 @@ export default function RichTextEditor({
               type="button"
               onClick={() => onExtractOcr(zone)}
               disabled={isOcrLoading}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border border-indigo-200 dark:border-indigo-800/60 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#dfba73] dark:text-[#dfba73] bg-[#9a7b38] dark:bg-[#9a7b38]/60 hover:bg-[#9a7b38] dark:hover:bg-[#9a7b38]/50 border border-stone-200 dark:border-stone-800/60 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
               title="Re-extraer texto de esta zona con OCR"
             >
               {isOcrLoading ? (
-                <RefreshCw className="w-3 h-3 animate-spin text-indigo-600 dark:text-indigo-400" />
+                <RefreshCw className="w-3 h-3 animate-spin text-[#dfba73] dark:text-[#dfba73]" />
               ) : (
-                <ScanText className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                <ScanText className="w-3 h-3 text-[#dfba73] dark:text-[#dfba73]" />
               )}
               <span>OCR</span>
             </button>
@@ -384,7 +384,7 @@ export default function RichTextEditor({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-amber-900 dark:text-amber-200 text-[11px]">Coordenadas:</span>
             
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80">
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">X:</span>
               <input
                 type="number"
@@ -396,7 +396,7 @@ export default function RichTextEditor({
               <span className="text-[10px] text-slate-400">%</span>
             </div>
 
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80">
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Y:</span>
               <input
                 type="number"
@@ -408,7 +408,7 @@ export default function RichTextEditor({
               <span className="text-[10px] text-slate-400">%</span>
             </div>
 
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Ancho de la zona">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Ancho de la zona">
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Ancho:</span>
               <input
                 type="number"
@@ -420,7 +420,7 @@ export default function RichTextEditor({
               <span className="text-[10px] text-slate-400">%</span>
             </div>
 
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Alto de la zona">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Alto de la zona">
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Alto:</span>
               <input
                 type="number"
@@ -432,7 +432,7 @@ export default function RichTextEditor({
               <span className="text-[10px] text-slate-400">%</span>
             </div>
 
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Espaciado entre renglones (Interlineado)">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700/80" title="Espaciado entre renglones (Interlineado)">
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">Interlínea:</span>
               <input
                 type="number"
@@ -448,7 +448,7 @@ export default function RichTextEditor({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 bg-white dark:bg-slate-900 p-1 rounded-lg border border-amber-300 dark:border-amber-700/80">
+            <div className="flex items-center gap-1 bg-white dark:bg-[#0d0e12] p-1 rounded-lg border border-amber-300 dark:border-amber-700/80">
               <span className="text-[10px] font-semibold text-amber-900 dark:text-amber-200">Crecer hacia:</span>
               <button
                 type="button"
@@ -458,7 +458,7 @@ export default function RichTextEditor({
                 }}
                 className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                   zone.alignment === 'right'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-[#c5a059] text-white shadow-2xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
                 title="Fija el límite derecho y el texto largo se recorre hacia la izquierda"
@@ -473,7 +473,7 @@ export default function RichTextEditor({
                 }}
                 className={`px-2 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
                   (zone.alignment || 'left') === 'left'
-                    ? 'bg-blue-600 text-white shadow-2xs'
+                    ? 'bg-[#c5a059] text-white shadow-2xs'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
                 title="Fija el límite izquierdo y el texto largo crece hacia la derecha"
@@ -484,7 +484,7 @@ export default function RichTextEditor({
 
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-semibold text-amber-800 dark:text-amber-300">Desplazar:</span>
-              <div className="flex items-center bg-white dark:bg-slate-900 rounded-lg border border-amber-300 dark:border-amber-700/80 overflow-hidden shadow-2xs">
+              <div className="flex items-center bg-white dark:bg-[#0d0e12] rounded-lg border border-amber-300 dark:border-amber-700/80 overflow-hidden shadow-2xs">
                 <button
                   type="button"
                   onClick={() => nudge(-0.2, 0)}

@@ -37,7 +37,7 @@ export default function TypographyToolbar({
             onChange={(e) =>
               onUpdateZone(zone.id, { fontFamily: e.target.value as FontFamily })
             }
-            className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1.5 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none"
+            className="w-full bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-2 py-1.5 text-xs focus:ring-1 focus:ring-amber-500 focus:outline-none"
           >
             <option value="Helvetica">Arial / Helvetica (Sans)</option>
             <option value="TimesRoman">Times New Roman (Serif)</option>
@@ -55,7 +55,7 @@ export default function TypographyToolbar({
             onChange={(e) =>
               onUpdateZone(zone.id, { fontSize: Number(e.target.value) || 12 })
             }
-            className="w-12 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
+            className="w-12 bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
           />
           <span className="text-[10px] text-slate-400 dark:text-slate-500">pt</span>
         </div>
@@ -67,7 +67,7 @@ export default function TypographyToolbar({
             onChange={(e) =>
               onUpdateZone(zone.id, { lineHeight: Number(e.target.value) || 1.15 })
             }
-            className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
+            className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
           >
             <option value="0.9">0.9x</option>
             <option value="1.0">1.0x</option>
@@ -82,12 +82,12 @@ export default function TypographyToolbar({
       {/* Fila 2: Formatos de Texto y Alineación */}
       <div className="flex flex-wrap items-center justify-between gap-1 border-t border-slate-200 dark:border-slate-700 pt-2">
         {/* Negrita, Cursiva, Subrayado */}
-        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden shadow-xs">
+        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden shadow-xs">
           <button
             type="button"
             onClick={() => onUpdateZone(zone.id, { isBold: !zone.isBold })}
             className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              zone.isBold ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 font-bold' : 'text-slate-600 dark:text-slate-300'
+              zone.isBold ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059] font-bold' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Negrita"
           >
@@ -97,7 +97,7 @@ export default function TypographyToolbar({
             type="button"
             onClick={() => onUpdateZone(zone.id, { isItalic: !zone.isItalic })}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              zone.isItalic ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              zone.isItalic ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Cursiva"
           >
@@ -107,7 +107,7 @@ export default function TypographyToolbar({
             type="button"
             onClick={() => onUpdateZone(zone.id, { isUnderline: !zone.isUnderline })}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              zone.isUnderline ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              zone.isUnderline ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Subrayado"
           >
@@ -116,12 +116,12 @@ export default function TypographyToolbar({
         </div>
 
         {/* Alineaciones */}
-        <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden shadow-xs">
+        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden shadow-xs">
           <button
             type="button"
             onClick={() => onUpdateZone(zone.id, { alignment: 'left' })}
             className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              (zone.alignment || 'left') === 'left' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              (zone.alignment || 'left') === 'left' ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Alinear a la izquierda"
           >
@@ -131,7 +131,7 @@ export default function TypographyToolbar({
             type="button"
             onClick={() => onUpdateZone(zone.id, { alignment: 'center' })}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              zone.alignment === 'center' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              zone.alignment === 'center' ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Centrar"
           >
@@ -141,7 +141,7 @@ export default function TypographyToolbar({
             type="button"
             onClick={() => onUpdateZone(zone.id, { alignment: 'right' })}
             className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              zone.alignment === 'right' ? 'bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300' : 'text-slate-600 dark:text-slate-300'
+              zone.alignment === 'right' ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
             }`}
             title="Alinear a la derecha"
           >

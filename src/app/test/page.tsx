@@ -840,14 +840,14 @@ export default function TestJscanifyPage() {
       <div className="max-w-5xl mx-auto space-y-8">
         
         {/* Encabezado */}
-        <header className="border-b border-slate-800 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <header className="border-b border-zinc-800 pb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-indigo-400 font-semibold mb-1">
+            <div className="flex items-center gap-2 text-[#dfba73] font-semibold mb-1">
               <Sparkles className="w-5 h-5" />
               <span>Formulario de Escaneo Completo</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-white">
-              Escaneo de Credencial <span className="text-indigo-400">(Frontal y Trasera)</span>
+              Escaneo de Credencial <span className="text-[#dfba73]">(Frontal y Trasera)</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
               Captura en tiempo real o sube ambas caras de la credencial para procesarlas en Ultra HD 4K y unificarlas.
@@ -855,7 +855,7 @@ export default function TestJscanifyPage() {
           </div>
 
           {/* Estado de carga de scripts */}
-          <div className="flex items-center gap-3 bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 self-start md:self-auto">
+          <div className="flex items-center gap-3 bg-[#0d0e12] border border-zinc-800 rounded-xl px-4 py-2.5 self-start md:self-auto">
             {isLoaded ? (
               <>
                 <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
@@ -890,10 +890,10 @@ export default function TestJscanifyPage() {
             onClick={() => { stopCamera(); setCurrentStep('front'); }}
             className={`flex items-center justify-center gap-2.5 p-4 rounded-xl border font-medium text-sm transition-all ${
               currentStep === 'front'
-                ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/20'
+                ? 'bg-[#9a7b38]/20 border-stone-500 text-[#dfba73] ring-2 ring-stone-500/20'
                 : frontExtractedDataUrl
-                ? 'bg-slate-900 border-emerald-500/50 text-emerald-400'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500'
+                ? 'bg-[#0d0e12] border-emerald-500/50 text-emerald-400'
+                : 'bg-[#0d0e12]/60 border-zinc-800 text-slate-500'
             }`}
           >
             <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">1</span>
@@ -906,10 +906,10 @@ export default function TestJscanifyPage() {
             disabled={!frontExtractedDataUrl}
             className={`flex items-center justify-center gap-2.5 p-4 rounded-xl border font-medium text-sm transition-all ${
               currentStep === 'back'
-                ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/20'
+                ? 'bg-[#9a7b38]/20 border-stone-500 text-[#dfba73] ring-2 ring-stone-500/20'
                 : backExtractedDataUrl
-                ? 'bg-slate-900 border-emerald-500/50 text-emerald-400'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500 opacity-60 cursor-not-allowed'
+                ? 'bg-[#0d0e12] border-emerald-500/50 text-emerald-400'
+                : 'bg-[#0d0e12]/60 border-zinc-800 text-slate-500 opacity-60 cursor-not-allowed'
             }`}
           >
             <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">2</span>
@@ -922,10 +922,10 @@ export default function TestJscanifyPage() {
             disabled={!frontExtractedDataUrl || !backExtractedDataUrl}
             className={`flex items-center justify-center gap-2.5 p-4 rounded-xl border font-medium text-sm transition-all ${
               currentStep === 'result'
-                ? 'bg-indigo-600/20 border-indigo-500 text-indigo-300 ring-2 ring-indigo-500/20'
+                ? 'bg-[#9a7b38]/20 border-stone-500 text-[#dfba73] ring-2 ring-stone-500/20'
                 : combinedDataUrl
-                ? 'bg-slate-900 border-indigo-500/50 text-indigo-400'
-                : 'bg-slate-900/60 border-slate-800 text-slate-500 opacity-60 cursor-not-allowed'
+                ? 'bg-[#0d0e12] border-stone-500/50 text-[#dfba73]'
+                : 'bg-[#0d0e12]/60 border-zinc-800 text-slate-500 opacity-60 cursor-not-allowed'
             }`}
           >
             <span className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs font-bold shrink-0">3</span>
@@ -937,7 +937,7 @@ export default function TestJscanifyPage() {
         {isCameraActive && (
           <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200">
             <div className="w-full max-w-3xl flex items-center justify-between z-10">
-              <div className="flex items-center gap-2 text-indigo-400 font-semibold text-sm">
+              <div className="flex items-center gap-2 text-[#dfba73] font-semibold text-sm">
                 <Camera className="w-5 h-5" />
                 <span>Capturando Credencial {activeCameraStep === 'front' ? 'Frontal' : 'Trasera'}</span>
               </div>
@@ -960,7 +960,7 @@ export default function TestJscanifyPage() {
             </div>
 
             {/* Visor de Video de Alta Definición con Enfoque Guía */}
-            <div className="relative w-full max-w-3xl my-auto aspect-[4/3] sm:aspect-[16/9] bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 flex items-center justify-center">
+            <div className="relative w-full max-w-3xl my-auto aspect-[4/3] sm:aspect-[16/9] bg-black rounded-2xl overflow-hidden shadow-2xl border border-zinc-800 flex items-center justify-center">
               <video
                 ref={videoRef}
                 autoPlay
@@ -971,19 +971,19 @@ export default function TestJscanifyPage() {
 
               {/* Guía Bounding Box Estilo Escáner */}
               <div className="absolute inset-0 border-[3px] border-slate-950/70 flex items-center justify-center pointer-events-none">
-                <div className="w-[85%] sm:w-[75%] aspect-[856/540] rounded-2xl border-2 border-indigo-400/80 shadow-[0_0_30px_rgba(99,102,241,0.3)] relative overflow-hidden flex flex-col justify-between p-4">
+                <div className="w-[85%] sm:w-[75%] aspect-[856/540] rounded-2xl border-2 border-stone-400/80 shadow-[0_0_30px_rgba(99,102,241,0.3)] relative overflow-hidden flex flex-col justify-between p-4">
                   {/* Esquinas Brillantes */}
-                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-indigo-400 rounded-tl-lg" />
-                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-indigo-400 rounded-tr-lg" />
-                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-indigo-400 rounded-bl-lg" />
-                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-indigo-400 rounded-br-lg" />
+                  <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-stone-400 rounded-tl-lg" />
+                  <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-stone-400 rounded-tr-lg" />
+                  <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-stone-400 rounded-bl-lg" />
+                  <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-stone-400 rounded-br-lg" />
 
                   {/* Línea de escaneo láser pulsante */}
-                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-indigo-400 to-transparent shadow-[0_0_12px_#818cf8] animate-pulse my-auto" />
+                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-stone-400 to-transparent shadow-[0_0_12px_#818cf8] animate-pulse my-auto" />
 
                   <div className="bg-slate-950/80 backdrop-blur-md rounded-xl px-3 py-1.5 self-center text-center">
-                    <p className="text-xs font-semibold text-indigo-300 flex items-center gap-1.5">
-                      <ScanLine className="w-4 h-4 text-indigo-400 animate-spin" />
+                    <p className="text-xs font-semibold text-[#dfba73] flex items-center gap-1.5">
+                      <ScanLine className="w-4 h-4 text-[#dfba73] animate-spin" />
                       Alinea el marco sobre la credencial {activeCameraStep === 'front' ? 'frontal' : 'trasera'}
                     </p>
                   </div>
@@ -995,7 +995,7 @@ export default function TestJscanifyPage() {
             <div className="w-full max-w-3xl flex items-center justify-center pb-2 z-10">
               <button
                 onClick={captureCameraPhoto}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-8 rounded-2xl text-base transition-all flex items-center gap-3 shadow-xl shadow-indigo-600/30 hover:scale-105 active:scale-95"
+                className="bg-[#9a7b38] hover:bg-[#9a7b38] text-white font-bold py-3.5 px-8 rounded-2xl text-base transition-all flex items-center gap-3 shadow-xl shadow-stone-600/30 hover:scale-105 active:scale-95"
               >
                 <div className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
                   <div className="w-2.5 h-2.5 rounded-full bg-white" />
@@ -1009,11 +1009,11 @@ export default function TestJscanifyPage() {
         {/* PASO 1: IMAGEN DE CREDENCIAL FRONTAL */}
         {currentStep === 'front' && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <div className="bg-[#0d0e12] border border-zinc-800 rounded-2xl p-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5 text-indigo-400" />
+                    <ImageIcon className="w-5 h-5 text-[#dfba73]" />
                     Paso 1: Imagen de Credencial Frontal
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
@@ -1024,7 +1024,7 @@ export default function TestJscanifyPage() {
                 <div className="flex items-center gap-3 self-start sm:self-auto">
                   <button
                     onClick={() => startCamera('front')}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20"
+                    className="bg-[#9a7b38] hover:bg-[#9a7b38] text-white font-medium px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-colors shadow-lg shadow-stone-600/20"
                   >
                     <Camera className="w-4 h-4" />
                     <span>Cámara en Vivo</span>
@@ -1051,23 +1051,23 @@ export default function TestJscanifyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div
                     onClick={() => startCamera('front')}
-                    className="border-2 border-dashed border-indigo-500/40 bg-indigo-500/5 hover:border-indigo-500 hover:bg-indigo-500/10 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
+                    className="border-2 border-dashed border-stone-500/40 bg-[#9a7b38]/5 hover:border-stone-500 hover:bg-[#9a7b38]/10 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Camera className="w-7 h-7 text-indigo-400" />
+                    <div className="w-14 h-14 rounded-2xl bg-[#9a7b38]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Camera className="w-7 h-7 text-[#dfba73]" />
                     </div>
                     <div>
-                      <p className="font-bold text-white group-hover:text-indigo-300">Usar Cámara en Tiempo Real</p>
+                      <p className="font-bold text-white group-hover:text-[#dfba73]">Usar Cámara en Tiempo Real</p>
                       <p className="text-xs text-slate-400 mt-1">Abre el visor HD en vivo para enfocar y tomar foto instantánea</p>
                     </div>
                   </div>
 
                   <div
                     onClick={() => frontFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/5 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
+                    className="border-2 border-dashed border-slate-700 hover:border-stone-500 hover:bg-[#9a7b38]/5 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
                   >
                     <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Upload className="w-7 h-7 text-slate-400 group-hover:text-indigo-400" />
+                      <Upload className="w-7 h-7 text-slate-400 group-hover:text-[#dfba73]" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-200">Subir Archivo de Imagen</p>
@@ -1078,7 +1078,7 @@ export default function TestJscanifyPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Original Frontal */}
-                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col">
+                  <div className="bg-slate-950/60 border border-zinc-800 rounded-xl p-4 flex flex-col">
                     <span className="text-xs font-semibold text-slate-400 mb-2">Original Frontal</span>
                     <div className="flex-1 flex items-center justify-center min-h-[200px]">
                       <img
@@ -1092,10 +1092,10 @@ export default function TestJscanifyPage() {
                   </div>
 
                   {/* Resaltado Frontal */}
-                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col">
+                  <div className="bg-slate-950/60 border border-zinc-800 rounded-xl p-4 flex flex-col">
                     <span className="text-xs font-semibold text-slate-400 mb-2">Borde Resaltado</span>
                     <div className="flex-1 flex items-center justify-center min-h-[200px] relative">
-                      {processingFront && <RefreshCw className="w-5 h-5 text-indigo-400 animate-spin absolute" />}
+                      {processingFront && <RefreshCw className="w-5 h-5 text-[#dfba73] animate-spin absolute" />}
                       <div ref={frontHighlightedRef} className="w-full flex justify-center" />
                     </div>
                   </div>
@@ -1116,18 +1116,18 @@ export default function TestJscanifyPage() {
 
               {/* Botones de Acción Paso 1 */}
               {frontExtractedDataUrl && (
-                <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-slate-800">
+                <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4 border-t border-zinc-800">
                   <button
                     onClick={() => openMarginEditor('front')}
-                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
+                    className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-[#dfba73] font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
                   >
-                    <Edit3 className="w-4 h-4 text-indigo-400" />
+                    <Edit3 className="w-4 h-4 text-[#dfba73]" />
                     <span>Editar márgenes de la imagen</span>
                   </button>
 
                   <button
                     onClick={() => setCurrentStep('back')}
-                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
+                    className="w-full sm:w-auto bg-[#9a7b38] hover:bg-[#9a7b38] text-white font-medium py-3 px-6 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 shadow-lg shadow-stone-600/20"
                   >
                     <span>Continuar a Imagen Trasera</span>
                     <ArrowRight className="w-4 h-4" />
@@ -1141,11 +1141,11 @@ export default function TestJscanifyPage() {
         {/* PASO 2: IMAGEN DE CREDENCIAL TRASERA */}
         {currentStep === 'back' && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
+            <div className="bg-[#0d0e12] border border-zinc-800 rounded-2xl p-6 space-y-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <ImageIcon className="w-5 h-5 text-indigo-400" />
+                    <ImageIcon className="w-5 h-5 text-[#dfba73]" />
                     Paso 2: Imagen de Credencial Trasera
                   </h2>
                   <p className="text-xs text-slate-400 mt-1">
@@ -1156,7 +1156,7 @@ export default function TestJscanifyPage() {
                 <div className="flex items-center gap-3 self-start sm:self-auto">
                   <button
                     onClick={() => startCamera('back')}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20"
+                    className="bg-[#9a7b38] hover:bg-[#9a7b38] text-white font-medium px-4 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-colors shadow-lg shadow-stone-600/20"
                   >
                     <Camera className="w-4 h-4" />
                     <span>Cámara en Vivo</span>
@@ -1183,23 +1183,23 @@ export default function TestJscanifyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div
                     onClick={() => startCamera('back')}
-                    className="border-2 border-dashed border-indigo-500/40 bg-indigo-500/5 hover:border-indigo-500 hover:bg-indigo-500/10 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
+                    className="border-2 border-dashed border-stone-500/40 bg-[#9a7b38]/5 hover:border-stone-500 hover:bg-[#9a7b38]/10 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
                   >
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Camera className="w-7 h-7 text-indigo-400" />
+                    <div className="w-14 h-14 rounded-2xl bg-[#9a7b38]/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Camera className="w-7 h-7 text-[#dfba73]" />
                     </div>
                     <div>
-                      <p className="font-bold text-white group-hover:text-indigo-300">Usar Cámara en Tiempo Real</p>
+                      <p className="font-bold text-white group-hover:text-[#dfba73]">Usar Cámara en Tiempo Real</p>
                       <p className="text-xs text-slate-400 mt-1">Abre el visor HD en vivo para enfocar y tomar foto del reverso</p>
                     </div>
                   </div>
 
                   <div
                     onClick={() => backFileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-700 hover:border-indigo-500 hover:bg-indigo-500/5 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
+                    className="border-2 border-dashed border-slate-700 hover:border-stone-500 hover:bg-[#9a7b38]/5 transition-all cursor-pointer rounded-2xl p-10 flex flex-col items-center justify-center gap-3 text-center group"
                   >
                     <div className="w-14 h-14 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Upload className="w-7 h-7 text-slate-400 group-hover:text-indigo-400" />
+                      <Upload className="w-7 h-7 text-slate-400 group-hover:text-[#dfba73]" />
                     </div>
                     <div>
                       <p className="font-semibold text-slate-200">Subir Archivo de Imagen</p>
@@ -1210,7 +1210,7 @@ export default function TestJscanifyPage() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Original Trasera */}
-                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col">
+                  <div className="bg-slate-950/60 border border-zinc-800 rounded-xl p-4 flex flex-col">
                     <span className="text-xs font-semibold text-slate-400 mb-2">Original Trasera</span>
                     <div className="flex-1 flex items-center justify-center min-h-[200px]">
                       <img
@@ -1224,10 +1224,10 @@ export default function TestJscanifyPage() {
                   </div>
 
                   {/* Resaltado Trasera */}
-                  <div className="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex flex-col">
+                  <div className="bg-slate-950/60 border border-zinc-800 rounded-xl p-4 flex flex-col">
                     <span className="text-xs font-semibold text-slate-400 mb-2">Borde Resaltado</span>
                     <div className="flex-1 flex items-center justify-center min-h-[200px] relative">
-                      {processingBack && <RefreshCw className="w-5 h-5 text-indigo-400 animate-spin absolute" />}
+                      {processingBack && <RefreshCw className="w-5 h-5 text-[#dfba73] animate-spin absolute" />}
                       <div ref={backHighlightedRef} className="w-full flex justify-center" />
                     </div>
                   </div>
@@ -1247,7 +1247,7 @@ export default function TestJscanifyPage() {
               )}
 
               {/* Navegación Paso 2 */}
-              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-slate-800">
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 pt-4 border-t border-zinc-800">
                 <button
                   onClick={() => setCurrentStep('front')}
                   className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium py-2.5 px-4 rounded-xl text-xs transition-colors flex items-center justify-center gap-2"
@@ -1260,9 +1260,9 @@ export default function TestJscanifyPage() {
                   <div className="w-full sm:w-auto flex flex-col sm:flex-row items-center gap-3">
                     <button
                       onClick={() => openMarginEditor('back')}
-                      className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-indigo-300 font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
+                      className="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-[#dfba73] font-medium py-3 px-5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2 border border-slate-700 shadow-md"
                     >
-                      <Edit3 className="w-4 h-4 text-indigo-400" />
+                      <Edit3 className="w-4 h-4 text-[#dfba73]" />
                       <span>Editar márgenes de la imagen</span>
                     </button>
 
@@ -1283,8 +1283,8 @@ export default function TestJscanifyPage() {
         {/* MODAL INTERACTIVO: EDITOR MANUAL DE MÁRGENES DE 4 PUNTOS */}
         {isEditModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-between p-4 sm:p-6 animate-in fade-in duration-200">
-            <div className="w-full max-w-4xl flex items-center justify-between z-10 bg-slate-900/80 p-4 rounded-2xl border border-slate-800 backdrop-blur-md">
-              <div className="flex items-center gap-2 text-indigo-400 font-bold text-base">
+            <div className="w-full max-w-4xl flex items-center justify-between z-10 bg-[#0d0e12]/80 p-4 rounded-2xl border border-zinc-800 backdrop-blur-md">
+              <div className="flex items-center gap-2 text-[#dfba73] font-bold text-base">
                 <Edit3 className="w-5 h-5" />
                 <span>Editar Márgenes Manuales ({editStepTarget === 'front' ? 'Imagen Frontal' : 'Imagen Trasera'})</span>
               </div>
@@ -1297,7 +1297,7 @@ export default function TestJscanifyPage() {
             </div>
 
             {/* Canvas interactivo de ajuste manual de puntos */}
-            <div className="relative w-full max-w-4xl my-auto max-h-[70vh] bg-black rounded-2xl overflow-auto border border-slate-800 flex items-center justify-center p-2">
+            <div className="relative w-full max-w-4xl my-auto max-h-[70vh] bg-black rounded-2xl overflow-auto border border-zinc-800 flex items-center justify-center p-2">
               <canvas
                 ref={editorCanvasRef}
                 className="max-w-full max-h-[65vh] object-contain rounded-lg cursor-crosshair shadow-2xl"
@@ -1379,9 +1379,9 @@ export default function TestJscanifyPage() {
             </div>
 
             {/* Barra Inferior de Controles del Editor */}
-            <div className="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 z-10 backdrop-blur-md">
+            <div className="w-full max-w-4xl flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0d0e12]/90 p-4 rounded-2xl border border-zinc-800 z-10 backdrop-blur-md">
               <div className="text-xs text-slate-400 flex items-center gap-2">
-                <Move className="w-4 h-4 text-indigo-400 shrink-0" />
+                <Move className="w-4 h-4 text-[#dfba73] shrink-0" />
                 <span>Arrastra los 4 puntos numerados sobre las esquinas de tu credencial</span>
               </div>
               <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -1393,7 +1393,7 @@ export default function TestJscanifyPage() {
                 </button>
                 <button
                   onClick={applyCustomMarginCrop}
-                  className="flex-1 sm:flex-initial bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+                  className="flex-1 sm:flex-initial bg-[#9a7b38] hover:bg-[#9a7b38] text-white font-bold py-2.5 px-6 rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-stone-600/30"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Aplicar Márgenes Ajustados</span>
@@ -1406,8 +1406,8 @@ export default function TestJscanifyPage() {
         {/* PASO 3: ARCHIVO UNIFICADO CON AMBAS CARAS */}
         {currentStep === 'result' && (
           <div className="space-y-6">
-            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div className="bg-[#0d0e12] border border-zinc-800 rounded-2xl p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
                 <div>
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <FileCheck className="w-6 h-6 text-emerald-400" />
@@ -1432,12 +1432,12 @@ export default function TestJscanifyPage() {
                 <button
                   onClick={downloadUnifiedImage}
                   disabled={!combinedDataUrl}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium py-3.5 px-5 rounded-xl text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-indigo-600/20"
+                  className="bg-[#9a7b38] hover:bg-[#9a7b38] disabled:opacity-50 text-white font-medium py-3.5 px-5 rounded-xl text-sm transition-all flex items-center justify-center gap-3 shadow-lg shadow-stone-600/20"
                 >
                   <Download className="w-5 h-5" />
                   <div className="text-left">
                     <div className="font-semibold">Descargar Imagen Unificada (.PNG)</div>
-                    <div className="text-[11px] text-indigo-200">Un solo archivo PNG en Ultra HD con ambas vistas</div>
+                    <div className="text-[11px] text-[#dfba73]">Un solo archivo PNG en Ultra HD con ambas vistas</div>
                   </div>
                 </button>
 
@@ -1459,7 +1459,7 @@ export default function TestJscanifyPage() {
               </div>
 
               {/* Previsualización del Documento Combinado */}
-              <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col items-center">
+              <div className="bg-slate-950 border border-zinc-800 rounded-xl p-4 flex flex-col items-center">
                 <span className="text-xs font-semibold text-slate-400 mb-4 self-start">
                   Vista Previa del Archivo Unificado:
                 </span>

@@ -243,8 +243,8 @@ export default function LlenarDocumentoPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 text-center max-w-sm w-full space-y-4">
-          <Loader2 className="w-10 h-10 text-blue-600 animate-spin mx-auto" />
+        <div className="bg-white dark:bg-[#0d0e12] p-8 rounded-3xl shadow-lg border border-slate-200 dark:border-zinc-800 text-center max-w-sm w-full space-y-4">
+          <Loader2 className="w-10 h-10 text-[#c5a059] animate-spin mx-auto" />
           <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Cargando plantilla de contrato...
           </p>
@@ -256,7 +256,7 @@ export default function LlenarDocumentoPage() {
   if (errorMsg) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-lg border border-slate-200 dark:border-slate-800 text-center max-w-md w-full space-y-4">
+        <div className="bg-white dark:bg-[#0d0e12] p-8 rounded-3xl shadow-lg border border-slate-200 dark:border-zinc-800 text-center max-w-md w-full space-y-4">
           <div className="w-14 h-14 bg-rose-100 dark:bg-rose-950/60 rounded-full flex items-center justify-center mx-auto text-rose-600">
             <AlertCircle className="w-8 h-8" />
           </div>
@@ -269,8 +269,8 @@ export default function LlenarDocumentoPage() {
 
   if (isCompleted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-blue-50/40 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 text-center max-w-lg w-full space-y-6 animate-in zoom-in-95 duration-200">
+      <div className="min-h-screen bg-gradient-to-b from-slate-50 to-amber-50/40 dark:from-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="bg-white dark:bg-[#0d0e12] p-8 rounded-3xl shadow-xl border border-slate-200/80 dark:border-zinc-800 text-center max-w-lg w-full space-y-6 animate-in zoom-in-95 duration-200">
           <div className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/20">
             <CheckCircle2 className="w-10 h-10" />
           </div>
@@ -290,7 +290,7 @@ export default function LlenarDocumentoPage() {
                 href={completedPdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-blue-500/20"
+                className="w-full py-3 bg-[#c5a059] hover:bg-[#c5a059] text-white rounded-2xl font-semibold text-xs transition-all flex items-center justify-center gap-2 shadow-md shadow-amber-500/20"
               >
                 <FileText className="w-4 h-4" />
                 <span>Ver / Descargar Mi Documento PDF</span>
@@ -299,7 +299,7 @@ export default function LlenarDocumentoPage() {
             </div>
           )}
 
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 flex items-center justify-center gap-2 text-[11px] text-slate-400">
+          <div className="border-t border-slate-100 dark:border-zinc-800 pt-4 flex items-center justify-center gap-2 text-[11px] text-slate-400">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <span>Santina Consultoría Web — Proceso Seguro</span>
           </div>
@@ -312,13 +312,13 @@ export default function LlenarDocumentoPage() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-8 px-4 flex flex-col items-center">
       <div className="max-w-2xl w-full space-y-6">
         {/* Encabezado del documento */}
-        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white dark:bg-[#0d0e12] rounded-3xl p-6 border border-slate-200/80 dark:border-zinc-800 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-md shadow-blue-500/20">
+            <div className="p-3 bg-[#c5a059] text-white rounded-2xl shadow-md shadow-amber-500/20">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#c5a059] dark:text-[#c5a059]">
                 Santina Consultoría — Documento de Cliente
               </span>
               <h1 className="text-lg font-bold text-slate-900 dark:text-white leading-snug">
@@ -382,14 +382,14 @@ export default function LlenarDocumentoPage() {
 
         {/* Descripción / Instrucciones */}
         {preset?.description && (
-          <div className="bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/80 dark:border-blue-900/50 rounded-2xl p-4 text-xs text-blue-900 dark:text-blue-200 leading-relaxed">
+          <div className="bg-[#c5a059]/60 dark:bg-[#c5a059]/30 border border-[#c5a059]/80 dark:border-[#c5a059]/50 rounded-2xl p-4 text-xs text-[#c5a059] dark:text-[#c5a059] leading-relaxed">
             {preset.description}
           </div>
         )}
 
         {/* Formulario con las zonas definidas en el Preset */}
-        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-          <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-[#0d0e12] rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-zinc-800 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 dark:border-zinc-800 pb-3">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">
               Por favor completa o confirma los siguientes datos:
             </h2>
@@ -404,12 +404,12 @@ export default function LlenarDocumentoPage() {
               const currentSig = formValues[zone.id];
 
               return (
-                <div key={zone.id} className="space-y-1.5 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                <div key={zone.id} className="space-y-1.5 p-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-slate-800/30">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                       {idx + 1}. {zone.name} *
                     </label>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-900/60">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c5a059] dark:bg-[#c5a059]/80 text-[#c5a059] dark:text-[#c5a059] border border-[#c5a059] dark:border-[#c5a059]/60">
                       {isSig ? '✍️ Firma' : '👤 Cliente'}
                     </span>
                   </div>
@@ -417,7 +417,7 @@ export default function LlenarDocumentoPage() {
                   {isSig ? (
                     <div className="pt-1">
                       {currentSig && currentSig.startsWith('data:image/') ? (
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-white dark:bg-slate-900 rounded-xl border border-emerald-300 dark:border-emerald-800">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-white dark:bg-[#0d0e12] rounded-xl border border-emerald-300 dark:border-emerald-800">
                           <div className="flex items-center gap-3">
                             <div className="w-24 h-12 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden bg-white p-1 flex items-center justify-center">
                               <img src={currentSig} alt="Firma capturada" className="max-h-full max-w-full object-contain" />
@@ -456,7 +456,7 @@ export default function LlenarDocumentoPage() {
                       value={formValues[zone.id] || ''}
                       onChange={(e) => handleInputChange(zone.id, e.target.value)}
                       placeholder={`Ingresa ${zone.name.toLowerCase()}...`}
-                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+                      className="w-full bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
                     />
                   )}
                 </div>
@@ -464,11 +464,11 @@ export default function LlenarDocumentoPage() {
             })}
           </div>
 
-          <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-2xl font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 bg-[#c5a059] hover:bg-[#c5a059] disabled:opacity-50 text-white rounded-2xl font-bold text-xs shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
               {isSubmitting ? (
                 <>

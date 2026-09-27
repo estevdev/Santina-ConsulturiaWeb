@@ -14,14 +14,14 @@ export default function StatCards({ totalPresets }: StatCardsProps) {
       value: totalPresets,
       change: 'Listos para procesar',
       icon: Layers,
-      color: 'blue',
+      color: 'amber',
     },
     {
       label: 'Zonas Activas',
       value: totalPresets * 3,
       change: 'Promedio 3 zonas/preset',
       icon: Sparkles,
-      color: 'indigo',
+      color: 'stone',
     },
     {
       label: 'Motor OCR & Edición',
@@ -46,7 +46,7 @@ export default function StatCards({ totalPresets }: StatCardsProps) {
         return (
           <div
             key={idx}
-            className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-all"
+            className="bg-white dark:bg-[#0d0e12] rounded-2xl p-5 border border-slate-200/80 dark:border-zinc-800 shadow-sm hover:shadow-md transition-all"
           >
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -54,10 +54,10 @@ export default function StatCards({ totalPresets }: StatCardsProps) {
               </span>
               <div
                 className={`p-2.5 rounded-xl ${
-                  stat.color === 'blue'
-                    ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400'
-                    : stat.color === 'indigo'
-                    ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400'
+                  stat.color === 'amber'
+                    ? 'bg-[#c5a059] dark:bg-[#c5a059]/60 text-[#c5a059] dark:text-[#c5a059]'
+                    : stat.color === 'stone'
+                    ? 'bg-[#9a7b38] dark:bg-[#9a7b38]/60 text-[#dfba73] dark:text-[#dfba73]'
                     : stat.color === 'emerald'
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                     : 'bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400'

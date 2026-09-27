@@ -347,17 +347,24 @@ export default function CanvasPdfViewer({
                 onMouseDown={(e) => handleZoneMouseDown(e, zone)}
                 className={`absolute transition-shadow flex flex-col justify-center p-0 overflow-visible ${
                   isSelected
-                    ? 'border-2 border-blue-600 ring-2 ring-blue-300 shadow-lg z-20 cursor-move'
+                    ? 'border-2 border-[#c5a059] ring-2 ring-amber-300 shadow-lg z-20 cursor-move'
                     : isEditorMode
-                    ? 'border-2 border-dashed border-amber-500 hover:border-blue-400 z-10 cursor-move'
-                    : 'border border-blue-400/80 hover:border-blue-600 hover:shadow-sm z-10 cursor-move'
+                    ? 'border-2 border-dashed border-amber-500 hover:border-[#c5a059] z-10 cursor-move'
+                    : 'border border-[#c5a059]/80 hover:border-[#c5a059] hover:shadow-sm z-10 cursor-move'
                 }`}
                 style={{
                   left: `${zone.x}%`,
                   top: `${zone.y}%`,
                   width: `${zone.width}%`,
                   height: `${zone.height}%`,
-                  backgroundColor: hasContent ? (zone.bgColor || '#ffffff') : (zone.bgColor ? `${zone.bgColor}e6` : 'rgba(255, 243, 205, 0.4)'),
+                  backgroundColor:
+                    zone.bgColor &&
+                    zone.bgColor !== 'transparent' &&
+                    zone.bgColor !== 'none' &&
+                    zone.bgColor.toLowerCase() !== '#ffffff' &&
+                    zone.bgColor.toLowerCase() !== '#fff'
+                      ? zone.bgColor
+                      : 'transparent',
                   color: zone.color || '#000000',
                   fontFamily: getFontFamilyCss(zone.fontFamily),
                   fontSize: `${(zone.fontSize || 12) * displayScale}px`,
@@ -388,14 +395,14 @@ export default function CanvasPdfViewer({
                 {isSelected && (
                   <div
                     onMouseDown={(e) => handleResizeHandleMouseDown(e, zone)}
-                    className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-blue-600 border-2 border-white rounded-xs shadow-md cursor-se-resize z-30 hover:scale-125 transition-transform"
+                    className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-[#c5a059] border-2 border-white rounded-xs shadow-md cursor-se-resize z-30 hover:scale-125 transition-transform"
                     title="Arrastra para cambiar el tamaño de la zona"
                   />
                 )}
 
                 {/* Badge de posición mientras se selecciona o mueve */}
                 {isSelected && (
-                  <div className="absolute -top-6 left-0 bg-slate-900/90 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
+                  <div className="absolute -top-6 left-0 bg-[#0d0e12]/90 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
                     X: {zone.x}% Y: {zone.y}% | W: {zone.width}% H: {zone.height}%
                   </div>
                 )}

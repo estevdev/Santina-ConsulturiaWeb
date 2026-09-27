@@ -68,6 +68,7 @@ export interface TramiteRetiroDesempleo {
 export interface ReferenciaPersonal {
   nombre: string;
   telefono: string;
+  domicilio?: string;
   parentesco?: string;
   es_beneficiario?: boolean;
 }

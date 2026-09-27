@@ -59,7 +59,7 @@ export default function PresetBuilder({
       width: newZoneData.width || 30,
       height: newZoneData.height || 5,
       pageNumber: currentPage,
-      fontSize: 12,
+      fontSize: 7,
       fontFamily: 'Helvetica',
       isBold: false,
       isItalic: false,

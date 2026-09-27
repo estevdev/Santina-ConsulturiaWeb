@@ -331,6 +331,53 @@ export default function LlenarDocumentoPage() {
               )}
             </div>
           </div>
+
+          {/* BOTÓN TEMPORAL DE AUTO-RELLENADO PARA PRUEBAS (SE ELIMINARÁ DESPUÉS) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (!preset) return;
+              const autoForm: Record<string, string> = { ...formValues };
+
+              // Mock de firma digital transparente en base64
+              const mockSignatureDataUrl =
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAABgCAYAAADRF78XAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAADbSURBVHhe7cExAQAAAMKg9U9tCj8gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAzGvAAFIQyS8AAAAAElFTkSuQmCC';
+
+              preset.zones.forEach((zone) => {
+                const isSig =
+                  zone.isSignature ||
+                  zone.name.toLowerCase().includes('rubrica') ||
+                  zone.name.toLowerCase().includes('firma');
+
+                if (isSig) {
+                  autoForm[zone.id] = mockSignatureDataUrl;
+                } else if (!autoForm[zone.id]) {
+                  const nameLower = zone.name.toLowerCase();
+                  if (nameLower.includes('dia')) autoForm[zone.id] = '26';
+                  else if (nameLower.includes('mes')) autoForm[zone.id] = '09';
+                  else if (nameLower.includes('año') || nameLower.includes('anio')) autoForm[zone.id] = '2026';
+                  else if (nameLower.includes('curp')) autoForm[zone.id] = cliente?.curp || 'HERJ950815HDFRR09';
+                  else if (nameLower.includes('nss')) autoForm[zone.id] = cliente?.nss || '12948573610';
+                  else if (nameLower.includes('rfc')) autoForm[zone.id] = cliente?.rfc || 'HERJ950815AB1';
+                  else if (nameLower.includes('tel')) autoForm[zone.id] = cliente?.telefono || '3312345678';
+                  else if (nameLower.includes('monto') || nameLower.includes('salario') || nameLower.includes('honorarios')) autoForm[zone.id] = '15,000.00';
+                  else if (nameLower.includes('porcentaje')) autoForm[zone.id] = '15%';
+                  else if (nameLower.includes('letra')) autoForm[zone.id] = 'QUINCE MIL PESOS 00/100 M.N.';
+                  else if (nameLower.includes('banco')) autoForm[zone.id] = 'BBVA Bancomer';
+                  else if (nameLower.includes('clabe')) autoForm[zone.id] = '012320012345678901';
+                  else if (nameLower.includes('direccion') || nameLower.includes('domicilio')) autoForm[zone.id] = 'Av. Vallarta #1234, Col. Americana';
+                  else if (nameLower.includes('empresa') || nameLower.includes('patron')) autoForm[zone.id] = 'Consultores S.A. de C.V.';
+                  else autoForm[zone.id] = `DATO ${zone.name}`;
+                }
+              });
+
+              setFormValues(autoForm);
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+            title="Botón temporal para pruebas rápidas de auto-rellenado de todos los campos"
+          >
+            <span>⚡ Rellenar Todo Automático (Prueba)</span>
+          </button>
         </div>
 
         {/* Descripción / Instrucciones */}

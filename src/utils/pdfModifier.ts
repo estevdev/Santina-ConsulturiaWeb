@@ -88,15 +88,23 @@ export async function applyEditsToPdf(
 
     const boxYBottom = pageHeight - boxYTop - boxHeight;
 
-    // 1. Dibujar parche de fondo exclusivamente sobre el área delimitada del campo
-    const bgColor = zone.bgColor ? hexToRgb(zone.bgColor) : rgb(1, 1, 1);
-    page.drawRectangle({
-      x: boxX,
-      y: boxYBottom,
-      width: boxWidth,
-      height: boxHeight,
-      color: bgColor,
-    });
+    // 1. Dibujar parche de fondo SOLO si se especificó explícitamente un color de fondo distinto de blanco o transparente
+    if (
+      zone.bgColor &&
+      zone.bgColor !== 'transparent' &&
+      zone.bgColor !== 'none' &&
+      zone.bgColor.toLowerCase() !== '#ffffff' &&
+      zone.bgColor.toLowerCase() !== '#fff'
+    ) {
+      const bgColor = hexToRgb(zone.bgColor);
+      page.drawRectangle({
+        x: boxX,
+        y: boxYBottom,
+        width: boxWidth,
+        height: boxHeight,
+        color: bgColor,
+      });
+    }
 
     // Si es una imagen en base64 (Firma / Rúbrica en trazo)
     if (typeof rawValue === 'string' && rawValue.startsWith('data:image/')) {

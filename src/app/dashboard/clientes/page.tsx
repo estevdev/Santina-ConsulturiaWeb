@@ -18,6 +18,7 @@ import {
   ClientesList,
   ClienteQuickView,
   ClienteFullDetails,
+  ClienteSeguimientoTimeline,
   TramitesChecklist,
   ClienteFormModal,
   InmuebleFotosModal,
@@ -53,6 +54,7 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [showFullDetails, setShowFullDetails] = useState(false);
+  const [isModoSeguimiento, setIsModoSeguimiento] = useState(true);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
 
   // Form State Cliente
@@ -253,6 +255,7 @@ export default function ClientesPage() {
   const handleSelectCliente = async (cliente: Cliente, openDetails: boolean = false) => {
     setSelectedCliente(cliente);
     setShowFullDetails(openDetails);
+    setIsModoSeguimiento(true);
     await fetchTramites(cliente.id);
   };
 
@@ -1056,6 +1059,217 @@ export default function ClientesPage() {
     }
   };
 
+  // Handler para guardar credenciales rápidas de Infonavit desde Modo Seguimiento
+  const handleSaveQuickCreds = async (nss: string, pass: string) => {
+    if (!selectedCliente) return;
+    try {
+      const hasCreds = Boolean(nss.trim() && pass.trim());
+      const trMejoravit = clienteTramites.mejoravit?.[0];
+
+      // Actualizar cliente (NSS)
+      await supabase
+        .from('clientes')
+        .update({ nss: nss.trim() })
+        .eq('id', selectedCliente.id);
+
+      // Actualizar trámite mejoravit si existe
+      if (trMejoravit) {
+        await supabase
+          .from('tramites_mejoravit')
+          .update({
+            nss_portal_infonavit: nss.trim() || null,
+            password_portal_infonavit: pass.trim() || null,
+            req_portal_infonavit_validado: hasCreds,
+          })
+          .eq('id', trMejoravit.id);
+      }
+
+      setFeedbackMsg({
+        type: 'success',
+        text: '¡Credenciales de Mi Cuenta Infonavit guardadas correctamente!',
+      });
+      await fetchTramites(selectedCliente.id);
+      setSelectedCliente((prev) => (prev ? { ...prev, nss: nss.trim() } : prev));
+    } catch (err: any) {
+      console.error('Error al guardar credenciales rápidas:', err);
+      setFeedbackMsg({
+        type: 'error',
+        text: `Error al guardar credenciales: ${err.message || 'Error desconocido'}`,
+      });
+    }
+  };
+
+  // Handler para subir Tabla de Amortización
+  const handleUploadTablaAmortizacion = async (file: File) => {
+    if (!selectedCliente) return;
+    setUploadingDocKey('tabla_amortizacion');
+    setFeedbackMsg({ type: 'success', text: 'Subiendo archivo de Tabla de Amortización...' });
+    try {
+      const ext = file.name.split('.').pop() || 'pdf';
+      const filePath = `${selectedCliente.id}/tabla_amortizacion_${Date.now()}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('ine_documents')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('ine_documents')
+        .getPublicUrl(filePath);
+
+      // Actualizar en cliente documentos_urls
+      const currentClientDocs = { ...(selectedCliente.documentos_urls || {}) };
+      currentClientDocs.tabla_amortizacion = publicUrl;
+
+      await supabase
+        .from('clientes')
+        .update({ documentos_urls: currentClientDocs })
+        .eq('id', selectedCliente.id);
+
+      // Actualizar en tramite mejoravit si existe
+      const trMejoravit = clienteTramites.mejoravit?.[0];
+      if (trMejoravit) {
+        const currentTramiteDocs = { ...(trMejoravit.documentos_urls || {}) };
+        currentTramiteDocs.tabla_amortizacion = publicUrl;
+        await supabase
+          .from('tramites_mejoravit')
+          .update({ documentos_urls: currentTramiteDocs })
+          .eq('id', trMejoravit.id);
+      }
+
+      setSelectedCliente({
+        ...selectedCliente,
+        documentos_urls: currentClientDocs,
+      });
+
+      setFeedbackMsg({
+        type: 'success',
+        text: '¡Tabla de Amortización subida y adjuntada al expediente exitosamente!',
+      });
+      await fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error al subir tabla de amortización:', err);
+      setFeedbackMsg({
+        type: 'error',
+        text: `Error al subir tabla de amortización: ${err.message || 'Error desconocido'}`,
+      });
+    } finally {
+      setUploadingDocKey(null);
+    }
+  };
+
+  // Handler para guardar datos de la Cita con Infonavit
+  const handleSaveCitaInfonavit = async (citaData: {
+    fecha: string;
+    hora: string;
+    lugar: string;
+    folio: string;
+    estado: 'pendiente' | 'confirmada' | 'asistida' | 'cancelada';
+    notas?: string;
+  }) => {
+    if (!selectedCliente) return;
+    try {
+      const currentClientDocs = { ...(selectedCliente.documentos_urls || {}) };
+      const currentCita = currentClientDocs.cita_infonavit || {};
+      currentClientDocs.cita_infonavit = {
+        ...currentCita,
+        ...citaData,
+      };
+
+      await supabase
+        .from('clientes')
+        .update({ documentos_urls: currentClientDocs })
+        .eq('id', selectedCliente.id);
+
+      const trMejoravit = clienteTramites.mejoravit?.[0];
+      if (trMejoravit) {
+        const currentTramiteDocs = { ...(trMejoravit.documentos_urls || {}) };
+        const currentTrCita = currentTramiteDocs.cita_infonavit || {};
+        currentTramiteDocs.cita_infonavit = {
+          ...currentTrCita,
+          ...citaData,
+        };
+        await supabase
+          .from('tramites_mejoravit')
+          .update({ documentos_urls: currentTramiteDocs })
+          .eq('id', trMejoravit.id);
+      }
+
+      setSelectedCliente({
+        ...selectedCliente,
+        documentos_urls: currentClientDocs,
+      });
+
+      setFeedbackMsg({
+        type: 'success',
+        text: '¡Información de la Cita con Infonavit guardada exitosamente!',
+      });
+      await fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error al guardar cita:', err);
+      throw err;
+    }
+  };
+
+  // Handler para subir comprobante oficial de Cita Infonavit
+  const handleUploadComprobanteCita = async (file: File) => {
+    if (!selectedCliente) return;
+    setUploadingDocKey('comprobante_cita_infonavit');
+    setFeedbackMsg({ type: 'success', text: 'Subiendo comprobante oficial de cita...' });
+    try {
+      const ext = file.name.split('.').pop() || 'pdf';
+      const filePath = `${selectedCliente.id}/comprobante_cita_${Date.now()}.${ext}`;
+
+      const { error: uploadErr } = await supabase.storage
+        .from('ine_documents')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) throw uploadErr;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('ine_documents')
+        .getPublicUrl(filePath);
+
+      const currentClientDocs = { ...(selectedCliente.documentos_urls || {}) };
+      currentClientDocs.comprobante_cita_infonavit = publicUrl;
+
+      await supabase
+        .from('clientes')
+        .update({ documentos_urls: currentClientDocs })
+        .eq('id', selectedCliente.id);
+
+      const trMejoravit = clienteTramites.mejoravit?.[0];
+      if (trMejoravit) {
+        const currentTramiteDocs = { ...(trMejoravit.documentos_urls || {}) };
+        currentTramiteDocs.comprobante_cita_infonavit = publicUrl;
+        await supabase
+          .from('tramites_mejoravit')
+          .update({ documentos_urls: currentTramiteDocs })
+          .eq('id', trMejoravit.id);
+      }
+
+      setSelectedCliente({
+        ...selectedCliente,
+        documentos_urls: currentClientDocs,
+      });
+
+      setFeedbackMsg({
+        type: 'success',
+        text: '¡Comprobante de cita con Infonavit adjuntado exitosamente!',
+      });
+      await fetchTramites(selectedCliente.id);
+    } catch (err: any) {
+      console.error('Error al subir comprobante de cita:', err);
+      setFeedbackMsg({
+        type: 'error',
+        text: `Error al subir comprobante de cita: ${err.message || 'Error desconocido'}`,
+      });
+    } finally {
+      setUploadingDocKey(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1102,7 +1316,61 @@ export default function ClientesPage() {
           currentUserRole={user?.role}
           tramiteMejoravit={clienteTramites.mejoravit?.[0]}
           downloadingBundle={downloadingBundle}
-          onBack={() => setShowFullDetails(false)}
+          isModoSeguimiento={isModoSeguimiento}
+          onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
+          timelineComponent={
+            <ClienteSeguimientoTimeline
+              selectedCliente={selectedCliente}
+              clienteTramites={clienteTramites}
+              docPresets={docPresets}
+              uploadingDocKey={uploadingDocKey}
+              generatingAmpliada200={generatingAmpliada200}
+              onViewDoc={(url, title) => setModalViewerDoc({ url, title })}
+              onDownloadDoc={handleDownloadInline}
+              onUploadReqDocument={handleUploadReqDocument}
+              onGenerateIneAmpliada200={handleGenerateIneAmpliada200}
+              onOpenManualIneCropper={openManualIneCropper}
+              onOpenReferenciasModal={(tramiteId, tr) => {
+                const existingRefs = tr.referencias_detalle || [];
+                const initialRefs = [0, 1, 2].map((idx) => ({
+                  nombre: existingRefs[idx]?.nombre || '',
+                  telefono: existingRefs[idx]?.telefono || '',
+                  domicilio: existingRefs[idx]?.domicilio || '',
+                }));
+                setReferenciasModal({
+                  tramiteId,
+                  referencias: initialRefs,
+                });
+              }}
+              onOpenInfonavitCredsModal={(tramiteId, tr) => {
+                setInfonavitCredsModal({
+                  tramiteId,
+                  nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
+                  password: tr.password_portal_infonavit || '',
+                });
+              }}
+              onOpenInmuebleFotosModal={(tramiteId, tr) => {
+                setInmuebleFotosModal({
+                  tramiteId,
+                  existingPdfUrl: tr.documentos_urls?.req_fotos_inmueble_5,
+                  fotos: [],
+                });
+              }}
+              onGenerateClientDocLink={handleGenerateClientDocLink}
+              onRemoveDocPreset={handleRemoveDocPreset}
+              onSaveQuickCreds={handleSaveQuickCreds}
+              onUploadTablaAmortizacion={handleUploadTablaAmortizacion}
+              onSaveCitaInfonavit={handleSaveCitaInfonavit}
+              onUploadComprobanteCita={handleUploadComprobanteCita}
+              onDownloadOficialesPdf={handleDownloadOficialesPdf}
+              onDownloadContratosPdf={handleDownloadContratosPdf}
+              downloadingBundle={downloadingBundle}
+            />
+          }
+          onBack={() => {
+            setShowFullDetails(false);
+            setIsModoSeguimiento(false);
+          }}
           onOpenDownloadModal={() => setDownloadExpedienteModalOpen(true)}
           onOpenShareModal={openShareCredentialsModal}
           onEditCliente={handleEditCliente}
@@ -1168,7 +1436,14 @@ export default function ClientesPage() {
             currentUserRole={user?.role}
             onOpenShareModal={openShareCredentialsModal}
             onEditCliente={handleEditCliente}
-            onViewFullDetails={() => setShowFullDetails(true)}
+            onViewFullDetails={() => {
+              setShowFullDetails(true);
+              setIsModoSeguimiento(true);
+            }}
+            onEnterModoSeguimiento={() => {
+              setShowFullDetails(true);
+              setIsModoSeguimiento(true);
+            }}
           >
             <TramitesChecklist
               loadingTramites={loadingTramites}

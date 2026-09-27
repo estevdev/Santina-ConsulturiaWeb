@@ -15,3 +15,4 @@ export * from './TramitesChecklist';
 export * from './ClientesList';
 export * from './ClienteQuickView';
 export * from './ClienteFullDetails';
+export * from './ClienteSeguimientoTimeline';

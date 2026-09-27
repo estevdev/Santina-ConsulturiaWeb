@@ -663,7 +663,11 @@ export default function PdfProcessor({
                               else if (nameLower.includes('direccion') || nameLower.includes('domicilio')) valStr = 'Av. Vallarta #1234, Col. Americana';
                               else if (nameLower.includes('empresa') || nameLower.includes('patron')) valStr = 'Consultores S.A. de C.V.';
                               else if (nameLower.includes('cliente') || nameLower.includes('nombre')) valStr = 'JUAN CARLOS HERNÁNDEZ LÓPEZ';
-                              else valStr = `DATO ${zone.name}`;
+                              else if (nameLower.includes('remodelacion') || nameLower.includes('mejora') || nameLower.includes('descripcion')) {
+                                valStr = 'SE REALIZARÁ CAMBIO DE PISO Y PINTURA INTEGRAL EN ÁREAS PRINCIPALES, REPARACIÓN DE APLANADOS EN MUROS Y SUSTITUCIÓN DE CABLEADO ELÉCTRICO Y FONTANERÍA COMPLETA DE BAÑOS Y COCINA CON MATERIALES DE PRIMERA CALIDAD.';
+                              } else if (nameLower.includes('direccion') || nameLower.includes('domicilio')) {
+                                valStr = 'AVENIDA VALLARTA NÚMERO 1234 INTERIOR 5A, COLONIA AMERICANA, GUADALAJARA, JALISCO, CÓDIGO POSTAL 44160';
+                              } else valStr = `DATO ${zone.name}`;
 
                               const richVal = createFormattedRichTextFromExtractedText(valStr, zone);
                               newValues[zone.id] = richVal;

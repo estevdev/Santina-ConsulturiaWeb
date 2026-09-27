@@ -356,46 +356,51 @@ export function TramitesChecklist({
                 />
 
                 {/* 8. 3 Referencias Personales */}
-                <div
-                  className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
-                    tr.req_3_referencias_personales || (tr.referencias_detalle && tr.referencias_detalle.length > 0)
-                      ? 'bg-zinc-900/90 border-[#c5a059]/30 text-white'
-                      : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    <span
-                      className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
-                        tr.req_3_referencias_personales || (tr.referencias_detalle && tr.referencias_detalle.length > 0)
-                          ? 'bg-[#c5a059] text-zinc-950'
-                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                {(() => {
+                  const isRefsDone = Boolean(
+                    tr.req_3_referencias_personales ||
+                    (tr.referencias_detalle && tr.referencias_detalle.filter((r) => r.nombre.trim()).length >= 3)
+                  );
+                  return (
+                    <div
+                      className={`p-1.5 px-2.5 rounded-lg border flex items-center justify-between gap-1.5 transition-all text-[11px] min-h-[36px] ${
+                        isRefsDone
+                          ? 'bg-zinc-900/90 border-[#c5a059]/30 text-white'
+                          : 'bg-zinc-900/40 border-zinc-800/80 text-zinc-300'
                       }`}
                     >
-                      8
-                    </span>
-                    <div className="flex flex-col truncate">
-                      <span className="font-semibold truncate leading-tight">8. 3 Referencias Personales</span>
-                      {tr.referencias_detalle && tr.referencias_detalle.length > 0 && (
-                        <span className="text-[10px] text-emerald-400 font-medium">
-                          ✓ {tr.referencias_detalle.filter(r => r.nombre.trim()).length} de 3 referencias registradas
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span
+                          className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                            isRefsDone
+                              ? 'bg-[#c5a059] text-zinc-950'
+                              : 'bg-zinc-800 text-zinc-400 border border-zinc-700'
+                          }`}
+                        >
+                          8
                         </span>
-                      )}
-                    </div>
-                  </div>
+                        <span className="font-semibold truncate leading-tight">
+                          8. 3 Referencias Personales
+                        </span>
+                      </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onOpenReferenciasModal(tr.id, tr)}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer ${
-                      tr.referencias_detalle && tr.referencias_detalle.length > 0
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        : 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
-                    }`}
-                  >
-                    <UserCheck className="w-3 h-3" />
-                    <span>{tr.referencias_detalle && tr.referencias_detalle.length > 0 ? 'Ver / Editar' : 'Ingresar Referencias'}</span>
-                  </button>
-                </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => onOpenReferenciasModal(tr.id, tr)}
+                          className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer ${
+                            isRefsDone
+                              ? 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
+                              : 'bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950'
+                          }`}
+                        >
+                          <UserCheck className="w-3 h-3" />
+                          <span>{isRefsDone ? 'Ver / Editar' : 'Ingresar'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 <ChecklistRow
                   tramiteTipo="mejoravit"
@@ -442,9 +447,13 @@ export function TramitesChecklist({
                   <button
                     type="button"
                     onClick={() => onOpenInfonavitCredsModal(tr.id, tr)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30"
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold rounded-lg shadow-sm transition-all cursor-pointer ${
+                      isInfonavitDone
+                        ? 'bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30'
+                        : 'bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950'
+                    }`}
                   >
-                    <KeyRound className="w-3 h-3 text-[#c5a059]" />
+                    <KeyRound className="w-3 h-3" />
                     <span>{isInfonavitDone ? 'Ver / Editar' : 'Ingresar Datos'}</span>
                   </button>
                 </div>

@@ -221,64 +221,89 @@ export async function POST(req: NextRequest) {
       tipoNombre = 'Crédito Mejoravit Infonavit';
       const rawPasos = [
         {
+          id: 'req_portal_infonavit_validado',
+          titulo: '1. Credenciales y Acceso a Mi Cuenta Infonavit',
+          descripcion: 'Recaudación de NSS y contraseña para consulta en el portal oficial Infonavit.',
+          val: tramite.req_portal_infonavit_validado || Boolean(tramite.nss_portal_infonavit && tramite.password_portal_infonavit),
+        },
+        {
+          id: 'tabla_amortizacion',
+          titulo: '2. Tabla de Amortización Oficial Infonavit',
+          descripcion: 'Consulta de precalificación y descarga de la tabla de amortización oficial del crédito.',
+          val: Boolean(tramite.documentos_urls?.tabla_amortizacion || cliente.documentos_urls?.tabla_amortizacion),
+        },
+        {
+          id: 'contrato_prestacion_servicio',
+          titulo: '3. Contrato de Prestación de Servicios',
+          descripcion: 'Formalización del contrato de asesoría y prestación de servicios.',
+          val: Object.keys(cliente.documentos_urls || {}).some(k => k.startsWith('doc_preset_')),
+        },
+        {
           id: 'req_ine_normal',
-          titulo: 'Identificación Oficial INE (Frente y Reverso)',
+          titulo: '4. Identificación Oficial INE (Frente y Reverso)',
           descripcion: 'Copia digital a color legible de la credencial oficial vigente.',
           val: tramite.req_ine_normal,
         },
         {
           id: 'req_ine_ampliada_200',
-          titulo: 'INE Ampliada al 200%',
+          titulo: '5. INE Ampliada al 200%',
           descripcion: 'Documento en formato de ampliación al 200% para archivo Infonavit.',
           val: tramite.req_ine_ampliada_200,
         },
         {
           id: 'req_curp_actualizada',
-          titulo: 'CURP Actualizada',
+          titulo: '6. CURP Actualizada',
           descripcion: 'Documento oficial de CURP con formato vigente RENAPO.',
           val: tramite.req_curp_actualizada,
         },
         {
           id: 'req_acta_nacimiento',
-          titulo: 'Acta de Nacimiento Certificada',
+          titulo: '7. Acta de Nacimiento Certificada',
           descripcion: 'Copia del acta de nacimiento certificada en el Registro Civil.',
           val: tramite.req_acta_nacimiento,
         },
         {
           id: 'req_comprobante_domicilio',
-          titulo: 'Comprobante de Domicilio Reciente',
+          titulo: '8. Comprobante de Domicilio Reciente',
           descripcion: 'Comprobante de domicilio no mayor a 3 meses correspondiente al inmueble.',
           val: tramite.req_comprobante_domicilio,
         },
         {
           id: 'req_estado_cuenta_bancario',
-          titulo: 'Estado de Cuenta Bancario con CLABE',
+          titulo: '9. Estado de Cuenta Bancario con CLABE',
           descripcion: 'Estado de cuenta bancario del último mes a nombre del solicitante con CLABE.',
           val: tramite.req_estado_cuenta_bancario,
         },
         {
           id: 'req_constancia_situacion_fiscal',
-          titulo: 'Constancia de Situación Fiscal (SAT)',
+          titulo: '10. Constancia de Situación Fiscal (SAT)',
           descripcion: 'Documento de situación fiscal con RFC validado ante el SAT.',
           val: tramite.req_constancia_situacion_fiscal,
         },
         {
           id: 'req_3_referencias_personales',
-          titulo: '3 Referencias Personales Verificadas',
+          titulo: '11. 3 Referencias Personales Verificadas',
           descripcion: 'Registro de 3 referencias personales con datos de contacto verificados.',
           val: tramite.req_3_referencias_personales,
         },
         {
-          id: 'req_portal_infonavit_validado',
-          titulo: 'Credenciales y Acceso a Mi Cuenta Infonavit',
-          descripcion: 'Validación del perfil en el portal Infonavit para gestión de solicitud.',
-          val: tramite.req_portal_infonavit_validado,
-        },
-        {
           id: 'req_fotos_inmueble_5',
-          titulo: 'Expediente de Fotografías del Inmueble (5 fotos)',
+          titulo: '12. Expediente de Fotografías del Inmueble (5 fotos)',
           descripcion: 'Fotografías (3 interiores y 2 exteriores) de las áreas a mejorar.',
           val: tramite.req_fotos_inmueble_5,
+        },
+        {
+          id: 'cita_infonavit',
+          titulo: '13. Cita Presencial en Centro de Servicio Infonavit (CESI)',
+          descripcion: 'Asistencia del cliente a su cita en Infonavit para ingreso formal del expediente.',
+          val: Boolean(
+            tramite.documentos_urls?.cita_infonavit?.estado === 'confirmada' ||
+            tramite.documentos_urls?.cita_infonavit?.estado === 'asistida' ||
+            cliente.documentos_urls?.cita_infonavit?.estado === 'confirmada' ||
+            cliente.documentos_urls?.cita_infonavit?.estado === 'asistida' ||
+            tramite.documentos_urls?.comprobante_cita_infonavit ||
+            cliente.documentos_urls?.comprobante_cita_infonavit
+          ),
         },
       ];
 

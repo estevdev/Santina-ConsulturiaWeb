@@ -162,6 +162,101 @@ export async function applyEditsToPdf(
       continue;
     }
 
+    // 1.8. Manejo especial de desbordamiento en grupos de párrafos (P1, P2, P3...)
+    // Si la zona es parte de una secuencia P1, P2, P3... y ya fue procesada como continuación por P1, saltar
+    if ((zone as any)._skipOverflow) continue;
+
+    const pMatch = zone.name.match(/^(.*?)\s+P([1-9]\d*)$/i);
+    if (pMatch && typeof rawValue === 'string') {
+      const baseGroupKey = pMatch[1].trim().toLowerCase();
+      const currentPNum = parseInt(pMatch[2], 10);
+
+      // Buscar si existen las siguientes zonas en secuencia (ej. P2, P3, P4)
+      const siblingZones = zones
+        .filter((z) => (z.pageNumber || 1) === (zone.pageNumber || 1))
+        .map((z) => {
+          const m = z.name.match(/^(.*?)\s+P([1-9]\d*)$/i);
+          if (m && m[1].trim().toLowerCase() === baseGroupKey) {
+            return { zone: z, num: parseInt(m[2], 10) };
+          }
+          return null;
+        })
+        .filter((item): item is { zone: FieldZone; num: number } => item !== null)
+        .sort((a, b) => a.num - b.num);
+
+      if (siblingZones.length > 1 && siblingZones[0].num === currentPNum) {
+        // Concatenar el texto completo disponible para el grupo
+        let fullTextGroup = rawValue;
+
+        // Si hay otros valores en los siblings, usarlos solo si el primero no trae la cadena completa
+        for (const sib of siblingZones) {
+          if (sib.num > currentPNum) {
+            const sibVal = values[sib.zone.id];
+            if (typeof sibVal === 'string' && sibVal && !fullTextGroup.includes(sibVal)) {
+              fullTextGroup += ' ' + sibVal;
+            }
+            // Marcar hermano para no re-procesar por separado
+            (sib.zone as any)._skipOverflow = true;
+          }
+        }
+
+        // Dividir por palabras y distribuir según el ancho físico permitido por cada zona
+        const words = fullTextGroup.split(/\s+/).filter(Boolean);
+        let currentWordIdx = 0;
+
+        for (const sib of siblingZones) {
+          if (currentWordIdx >= words.length) break;
+
+          const sibX = (sib.zone.x / 100) * pageWidth;
+          const sibYTop = (sib.zone.y / 100) * pageHeight;
+          const sibWidth = (sib.zone.width / 100) * pageWidth;
+          const sibHeight = (sib.zone.height / 100) * pageHeight;
+          const sibYBottom = pageHeight - sibYTop - sibHeight;
+
+          const sibFontSize = sib.zone.fontSize || zone.fontSize || 10;
+          const fontEnum = getFontName(
+            sib.zone.fontFamily || zone.fontFamily,
+            sib.zone.isBold ?? zone.isBold,
+            sib.zone.isItalic ?? zone.isItalic
+          );
+          const font = await getEmbeddedFont(fontEnum);
+
+          let chunkText = '';
+          while (currentWordIdx < words.length) {
+            const candidate = chunkText ? `${chunkText} ${words[currentWordIdx]}` : words[currentWordIdx];
+            const candidateWidth = font.widthOfTextAtSize(candidate, sibFontSize);
+
+            if (candidateWidth <= sibWidth) {
+              chunkText = candidate;
+              currentWordIdx++;
+            } else {
+              // Si no cabe ni una sola palabra en la zona, forzar meterla y pasar a la siguiente
+              if (!chunkText) {
+                chunkText = words[currentWordIdx];
+                currentWordIdx++;
+              }
+              break;
+            }
+          }
+
+          if (chunkText) {
+            const fontAscent = sibFontSize * 0.78;
+            const drawY = pageHeight - sibYTop - fontAscent;
+            const textColor = hexToRgb(sib.zone.color || zone.color || '#000000');
+
+            page.drawText(chunkText, {
+              x: sibX,
+              y: drawY,
+              size: sibFontSize,
+              font: font,
+              color: textColor,
+            });
+          }
+        }
+        continue;
+      }
+    }
+
     // 2. Normalizar líneas y spans
     let inputLines: TextLine[] = [];
     if (typeof rawValue === 'object' && 'lines' in rawValue) {

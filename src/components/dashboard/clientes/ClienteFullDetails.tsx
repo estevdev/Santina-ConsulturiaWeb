@@ -9,6 +9,8 @@ import {
   Share2,
   Edit,
   MapPin,
+  GitCommit,
+  CheckCircle,
 } from 'lucide-react';
 import { Cliente, TramiteMejoravit } from '@/types/cliente';
 
@@ -17,6 +19,9 @@ interface ClienteFullDetailsProps {
   currentUserRole?: string;
   tramiteMejoravit?: TramiteMejoravit;
   downloadingBundle: 'oficiales' | 'contratos' | 'ambos' | null;
+  isModoSeguimiento?: boolean;
+  onToggleModoSeguimiento?: () => void;
+  timelineComponent?: React.ReactNode;
   onBack: () => void;
   onOpenDownloadModal: () => void;
   onOpenShareModal: (cliente: Cliente) => void;
@@ -29,6 +34,9 @@ export function ClienteFullDetails({
   currentUserRole,
   tramiteMejoravit,
   downloadingBundle,
+  isModoSeguimiento = true,
+  onToggleModoSeguimiento,
+  timelineComponent,
   onBack,
   onOpenDownloadModal,
   onOpenShareModal,
@@ -39,14 +47,32 @@ export function ClienteFullDetails({
     <div className="bg-white dark:bg-[#0d0e12] rounded-3xl border border-slate-200 dark:border-zinc-800 shadow-md p-6 lg:p-8 space-y-8 animate-in fade-in duration-200">
       {/* Barra superior de navegación / regreso */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200 dark:border-zinc-800">
-        <button
-          type="button"
-          onClick={onBack}
-          className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
-        >
-          <ArrowLeft className="w-4 h-4 text-[#c5a059]" />
-          <span>← Volver a la Lista de Clientes & Checklist</span>
-        </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex items-center gap-2.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm w-fit"
+          >
+            <ArrowLeft className="w-4 h-4 text-[#c5a059]" />
+            <span>← Volver a la Lista de Clientes & Checklist</span>
+          </button>
+
+          {onToggleModoSeguimiento && (
+            <button
+              type="button"
+              onClick={onToggleModoSeguimiento}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-sm border ${
+                isModoSeguimiento
+                  ? 'bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] text-slate-950 border-[#dfba73] shadow-md ring-2 ring-[#c5a059]/40'
+                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 text-[#9a7b38] dark:text-[#dfba73] border-slate-300 dark:border-[#c5a059]/40'
+              }`}
+            >
+              <GitCommit className="w-4 h-4" />
+              <span>{isModoSeguimiento ? 'Ver Checklist Tradicional' : 'Entrar en Modo Seguimiento'}</span>
+            </button>
+          )}
+        </div>
+
         <div className="flex items-center gap-3">
           <span className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300/60 dark:border-emerald-800 flex items-center gap-1.5">
             <UserCheck className="w-4 h-4" />
@@ -69,8 +95,8 @@ export function ClienteFullDetails({
         </div>
       </div>
 
-      {/* 1. CHECKLIST DE DOCUMENTOS Y EXPEDIENTES DE TRÁMITES REQUERIDOS */}
-      {children}
+      {/* 1. CONTENIDO: LÍNEA DE TIEMPO DE SEGUIMIENTO O CHECKLIST TRADICIONAL */}
+      {isModoSeguimiento && timelineComponent ? timelineComponent : children}
 
       {/* 2. Información del Expediente del Cliente */}
       <div className="bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-6">

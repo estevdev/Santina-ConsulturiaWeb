@@ -306,6 +306,8 @@ export default function CanvasPdfViewer({
         return 'Times New Roman, serif';
       case 'Courier':
         return 'Courier New, monospace';
+      case 'CourierWide':
+        return 'Courier New, monospace; letter-spacing: 0.15em';
       default:
         return 'Arial, Helvetica, sans-serif';
     }
@@ -342,70 +344,123 @@ export default function CanvasPdfViewer({
             }
 
             return (
-              <div
-                key={zone.id}
-                onMouseDown={(e) => handleZoneMouseDown(e, zone)}
-                className={`absolute transition-shadow flex flex-col justify-center p-0 overflow-visible ${
-                  isSelected
-                    ? 'border-2 border-[#c5a059] ring-2 ring-amber-300 shadow-lg z-20 cursor-move'
-                    : isEditorMode
-                    ? 'border-2 border-dashed border-amber-500 hover:border-[#c5a059] z-10 cursor-move'
-                    : 'border border-[#c5a059]/80 hover:border-[#c5a059] hover:shadow-sm z-10 cursor-move'
-                }`}
-                style={{
-                  left: `${zone.x}%`,
-                  top: `${zone.y}%`,
-                  width: `${zone.width}%`,
-                  height: `${zone.height}%`,
-                  backgroundColor:
-                    zone.bgColor &&
-                    zone.bgColor !== 'transparent' &&
-                    zone.bgColor !== 'none' &&
-                    zone.bgColor.toLowerCase() !== '#ffffff' &&
-                    zone.bgColor.toLowerCase() !== '#fff'
-                      ? zone.bgColor
-                      : 'transparent',
-                  color: zone.color || '#000000',
-                  fontFamily: getFontFamilyCss(zone.fontFamily),
-                  fontSize: `${(zone.fontSize || 12) * displayScale}px`,
-                  lineHeight: zone.lineHeight || 1.15,
-                  padding: 0,
-                  textAlign: zone.alignment || 'left',
-                }}
-              >
-                {hasContent ? (
-                  <div 
-                    className={`w-full h-full flex flex-col justify-center m-0 p-0 ${
-                      zone.alignment === 'right'
-                        ? 'items-end text-right'
-                        : zone.alignment === 'center'
-                        ? 'items-center text-center'
-                        : 'items-start text-left'
-                    } [&_p]:m-0 [&_p]:p-0 [&_p]:leading-[inherit] [&_p]:whitespace-nowrap overflow-visible pointer-events-none`}
-                    style={{ textAlign: zone.alignment || 'left', lineHeight: zone.lineHeight || 1.15 }}
-                    dangerouslySetInnerHTML={{ __html: richHtml }}
-                  />
-                ) : (
-                  <span className="text-[10px] text-slate-500 font-sans font-normal opacity-80 truncate select-none bg-white/70 px-1 rounded block text-center pointer-events-none">
-                    [{zone.name}]
-                  </span>
+              <div key={zone.id}>
+                {/* Si es zona de círculos con opciones múltiples, renderizar las opciones posicionadas absolutamente sobre la página */}
+                {zone.fieldType === 'circle_select' && zone.circleOptions && zone.circleOptions.length > 0 && (
+                  zone.circleOptions.map((opt) => {
+                    const isSelectedOpt =
+                      liveValue === opt.id ||
+                      liveValue === opt.label ||
+                      liveValue === `CIRCLE_${opt.id}`;
+
+                    const diameterPx = (zone.circleRadius || 6) * 2 * displayScale;
+
+                    return (
+                      <div
+                        key={opt.id}
+                        className="absolute pointer-events-none z-20"
+                        style={{
+                          left: `${opt.x}%`,
+                          top: `${opt.y}%`,
+                          transform: 'translate(-50%, -50%)',
+                        }}
+                      >
+                        <div
+                          className={`rounded-full border-2 border-black transition-all ${
+                            isSelectedOpt ? 'bg-black' : 'bg-transparent'
+                          }`}
+                          style={{
+                            width: `${diameterPx}px`,
+                            height: `${diameterPx}px`,
+                          }}
+                        />
+                        {opt.label && (
+                          <span className="absolute top-1/2 left-full ml-1 -translate-y-1/2 text-[9px] font-bold text-slate-700 dark:text-slate-200 select-none bg-white/80 dark:bg-slate-900/80 px-1 rounded shadow-xs whitespace-nowrap">
+                            {opt.label}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
 
-                {/* Handle de redimensionamiento en la esquina inferior derecha */}
-                {isSelected && (
-                  <div
-                    onMouseDown={(e) => handleResizeHandleMouseDown(e, zone)}
-                    className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-[#c5a059] border-2 border-white rounded-xs shadow-md cursor-se-resize z-30 hover:scale-125 transition-transform"
-                    title="Arrastra para cambiar el tamaño de la zona"
-                  />
-                )}
+                {/* Caja de la zona */}
+                <div
+                  onMouseDown={(e) => handleZoneMouseDown(e, zone)}
+                  className={`absolute transition-shadow flex flex-col justify-center p-0 overflow-visible ${
+                    isSelected
+                      ? 'border-2 border-[#c5a059] ring-2 ring-amber-300 shadow-lg z-20 cursor-move'
+                      : isEditorMode
+                      ? 'border-2 border-dashed border-amber-500 hover:border-[#c5a059] z-10 cursor-move'
+                      : 'border border-[#c5a059]/80 hover:border-[#c5a059] hover:shadow-sm z-10 cursor-move'
+                  }`}
+                  style={{
+                    left: `${zone.x}%`,
+                    top: `${zone.y}%`,
+                    width: `${zone.width}%`,
+                    height: `${zone.height}%`,
+                    backgroundColor:
+                      zone.bgColor &&
+                      zone.bgColor !== 'transparent' &&
+                      zone.bgColor !== 'none' &&
+                      zone.bgColor.toLowerCase() !== '#ffffff' &&
+                      zone.bgColor.toLowerCase() !== '#fff'
+                        ? zone.bgColor
+                        : 'transparent',
+                    color: zone.color || '#000000',
+                    fontFamily: getFontFamilyCss(zone.fontFamily),
+                    fontSize: `${(zone.fontSize || 12) * displayScale}px`,
+                    lineHeight: zone.lineHeight || 1.15,
+                    padding: 0,
+                    textAlign: zone.alignment || 'left',
+                  }}
+                >
+                  {zone.fieldType === 'circle_select' ? (
+                    (!zone.circleOptions || zone.circleOptions.length === 0) ? (
+                      <div className="w-full h-full flex items-center justify-center pointer-events-none">
+                        <div
+                          className="rounded-full bg-black border-2 border-black"
+                          style={{
+                            width: `${(zone.circleRadius || 6) * 2 * displayScale}px`,
+                            height: `${(zone.circleRadius || 6) * 2 * displayScale}px`,
+                          }}
+                        />
+                      </div>
+                    ) : null
+                  ) : hasContent ? (
+                    <div 
+                      className={`w-full h-full flex flex-col justify-center m-0 p-0 ${
+                        zone.alignment === 'right'
+                          ? 'items-end text-right'
+                          : zone.alignment === 'center'
+                          ? 'items-center text-center'
+                          : 'items-start text-left'
+                      } [&_p]:m-0 [&_p]:p-0 [&_p]:leading-[inherit] [&_p]:whitespace-nowrap overflow-visible pointer-events-none`}
+                      style={{ textAlign: zone.alignment || 'left', lineHeight: zone.lineHeight || 1.15 }}
+                      dangerouslySetInnerHTML={{ __html: richHtml }}
+                    />
+                  ) : (
+                    <span className="text-[10px] text-slate-500 font-sans font-normal opacity-80 truncate select-none bg-white/70 px-1 rounded block text-center pointer-events-none">
+                      [{zone.name}]
+                    </span>
+                  )}
 
-                {/* Badge de posición mientras se selecciona o mueve */}
-                {isSelected && (
-                  <div className="absolute -top-6 left-0 bg-[#0d0e12]/90 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
-                    X: {zone.x}% Y: {zone.y}% | W: {zone.width}% H: {zone.height}%
-                  </div>
-                )}
+                  {/* Handle de redimensionamiento en la esquina inferior derecha */}
+                  {isSelected && (
+                    <div
+                      onMouseDown={(e) => handleResizeHandleMouseDown(e, zone)}
+                      className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-[#c5a059] border-2 border-white rounded-xs shadow-md cursor-se-resize z-30 hover:scale-125 transition-transform"
+                      title="Arrastra para cambiar el tamaño de la zona"
+                    />
+                  )}
+
+                  {/* Badge de posición mientras se selecciona o mueve */}
+                  {isSelected && (
+                    <div className="absolute -top-6 left-0 bg-[#0d0e12]/90 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
+                      X: {zone.x}% Y: {zone.y}% | W: {zone.width}% H: {zone.height}%
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

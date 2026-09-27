@@ -24,7 +24,8 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowRight,
-  FoldVertical
+  FoldVertical,
+  Copy
 } from 'lucide-react';
 import { FieldZone, RichTextValue } from '@/types/preset';
 import { parseTiptapJsonToLines } from '@/utils/richTextParser';
@@ -36,6 +37,7 @@ interface RichTextEditorProps {
   onChange: (value: RichTextValue) => void;
   onUpdateZone: (id: string, updated: Partial<FieldZone>) => void;
   onDeleteZone?: (id: string) => void;
+  onDuplicateZone?: (zone: FieldZone) => void;
   onExtractOcr?: (zone: FieldZone) => void;
   isOcrLoading?: boolean;
 }
@@ -46,6 +48,7 @@ export default function RichTextEditor({
   onChange,
   onUpdateZone,
   onDeleteZone,
+  onDuplicateZone,
   onExtractOcr,
   isOcrLoading = false,
 }: RichTextEditorProps) {
@@ -158,6 +161,7 @@ export default function RichTextEditor({
             <option value="Helvetica">Arial / Sans</option>
             <option value="TimesRoman">Times New Roman</option>
             <option value="Courier">Courier</option>
+            <option value="CourierWide">✨ Courier Espaciado</option>
           </select>
 
           <div className="flex items-center gap-0.5" title="Tamaño base de fuente">
@@ -362,6 +366,17 @@ export default function RichTextEditor({
                 <ScanText className="w-3 h-3 text-[#dfba73] dark:text-[#dfba73]" />
               )}
               <span>OCR</span>
+            </button>
+          )}
+
+          {onDuplicateZone && (
+            <button
+              type="button"
+              onClick={() => onDuplicateZone(zone)}
+              className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors ml-0.5 cursor-pointer"
+              title="Duplicar zona con mismo tamaño y configuraciones"
+            >
+              <Copy className="w-3.5 h-3.5" />
             </button>
           )}
 

@@ -29,6 +29,8 @@ export interface Cliente {
   documentos_urls?: Record<string, string> | null;
   ine_ocr_raw?: Record<string, any> | null;
   creado_por?: string | null;
+  creado_por_nombre?: string | null;
+  creado_por_email?: string | null;
   created_at?: string;
   updated_at?: string;
 }

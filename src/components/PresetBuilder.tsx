@@ -73,6 +73,26 @@ export default function PresetBuilder({
     setActiveZoneId(newZone.id);
   };
 
+  const handleDuplicateZone = (zoneToDup: FieldZone) => {
+    const duplicated: FieldZone = {
+      ...JSON.parse(JSON.stringify(zoneToDup)),
+      id: `zone-${Date.now()}`,
+      name: `${zoneToDup.name} (Copia)`,
+      x: Math.min(95, Math.round((zoneToDup.x + 2) * 100) / 100),
+      y: Math.min(95, Math.round((zoneToDup.y + 2) * 100) / 100),
+    };
+    if (duplicated.circleOptions) {
+      duplicated.circleOptions = duplicated.circleOptions.map((opt, i) => ({
+        ...opt,
+        id: `opt-${Date.now()}-${i}`,
+        x: Math.min(95, Math.round((opt.x + 2) * 100) / 100),
+        y: Math.min(95, Math.round((opt.y + 2) * 100) / 100),
+      }));
+    }
+    setZones((prev) => [...prev, duplicated]);
+    setActiveZoneId(duplicated.id);
+  };
+
   const handleUpdateZone = (id: string, updatedFields: Partial<FieldZone>) => {
     setZones((prev) =>
       prev.map((z) => (z.id === id ? { ...z, ...updatedFields } : z))
@@ -351,6 +371,34 @@ export default function PresetBuilder({
                 <LayoutGrid className="w-4 h-4 text-[#c5a059] dark:text-[#c5a059]" />
                 3. Zonas Definidas ({zones.length})
               </h3>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const newZone: FieldZone = {
+                    id: `zone-${Date.now()}`,
+                    name: `Círculos Género / Respuesta ${zones.length + 1}`,
+                    x: 40,
+                    y: 40,
+                    width: 15,
+                    height: 3,
+                    pageNumber: currentPage,
+                    fieldType: 'circle_select',
+                    circleRadius: 6,
+                    circleOptions: [
+                      { id: `opt-${Date.now()}-1`, label: 'M', x: 42, y: 41.5 },
+                      { id: `opt-${Date.now()}-2`, label: 'F', x: 46, y: 41.5 },
+                    ],
+                    filledBy: 'cliente',
+                  };
+                  setZones((prev) => [...prev, newZone]);
+                  setActiveZoneId(newZone.id);
+                }}
+                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                title="Agregar un campo de Círculos de Respuesta con puntos exactos por coordenada"
+              >
+                <span>⭕ + Círculos de Respuesta</span>
+              </button>
             </div>
 
             {zones.length === 0 ? (
@@ -366,7 +414,30 @@ export default function PresetBuilder({
                   return (
                     <div
                       key={zone.id}
-                      className={`p-3 rounded-xl border transition-all ${
+                      draggable
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData('text/plain', idx.toString());
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const fromIndexStr = e.dataTransfer.getData('text/plain');
+                        if (!fromIndexStr) return;
+                        const fromIndex = parseInt(fromIndexStr, 10);
+                        if (isNaN(fromIndex) || fromIndex === idx) return;
+
+                        setZones((prev) => {
+                          const updated = [...prev];
+                          const [movedItem] = updated.splice(fromIndex, 1);
+                          updated.splice(idx, 0, movedItem);
+                          return updated;
+                        });
+                      }}
+                      className={`p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing ${
                         isActive
                           ? 'border-[#c5a059] bg-[#c5a059]/40 dark:bg-[#c5a059]/30 shadow-sm'
                           : 'border-slate-200 dark:border-zinc-800 bg-slate-50/60 dark:bg-slate-800/40'
@@ -374,6 +445,9 @@ export default function PresetBuilder({
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
                         <div className="flex items-center gap-2 flex-1">
+                          <span className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xs cursor-grab" title="Arrastra para reordenar esta zona">
+                            ☰
+                          </span>
                           <span className="w-5 h-5 rounded-full bg-[#c5a059] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                             {idx + 1}
                           </span>
@@ -389,8 +463,9 @@ export default function PresetBuilder({
                         </div>
 
                         <button
+                          type="button"
                           onClick={() => toggleStyleSettings(zone.id)}
-                          className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded"
+                          className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded cursor-pointer"
                           title="Ajustes de estilo y tipografía"
                         >
                           {isStyleOpen ? (
@@ -401,7 +476,7 @@ export default function PresetBuilder({
                         </button>
                       </div>
 
-                      {/* Asignación de quien debe rellenar el campo: CLIENTE o ASESOR y Tipo Firma */}
+                      {/* Asignación de quien debe rellenar el campo: CLIENTE o ASESOR, Tipo de Campo */}
                       <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-zinc-800 flex-wrap">
                         <div className="flex items-center gap-1">
                           <span className="text-[10px] font-bold text-slate-400">Rellena:</span>
@@ -431,19 +506,156 @@ export default function PresetBuilder({
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateZone(zone.id, { isSignature: !zone.isSignature })}
-                          className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
-                            zone.isSignature || zone.name.toLowerCase().includes('rubrica') || zone.name.toLowerCase().includes('firma')
-                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                              : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
-                          }`}
-                          title="Marcar este campo como Firma / Rúbrica en trazo"
-                        >
-                          <span>✍️ Es Firma</span>
-                        </button>
+                        {/* Selección de Tipo de Campo: Texto | Firma | Círculo de Marcado */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const isSig = !(zone.fieldType === 'signature' || zone.isSignature);
+                              handleUpdateZone(zone.id, {
+                                isSignature: isSig,
+                                fieldType: isSig ? 'signature' : 'text',
+                              });
+                            }}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                              zone.fieldType === 'signature' || zone.isSignature || zone.name.toLowerCase().includes('rubrica') || zone.name.toLowerCase().includes('firma')
+                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="Marcar este campo como Firma / Rúbrica en trazo"
+                          >
+                            <span>✍️ Es Firma</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const isCircle = zone.fieldType !== 'circle_select';
+                              handleUpdateZone(zone.id, {
+                                fieldType: isCircle ? 'circle_select' : 'text',
+                                circleRadius: isCircle ? (zone.circleRadius || 6) : undefined,
+                                circleOptions: isCircle ? (zone.circleOptions || [{ id: 'opt-1', label: 'Opción 1', x: zone.x + zone.width / 2, y: zone.y + zone.height / 2 }]) : undefined,
+                              });
+                            }}
+                            className={`px-2 py-0.5 text-[10px] font-bold rounded-lg border transition-all cursor-pointer flex items-center gap-1 ${
+                              zone.fieldType === 'circle_select'
+                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                            }`}
+                            title="Marcar este campo como Círculo de Marcado / Opción Múltiple"
+                          >
+                            <span>⭕ Círculo</span>
+                          </button>
+                        </div>
                       </div>
+
+                      {/* Configuración específica para Círculo de Marcado */}
+                      {zone.fieldType === 'circle_select' && (
+                        <div className="mt-2 mb-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-2 text-xs">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-indigo-900 dark:text-indigo-200 text-[11px] flex items-center gap-1">
+                              ⭕ Ajustes de Círculos de Marcado
+                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400">Radio:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                max="30"
+                                value={zone.circleRadius || 6}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value);
+                                  handleUpdateZone(zone.id, { circleRadius: isNaN(val) ? 6 : val });
+                                }}
+                                className="w-12 px-1 py-0.5 bg-white dark:bg-slate-900 border border-indigo-300 dark:border-indigo-700 rounded text-center text-xs font-bold text-indigo-900 dark:text-indigo-100"
+                              />
+                              <span className="text-[10px] text-slate-500">pt</span>
+                            </div>
+                          </div>
+
+                          {/* Lista de Opciones de Círculos */}
+                          <div className="space-y-1.5 pt-1">
+                            <div className="flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                              <span>Opciones ({zone.circleOptions?.length || 0})</span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const opts = zone.circleOptions || [];
+                                  const newOpt = {
+                                    id: `opt-${Date.now()}`,
+                                    label: `Opción ${opts.length + 1}`,
+                                    x: zone.x + zone.width / 2,
+                                    y: zone.y + zone.height / 2,
+                                  };
+                                  handleUpdateZone(zone.id, { circleOptions: [...opts, newOpt] });
+                                }}
+                                className="text-indigo-600 dark:text-indigo-400 hover:underline font-bold"
+                              >
+                                + Agregar Opción
+                              </button>
+                            </div>
+
+                            {(zone.circleOptions || []).map((opt, oIdx) => (
+                              <div key={opt.id} className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-indigo-100 dark:border-indigo-900">
+                                <span className="text-[10px] font-bold text-indigo-500">#{oIdx + 1}</span>
+                                <input
+                                  type="text"
+                                  value={opt.label}
+                                  placeholder="Etiqueta"
+                                  onChange={(e) => {
+                                    const opts = (zone.circleOptions || []).map((o) =>
+                                      o.id === opt.id ? { ...o, label: e.target.value } : o
+                                    );
+                                    handleUpdateZone(zone.id, { circleOptions: opts });
+                                  }}
+                                  className="flex-1 bg-transparent text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none"
+                                />
+                                <div className="flex items-center gap-1 text-[10px]">
+                                  <span className="text-slate-400">X:</span>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={opt.x}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      const opts = (zone.circleOptions || []).map((o) =>
+                                        o.id === opt.id ? { ...o, x: isNaN(val) ? 0 : val } : o
+                                      );
+                                      handleUpdateZone(zone.id, { circleOptions: opts });
+                                    }}
+                                    className="w-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-center font-mono text-[10px]"
+                                  />
+                                  <span className="text-slate-400">Y:</span>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    value={opt.y}
+                                    onChange={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      const opts = (zone.circleOptions || []).map((o) =>
+                                        o.id === opt.id ? { ...o, y: isNaN(val) ? 0 : val } : o
+                                      );
+                                      handleUpdateZone(zone.id, { circleOptions: opts });
+                                    }}
+                                    className="w-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-1 text-center font-mono text-[10px]"
+                                  />
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const opts = (zone.circleOptions || []).filter((o) => o.id !== opt.id);
+                                    handleUpdateZone(zone.id, { circleOptions: opts });
+                                  }}
+                                  className="text-rose-500 hover:text-rose-700 px-1 text-xs font-bold"
+                                  title="Eliminar opción"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Coordenadas editables manualmente (X, Y, W, H) */}
                       <div className="mt-2 space-y-1">
@@ -533,6 +745,7 @@ export default function PresetBuilder({
                             zone={zone}
                             onUpdateZone={handleUpdateZone}
                             onDeleteZone={handleDeleteZone}
+                            onDuplicateZone={handleDuplicateZone}
                           />
                         </div>
                       )}

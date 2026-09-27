@@ -39,7 +39,7 @@ function getFontName(family: string = 'Helvetica', isBold: boolean = false, isIt
     if (isItalic) return StandardFonts.TimesRomanItalic;
     return StandardFonts.TimesRoman;
   }
-  if (family === 'Courier') {
+  if (family === 'Courier' || family === 'CourierWide') {
     if (isBold && isItalic) return StandardFonts.CourierBoldOblique;
     if (isBold) return StandardFonts.CourierBold;
     if (isItalic) return StandardFonts.CourierOblique;
@@ -125,6 +125,41 @@ export async function applyEditsToPdf(
       } catch (err) {
         console.error('Error al incrustar la imagen de firma en el PDF:', err);
       }
+    }
+
+    // 1.5. Si es una zona de marcado de círculo (circle_select)
+    if (zone.fieldType === 'circle_select' || (typeof rawValue === 'string' && (rawValue === 'SELECTED' || rawValue === 'CHECKED' || rawValue.startsWith('CIRCLE_')))) {
+      const radius = zone.circleRadius || 6;
+      const circleColor = hexToRgb(zone.color || '#000000');
+      
+      // Si la zona tiene sub-opciones específicas marcadas
+      if (zone.circleOptions && zone.circleOptions.length > 0) {
+        const selectedOptionId = typeof rawValue === 'string' ? rawValue.replace('CIRCLE_', '') : '';
+        const opt = zone.circleOptions.find((o) => o.id === selectedOptionId || o.label === rawValue) || zone.circleOptions[0];
+        
+        const optX = (opt.x / 100) * pageWidth;
+        const optYTop = (opt.y / 100) * pageHeight;
+        const optYBottom = pageHeight - optYTop;
+
+        page.drawCircle({
+          x: optX,
+          y: optYBottom,
+          size: radius,
+          color: circleColor,
+        });
+      } else {
+        // Círculo en el centro de la zona
+        const centerX = boxX + boxWidth / 2;
+        const centerY = boxYBottom + boxHeight / 2;
+
+        page.drawCircle({
+          x: centerX,
+          y: centerY,
+          size: radius,
+          color: circleColor,
+        });
+      }
+      continue;
     }
 
     // 2. Normalizar líneas y spans

@@ -52,14 +52,31 @@ export default function LlenarDocumentoPage() {
           setCompletedPdfUrl(linkData.generated_pdf_url);
         }
 
-        // 2. Obtener los datos del cliente
+        // 2. Obtener los datos del cliente y su trámite asociado
+        let loadedCliente: any = null;
+        let tramiteData: any = null;
+
         if (linkData.cliente_id) {
           const { data: cliData } = await supabase
             .from('clientes')
             .select('*')
             .eq('id', linkData.cliente_id)
             .single();
-          if (cliData) setCliente(cliData);
+          if (cliData) {
+            loadedCliente = cliData;
+            setCliente(cliData);
+          }
+
+          // Consultar posible trámite de Mejoravit
+          const { data: mejData } = await supabase
+            .from('tramites_mejoravit')
+            .select('*')
+            .eq('cliente_id', linkData.cliente_id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (mejData) tramiteData = mejData;
         }
 
         // 3. Obtener el preset desde Supabase
@@ -90,43 +107,65 @@ export default function LlenarDocumentoPage() {
 
         setPreset(loadedPreset);
 
-        // Pre-llenar formulario con datos conocidos del cliente
+        // Pre-llenar formulario con datos conocidos del cliente y trámite
         const initialForm: Record<string, string> = {};
         const filledAlready = linkData.filled_values || {};
+
+        const today = new Date();
+        const curDay = String(today.getDate()).padStart(2, '0');
+        const curMonth = String(today.getMonth() + 1).padStart(2, '0');
+        const curYear = String(today.getFullYear());
 
         loadedPreset.zones.forEach((zone) => {
           if (filledAlready[zone.id]) {
             initialForm[zone.id] = String(filledAlready[zone.id]);
           } else {
-            // Intentar adivinar por el nombre de la zona
             const nameLower = zone.name.toLowerCase();
             let defaultVal = '';
 
-            if (cliente) {
-              const fullNombre = [cliente.nombre, cliente.apellido_paterno, cliente.apellido_materno]
+            if (loadedCliente) {
+              const fullNombre = [loadedCliente.nombre, loadedCliente.apellido_paterno, loadedCliente.apellido_materno]
                 .filter(Boolean)
                 .join(' ');
 
-              if (nameLower.includes('nombre') || nameLower.includes('cliente')) {
-                defaultVal = fullNombre || cliente.nombre || '';
-              } else if (nameLower.includes('curp')) {
-                defaultVal = cliente.curp || '';
-              } else if (nameLower.includes('nss')) {
-                defaultVal = cliente.nss || '';
+              // Nombre y Apellidos
+              if (nameLower.includes('apellido paterno') || nameLower === 'paterno') {
+                defaultVal = loadedCliente.apellido_paterno || '';
+              } else if (nameLower.includes('apellido materno') || nameLower === 'materno') {
+                defaultVal = loadedCliente.apellido_materno || '';
+              } else if (nameLower.includes('nombre') || nameLower.includes('cliente') || nameLower.includes('derechohabiente')) {
+                defaultVal = fullNombre || loadedCliente.nombre || '';
+              } 
+              // Identificadores Oficiales
+              else if (nameLower.includes('curp')) {
+                defaultVal = loadedCliente.curp || '';
+              } else if (nameLower.includes('nss') || nameLower.includes('seguridad social')) {
+                defaultVal = loadedCliente.nss || '';
               } else if (nameLower.includes('rfc')) {
-                defaultVal = cliente.rfc || '';
-              } else if (nameLower.includes('teléfono') || nameLower.includes('telefono')) {
-                defaultVal = cliente.telefono || '';
+                defaultVal = loadedCliente.rfc || '';
+              } else if (nameLower.includes('teléfono') || nameLower.includes('telefono') || nameLower.includes('celular')) {
+                defaultVal = loadedCliente.telefono || '';
               } else if (nameLower.includes('email') || nameLower.includes('correo')) {
-                defaultVal = cliente.email || '';
-              } else if (nameLower.includes('dirección') || nameLower.includes('direccion')) {
-                defaultVal = cliente.direccion || '';
+                defaultVal = loadedCliente.email || '';
+              } else if (nameLower.includes('dirección') || nameLower.includes('direccion') || nameLower.includes('domicilio') || nameLower.includes('calle')) {
+                defaultVal = loadedCliente.direccion || '';
+              } 
+              // Fechas
+              else if (nameLower === 'dia' || nameLower.includes('día')) {
+                defaultVal = curDay;
+              } else if (nameLower === 'mes') {
+                defaultVal = curMonth;
+              } else if (nameLower === 'año' || nameLower.includes('anio')) {
+                defaultVal = curYear;
               } else if (nameLower.includes('fecha')) {
-                defaultVal = new Date().toLocaleDateString('es-MX', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  year: 'numeric',
-                });
+                defaultVal = `${curDay}/${curMonth}/${curYear}`;
+              }
+
+              // Datos del Trámite / Patrón (si existen)
+              if (tramiteData) {
+                if (nameLower.includes('patron') || nameLower.includes('empresa')) {
+                  defaultVal = tramiteData.nss_portal_infonavit ? defaultVal : defaultVal;
+                }
               }
             }
             initialForm[zone.id] = defaultVal;
@@ -349,7 +388,13 @@ export default function LlenarDocumentoPage() {
                   zone.name.toLowerCase().includes('rubrica') ||
                   zone.name.toLowerCase().includes('firma');
 
-                if (isSig) {
+                if (zone.fieldType === 'circle_select') {
+                  if (zone.circleOptions && zone.circleOptions.length > 0) {
+                    autoForm[zone.id] = `CIRCLE_${zone.circleOptions[0].id}`;
+                  } else {
+                    autoForm[zone.id] = 'SELECTED';
+                  }
+                } else if (isSig) {
                   autoForm[zone.id] = mockSignatureDataUrl;
                 } else if (!autoForm[zone.id]) {
                   const nameLower = zone.name.toLowerCase();
@@ -410,11 +455,66 @@ export default function LlenarDocumentoPage() {
                       {idx + 1}. {zone.name} *
                     </label>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c5a059] dark:bg-[#c5a059]/80 text-[#c5a059] dark:text-[#c5a059] border border-[#c5a059] dark:border-[#c5a059]/60">
-                      {isSig ? '✍️ Firma' : '👤 Cliente'}
+                      {zone.fieldType === 'circle_select' ? '⭕ Círculo' : isSig ? '✍️ Firma' : '👤 Cliente'}
                     </span>
                   </div>
 
-                  {isSig ? (
+                  {zone.fieldType === 'circle_select' ? (
+                    <div className="pt-2 flex flex-wrap gap-2">
+                      {zone.circleOptions && zone.circleOptions.length > 0 ? (
+                        zone.circleOptions.map((opt) => {
+                          const isSelected = formValues[zone.id] === opt.id || formValues[zone.id] === `CIRCLE_${opt.id}` || formValues[zone.id] === opt.label;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleInputChange(zone.id, `CIRCLE_${opt.id}`)}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20'
+                                  : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700 hover:border-indigo-400'
+                              }`}
+                            >
+                              <span
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  isSelected ? 'border-white bg-white' : 'border-slate-400'
+                                }`}
+                              >
+                                {isSelected && <span className="w-2 h-2 rounded-full bg-indigo-600" />}
+                              </span>
+                              <span>{opt.label || 'Seleccionar Círculo'}</span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleInputChange(
+                              zone.id,
+                              formValues[zone.id] === 'SELECTED' ? '' : 'SELECTED'
+                            )
+                          }
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer border ${
+                            formValues[zone.id] === 'SELECTED'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                              formValues[zone.id] === 'SELECTED' ? 'border-white bg-white' : 'border-slate-400'
+                            }`}
+                          >
+                            {formValues[zone.id] === 'SELECTED' && (
+                              <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                            )}
+                          </span>
+                          <span>Marcar Círculo</span>
+                        </button>
+                      )}
+                    </div>
+                  ) : isSig ? (
                     <div className="pt-1">
                       {currentSig && currentSig.startsWith('data:image/') ? (
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-white dark:bg-[#0d0e12] rounded-xl border border-emerald-300 dark:border-emerald-800">

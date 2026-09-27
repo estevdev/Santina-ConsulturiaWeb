@@ -1,4 +1,4 @@
-export type FontFamily = 'Helvetica' | 'TimesRoman' | 'Courier';
+export type FontFamily = 'Helvetica' | 'TimesRoman' | 'Courier' | 'CourierWide';
 export type PresetType = 'standard' | 'client_document';
 export type TargetTramiteType = 'todos' | 'retiro_desempleo' | 'mejoravit' | 'alta_medica_imss';
 export type FilledByRole = 'cliente' | 'asesor';
@@ -47,6 +47,9 @@ export interface FieldZone {
   bgColor?: string; // hex para tapar el texto anterior (ej. #FFFFFF)
   filledBy?: FilledByRole; // 'cliente' (por defecto) o 'asesor'
   isSignature?: boolean; // Indica si este campo es una firma/rúbrica en trazo
+  fieldType?: 'text' | 'signature' | 'circle_select'; // Tipo de campo: texto, firma o círculo marcado
+  circleRadius?: number; // Radio del círculo en puntos (ej. 4, 6, 8 pt)
+  circleOptions?: { id: string; label: string; x: number; y: number }[]; // Múltiples opciones de marcado en la misma zona
   lineFormats?: LineFormatRule[]; // Formato guardado línea por línea (negrita, tamaño, etc.)
   defaultTemplateHtml?: string; // Estructura HTML de plantilla guardada
 }

@@ -13,19 +13,22 @@ import {
   PaintBucket, 
   Palette,
   Trash2,
-  FoldVertical
+  FoldVertical,
+  Copy
 } from 'lucide-react';
 
 interface TypographyToolbarProps {
   zone: FieldZone;
   onUpdateZone: (id: string, updated: Partial<FieldZone>) => void;
   onDeleteZone?: (id: string) => void;
+  onDuplicateZone?: (zone: FieldZone) => void;
 }
 
 export default function TypographyToolbar({
   zone,
   onUpdateZone,
   onDeleteZone,
+  onDuplicateZone,
 }: TypographyToolbarProps) {
   return (
     <div className="bg-slate-100 dark:bg-slate-800/80 p-3 rounded-xl border border-slate-300 dark:border-slate-700 space-y-3 text-xs transition-colors">
@@ -42,6 +45,7 @@ export default function TypographyToolbar({
             <option value="Helvetica">Arial / Helvetica (Sans)</option>
             <option value="TimesRoman">Times New Roman (Serif)</option>
             <option value="Courier">Courier (Monospace)</option>
+            <option value="CourierWide">✨ Courier Espaciado (Espaciada y Clara)</option>
           </select>
         </div>
 
@@ -169,6 +173,16 @@ export default function TypographyToolbar({
               className="w-6 h-6 border border-slate-300 dark:border-slate-700 rounded cursor-pointer p-0 bg-transparent"
             />
           </div>
+          {onDuplicateZone && (
+            <button
+              type="button"
+              onClick={() => onDuplicateZone(zone)}
+              className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors ml-1"
+              title="Duplicar zona con mismo tamaño y configuración"
+            >
+              <Copy className="w-3.5 h-3.5" />
+            </button>
+          )}
           {onDeleteZone && (
             <button
               type="button"

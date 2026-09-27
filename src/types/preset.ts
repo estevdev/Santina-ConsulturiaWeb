@@ -48,6 +48,8 @@ export interface FieldZone {
   filledBy?: FilledByRole; // 'cliente' (por defecto) o 'asesor'
   isSignature?: boolean; // Indica si este campo es una firma/rúbrica en trazo
   fieldType?: 'text' | 'signature' | 'circle_select'; // Tipo de campo: texto, firma o círculo marcado
+  sectionHeader?: string; // Título o encabezado de sección para agrupar campos en la vista del cliente (ej. "DATOS GENERALES")
+  sectionSubheader?: string; // Subtítulo para subgrupos de campos (ej. "Referencia 1", "Referencia 2")
   circleRadius?: number; // Radio del círculo en puntos (ej. 4, 6, 8 pt)
   circleOptions?: { id: string; label: string; x: number; y: number }[]; // Múltiples opciones de marcado en la misma zona
   lineFormats?: LineFormatRule[]; // Formato guardado línea por línea (negrita, tamaño, etc.)

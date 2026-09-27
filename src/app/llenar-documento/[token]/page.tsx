@@ -449,15 +449,35 @@ export default function LlenarDocumentoPage() {
               const currentSig = formValues[zone.id];
 
               return (
-                <div key={zone.id} className="space-y-1.5 p-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
-                      {idx + 1}. {zone.name} *
-                    </label>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c5a059] dark:bg-[#c5a059]/80 text-[#c5a059] dark:text-[#c5a059] border border-[#c5a059] dark:border-[#c5a059]/60">
-                      {zone.fieldType === 'circle_select' ? '⭕ Círculo' : isSig ? '✍️ Firma' : '👤 Cliente'}
-                    </span>
-                  </div>
+                <React.Fragment key={zone.id}>
+                  {/* Encabezado o Título de Sección y Subtítulo si la zona lo define */}
+                  {zone.sectionHeader && (
+                    <div className="pt-4 pb-1 border-b-2 border-[#c5a059]/40 flex items-center gap-2 mt-2">
+                      <span className="w-2 h-4 bg-[#c5a059] rounded-xs" />
+                      <h3 className="text-xs font-black uppercase tracking-wider text-[#c5a059] dark:text-[#c5a059]">
+                        {zone.sectionHeader}
+                      </h3>
+                    </div>
+                  )}
+
+                  {zone.sectionSubheader && (
+                    <div className="pt-2 pb-0.5 flex items-center gap-1.5 ml-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                      <h4 className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                        {zone.sectionSubheader}
+                      </h4>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5 p-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800 bg-slate-50/50 dark:bg-slate-800/30">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {idx + 1}. {zone.name} *
+                      </label>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#c5a059] dark:bg-[#c5a059]/80 text-[#c5a059] dark:text-[#c5a059] border border-[#c5a059] dark:border-[#c5a059]/60">
+                        {zone.fieldType === 'circle_select' ? '⭕ Círculo' : isSig ? '✍️ Firma' : '👤 Cliente'}
+                      </span>
+                    </div>
 
                   {zone.fieldType === 'circle_select' ? (
                     <div className="pt-2 flex flex-wrap gap-2">
@@ -560,8 +580,9 @@ export default function LlenarDocumentoPage() {
                     />
                   )}
                 </div>
-              );
-            })}
+              </React.Fragment>
+            );
+          })}
           </div>
 
           <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">

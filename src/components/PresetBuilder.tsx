@@ -458,8 +458,35 @@ export default function PresetBuilder({
                               handleUpdateZone(zone.id, { name: e.target.value })
                             }
                             onClick={() => setActiveZoneId(zone.id)}
+                            placeholder="Nombre del campo..."
                             className="text-xs font-semibold text-slate-800 dark:text-slate-200 bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-[#c5a059] focus:bg-white dark:focus:bg-slate-800 px-1 py-0.5 rounded flex-1 focus:outline-none"
                           />
+                        </div>
+
+                        {/* Título de Sección y Subtítulo opcionales */}
+                        <div className="mb-2 space-y-1 bg-amber-50/60 dark:bg-amber-950/30 p-2 rounded-lg border border-amber-200/80 dark:border-amber-800/60">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-amber-700 dark:text-amber-400 shrink-0">📌 Título Sección:</span>
+                            <input
+                              type="text"
+                              value={zone.sectionHeader || ''}
+                              onChange={(e) => handleUpdateZone(zone.id, { sectionHeader: e.target.value })}
+                              onClick={() => setActiveZoneId(zone.id)}
+                              placeholder="ej. DATOS GENERALES, REFERENCIAS..."
+                              className="w-full bg-transparent text-[11px] font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none uppercase"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-amber-200/50 dark:border-amber-800/40">
+                            <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 shrink-0">🏷️ Subtítulo:</span>
+                            <input
+                              type="text"
+                              value={zone.sectionSubheader || ''}
+                              onChange={(e) => handleUpdateZone(zone.id, { sectionSubheader: e.target.value })}
+                              onClick={() => setActiveZoneId(zone.id)}
+                              placeholder="ej. Referencia 1, Datos del Cónyuge..."
+                              className="w-full bg-transparent text-[11px] font-semibold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none"
+                            />
+                          </div>
                         </div>
 
                         <button

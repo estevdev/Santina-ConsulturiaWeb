@@ -231,6 +231,7 @@ export function TramitesChecklist({
               selectedCliente={selectedCliente}
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
+              onViewDoc={onViewDoc}
             />
           </div>
         ))
@@ -494,6 +495,7 @@ export function TramitesChecklist({
                 selectedCliente={selectedCliente}
                 onGenerateLink={onGenerateClientDocLink}
                 onRemoveDoc={onRemoveDocPreset}
+                onViewDoc={onViewDoc}
               />
             </div>
           );
@@ -597,6 +599,7 @@ export function TramitesChecklist({
               selectedCliente={selectedCliente}
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
+              onViewDoc={onViewDoc}
             />
           </div>
         ))

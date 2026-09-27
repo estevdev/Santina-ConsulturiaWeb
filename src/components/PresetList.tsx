@@ -231,6 +231,25 @@ export default function PresetList({
                 )}
 
                 <div className="flex flex-wrap gap-1 mb-3">
+                  {preset.presetType === 'client_document' ? (
+                    <span className="text-[11px] bg-purple-100 dark:bg-purple-950/80 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-200 dark:border-purple-900/60 flex items-center gap-1">
+                      📝 Doc. Cliente
+                    </span>
+                  ) : (
+                    <span className="text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full font-medium border border-slate-200 dark:border-slate-700">
+                      📄 Edición Directa
+                    </span>
+                  )}
+
+                  {preset.presetType === 'client_document' && preset.targetTramiteType && (
+                    <span className="text-[11px] bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-full font-medium border border-amber-200 dark:border-amber-900/60">
+                      {preset.targetTramiteType === 'todos' && 'Todos los Trámites'}
+                      {preset.targetTramiteType === 'retiro_desempleo' && 'Retiro Desempleo'}
+                      {preset.targetTramiteType === 'mejoravit' && 'Mejoravit'}
+                      {preset.targetTramiteType === 'alta_medica_imss' && 'Alta Médica IMSS'}
+                    </span>
+                  )}
+
                   <span className="text-[11px] bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full font-medium border border-blue-200 dark:border-blue-900/60">
                     {preset.zones.length} {preset.zones.length === 1 ? 'Zona' : 'Zonas'}
                   </span>

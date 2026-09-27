@@ -68,7 +68,7 @@ export default function CanvasPdfViewer({
         buffer = pdfFile;
       }
 
-      const loadingTask = pdfjsLib.getDocument({ data: buffer });
+      const loadingTask = pdfjsLib.getDocument({ data: buffer.slice(0) });
       const doc = await loadingTask.promise;
 
       if (isMounted) {

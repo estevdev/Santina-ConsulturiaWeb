@@ -98,6 +98,27 @@ export async function applyEditsToPdf(
       color: bgColor,
     });
 
+    // Si es una imagen en base64 (Firma / Rúbrica en trazo)
+    if (typeof rawValue === 'string' && rawValue.startsWith('data:image/')) {
+      try {
+        const base64Data = rawValue.split(',')[1];
+        const imageBytes = Uint8Array.from(atob(base64Data), (c) => c.charCodeAt(0));
+        const embeddedImg = rawValue.includes('image/png')
+          ? await pdfDoc.embedPng(imageBytes)
+          : await pdfDoc.embedJpg(imageBytes);
+
+        page.drawImage(embeddedImg, {
+          x: boxX,
+          y: boxYBottom,
+          width: boxWidth,
+          height: boxHeight,
+        });
+        continue;
+      } catch (err) {
+        console.error('Error al incrustar la imagen de firma en el PDF:', err);
+      }
+    }
+
     // 2. Normalizar líneas y spans
     let inputLines: TextLine[] = [];
     if (typeof rawValue === 'object' && 'lines' in rawValue) {

@@ -1,4 +1,5 @@
 import { Preset } from '../types/preset';
+import { createClient } from './supabase/client';
 
 const PRESETS_KEY = 'pdf_editor_presets_v1';
 
@@ -7,6 +8,8 @@ export const INITIAL_PRESETS: Preset[] = [
     id: 'preset-invoice-default',
     name: 'Factura Estándar / Recibo',
     description: 'Preset para modificar cliente y fecha en facturas genéricas',
+    presetType: 'standard',
+    targetTramiteType: 'todos',
     identifierKeywords: ['factura', 'invoice', 'recibo', 'ticket'],
     zones: [
       {
@@ -53,20 +56,93 @@ export function getPresets(): Preset[] {
   }
 }
 
+export async function fetchPresetsFromSupabase(): Promise<Preset[]> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase.from('pdf_presets').select('*');
+    if (error || !data || data.length === 0) {
+      return getPresets();
+    }
+
+    const fetchedPresets: Preset[] = data.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      description: row.description || undefined,
+      presetType: row.preset_type || 'standard',
+      targetTramiteType: row.target_tramite_type || 'todos',
+      samplePdfUrl: row.sample_pdf_url || undefined,
+      identifierKeywords: Array.isArray(row.identifier_keywords) ? row.identifier_keywords : [],
+      zones: Array.isArray(row.zones) ? row.zones : [],
+      createdAt: row.created_at ? Number(row.created_at) : Date.now(),
+      updatedAt: row.updated_at ? Number(row.updated_at) : Date.now(),
+    }));
+
+    // Sincronizar localStorage
+    if (fetchedPresets.length > 0) {
+      saveAllPresets(fetchedPresets);
+    }
+    return fetchedPresets;
+  } catch {
+    return getPresets();
+  }
+}
+
 export function savePreset(preset: Preset): void {
   const presets = getPresets();
   const index = presets.findIndex(p => p.id === preset.id);
+  const updatedPreset = {
+    ...preset,
+    presetType: preset.presetType || 'standard',
+    targetTramiteType: preset.targetTramiteType || 'todos',
+    updatedAt: Date.now()
+  };
+  
   if (index >= 0) {
-    presets[index] = { ...preset, updatedAt: Date.now() };
+    presets[index] = updatedPreset;
   } else {
-    presets.push({ ...preset, createdAt: Date.now(), updatedAt: Date.now() });
+    presets.push({ ...updatedPreset, createdAt: preset.createdAt || Date.now() });
   }
   localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+
+  // Async sync to Supabase database
+  savePresetToSupabase(updatedPreset).catch(console.error);
+}
+
+export async function savePresetToSupabase(preset: Preset): Promise<void> {
+  try {
+    const supabase = createClient();
+    await supabase.from('pdf_presets').upsert({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description || null,
+      preset_type: preset.presetType || 'standard',
+      target_tramite_type: preset.targetTramiteType || 'todos',
+      sample_pdf_url: preset.samplePdfUrl || null,
+      identifier_keywords: preset.identifierKeywords || [],
+      zones: preset.zones || [],
+      created_at: preset.createdAt,
+      updated_at: preset.updatedAt,
+    });
+  } catch (err) {
+    console.error('Error al guardar preset en Supabase:', err);
+  }
 }
 
 export function deletePreset(id: string): void {
   const presets = getPresets().filter(p => p.id !== id);
   localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+  
+  // Async delete from Supabase database
+  deletePresetFromSupabase(id).catch(console.error);
+}
+
+export async function deletePresetFromSupabase(id: string): Promise<void> {
+  try {
+    const supabase = createClient();
+    await supabase.from('pdf_presets').delete().eq('id', id);
+  } catch (err) {
+    console.error('Error al eliminar preset de Supabase:', err);
+  }
 }
 
 export function saveAllPresets(presets: Preset[]): void {

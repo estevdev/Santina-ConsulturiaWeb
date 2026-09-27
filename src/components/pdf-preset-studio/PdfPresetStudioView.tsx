@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Preset } from '@/types/preset';
-import { getPresets, savePreset, deletePreset } from '@/utils/storage';
+import { getPresets, savePreset, deletePreset, fetchPresetsFromSupabase } from '@/utils/storage';
 import PresetList from '@/components/PresetList';
 import PresetBuilder from '@/components/PresetBuilder';
 import PdfProcessor from '@/components/PdfProcessor';
@@ -21,31 +21,35 @@ export default function PdfPresetStudioView() {
     const loaded = getPresets();
     setPresets(loaded);
 
-    // Read initial URL action if any
-    const action = searchParams.get('action');
-    const presetId = searchParams.get('presetId');
+    fetchPresetsFromSupabase().then((fetched) => {
+      setPresets(fetched);
 
-    if (presetId) {
-      const found = loaded.find((p) => p.id === presetId);
-      if (found) {
-        setSelectedPreset(found);
-        if (action === 'edit') {
-          setActiveView('edit-preset');
-          return;
-        } else if (action === 'process') {
-          setActiveView('process-pdf');
-          return;
+      // Read initial URL action if any
+      const action = searchParams.get('action');
+      const presetId = searchParams.get('presetId');
+
+      if (presetId) {
+        const found = fetched.find((p) => p.id === presetId);
+        if (found) {
+          setSelectedPreset(found);
+          if (action === 'edit') {
+            setActiveView('edit-preset');
+            return;
+          } else if (action === 'process') {
+            setActiveView('process-pdf');
+            return;
+          }
         }
       }
-    }
 
-    if (action === 'create') {
-      setSelectedPreset(null);
-      setActiveView('create-preset');
-    } else if (action === 'process') {
-      setSelectedPreset(null);
-      setActiveView('process-pdf');
-    }
+      if (action === 'create') {
+        setSelectedPreset(null);
+        setActiveView('create-preset');
+      } else if (action === 'process') {
+        setSelectedPreset(null);
+        setActiveView('process-pdf');
+      }
+    });
   }, [searchParams]);
 
   const handleSavePreset = (preset: Preset) => {

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { Cliente, TipoTramite, TramiteRetiroDesempleo, TramiteMejoravit, TramiteAltaMedicaImss } from '@/types/cliente';
+import { Preset } from '@/types/preset';
 import { runOcrWithHeatmap, parseIneOcrText, generateIneAmpliada200File, IneParsedData } from '@/utils/ineOcrParser';
 import { generateAndUploadOfficialCurpPdf } from '@/utils/curpPdfGenerator';
 import { ESTADOS_MEXICO } from '@/constants/estadosMexico';
@@ -109,7 +110,7 @@ export default function ClientesPage() {
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         const resp = await fetch(imageUrl);
         const buffer = await resp.arrayBuffer();
-        const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const doc = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
         const page = await doc.getPage(1);
         const vp = page.getViewport({ scale: 2.0 });
         w = vp.width;
@@ -239,6 +240,105 @@ export default function ClientesPage() {
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [localNetworkIp, setLocalNetworkIp] = useState<string>('');
+
+  // Presets de Documentos para Cliente
+  const [docPresets, setDocPresets] = useState<Preset[]>([]);
+  const [clientDocModal, setClientDocModal] = useState<{
+    isOpen: boolean;
+    linkUrl: string;
+    presetName: string;
+    token: string;
+    clienteNombre: string;
+    clientePhone?: string;
+    copied: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    async function loadDocPresets() {
+      try {
+        const { data } = await supabase
+          .from('pdf_presets')
+          .select('*')
+          .eq('preset_type', 'client_document');
+        if (data) {
+          setDocPresets(
+            data.map((r: any) => ({
+              id: r.id,
+              name: r.name,
+              description: r.description,
+              presetType: r.preset_type,
+              targetTramiteType: r.target_tramite_type,
+              samplePdfUrl: r.sample_pdf_url,
+              identifierKeywords: r.identifier_keywords || [],
+              zones: r.zones || [],
+              createdAt: r.created_at || Date.now(),
+              updatedAt: r.updated_at || Date.now(),
+            }))
+          );
+        }
+      } catch (e) {
+        console.error('Error cargando doc presets:', e);
+      }
+    }
+    loadDocPresets();
+  }, []);
+
+  const handleGenerateClientDocLink = async (preset: Preset, tramiteType: string) => {
+    if (!selectedCliente) return;
+
+    try {
+      const token = `doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const { error } = await supabase.from('client_document_links').insert([
+        {
+          preset_id: preset.id,
+          cliente_id: selectedCliente.id,
+          tramite_type: tramiteType,
+          token: token,
+          status: 'pending',
+        },
+      ]);
+
+      if (error) {
+        console.error('Error guardando client_document_link:', error);
+        alert('Error al generar enlace de documento para cliente.');
+        return;
+      }
+
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      let linkUrl = `${origin}/llenar-documento/${token}`;
+      if ((origin.includes('localhost') || origin.includes('127.0.0.1')) && localNetworkIp) {
+        const port = window.location.port ? `:${window.location.port}` : '';
+        linkUrl = `${window.location.protocol}//${localNetworkIp}${port}/llenar-documento/${token}`;
+      }
+
+      const fullNombre = [selectedCliente.nombre, selectedCliente.apellido_paterno, selectedCliente.apellido_materno]
+        .filter(Boolean)
+        .join(' ');
+
+      setClientDocModal({
+        isOpen: true,
+        linkUrl,
+        presetName: preset.name,
+        token,
+        clienteNombre: fullNombre || 'Cliente',
+        clientePhone: selectedCliente.telefono || undefined,
+        copied: false,
+      });
+    } catch (err: any) {
+      console.error(err);
+      alert('Error al generar link.');
+    }
+  };
+
+  const handleShareDocLinkWhatsApp = () => {
+    if (!clientDocModal) return;
+    const msg = `Hola ${clientDocModal.clienteNombre}, te comparto el siguiente enlace oficial para rellenar tu documento (${clientDocModal.presetName}):\n\n👉 ${clientDocModal.linkUrl}\n\n¡Gracias!`;
+    const cleanPhone = clientDocModal.clientePhone ? clientDocModal.clientePhone.replace(/\D/g, '') : '';
+    const waUrl = cleanPhone
+      ? `https://api.whatsapp.com/send?phone=${cleanPhone.length === 10 ? '52' + cleanPhone : cleanPhone}&text=${encodeURIComponent(msg)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  };
 
   useEffect(() => {
     fetch('/api/system/local-ip')
@@ -1098,6 +1198,72 @@ export default function ClientesPage() {
     );
   };
 
+  const renderDocPresetsForTramite = (tramiteType: 'retiro_desempleo' | 'mejoravit' | 'alta_medica_imss') => {
+    const matching = docPresets.filter(
+      (p) => p.targetTramiteType === 'todos' || p.targetTramiteType === tramiteType
+    );
+
+    if (matching.length === 0) return null;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 space-y-2">
+        <h4 className="text-[11px] font-bold uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+          <UserCheck className="w-3.5 h-3.5" />
+          Documentos / Formatos para Cliente ({matching.length}):
+        </h4>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {matching.map((preset) => {
+            const docKey = `doc_preset_${preset.id}`;
+            const existingUrl = selectedCliente?.documentos_urls?.[docKey];
+
+            return (
+              <div
+                key={preset.id}
+                className="p-2.5 rounded-xl border border-purple-200/80 dark:border-purple-900/60 bg-purple-50/40 dark:bg-purple-950/20 flex flex-col justify-between gap-2"
+              >
+                <div>
+                  <span className="font-semibold text-xs text-purple-900 dark:text-purple-200 block">
+                    {preset.name}
+                  </span>
+                  {preset.description && (
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 block line-clamp-1">
+                      {preset.description}
+                    </span>
+                  )}
+                </div>
+
+                {existingUrl ? (
+                  <div className="flex items-center justify-between gap-1 pt-1 border-t border-purple-200/50 dark:border-purple-900/40">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+                      ✓ Llenado por Cliente
+                    </span>
+                    <a
+                      href={existingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"
+                    >
+                      Ver PDF <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleGenerateClientDocLink(preset, tramiteType)}
+                    className="w-full py-1.5 px-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-[11px] font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    <span>Generar Link Cliente</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderTramitesChecklist = () => (
     <div>
       <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2.5 flex items-center gap-1.5">
@@ -1157,6 +1323,8 @@ export default function ClientesPage() {
                   {renderChecklistRow('retiro', tr.id, 'req_anexo_sindo', 'Anexo SINDO', tr.req_anexo_sindo, tr.documentos_urls?.req_anexo_sindo)}
                   {renderChecklistRow('retiro', tr.id, 'req_reporte_semanas_imss', 'Reporte Semanas IMSS', tr.req_reporte_semanas_imss, tr.documentos_urls?.req_reporte_semanas_imss)}
                 </div>
+
+                {renderDocPresetsForTramite('retiro_desempleo')}
               </div>
             ))
           )}
@@ -1291,6 +1459,8 @@ export default function ClientesPage() {
                       </button>
                     )}
                   </div>
+
+                  {renderDocPresetsForTramite('mejoravit')}
                 </div>
               );
             })
@@ -1320,6 +1490,8 @@ export default function ClientesPage() {
                   {renderChecklistRow('altaMedica', tr.id, 'req_cartilla_nacional_salud', 'Cartilla de Salud', tr.req_cartilla_nacional_salud, tr.documentos_urls?.req_cartilla_nacional_salud)}
                   {renderChecklistRow('altaMedica', tr.id, 'req_alta_patronal_vigente', 'Alta Patronal Vigente', tr.req_alta_patronal_vigente, tr.documentos_urls?.req_alta_patronal_vigente)}
                 </div>
+
+                {renderDocPresetsForTramite('alta_medica_imss')}
               </div>
             ))
           )}
@@ -3144,6 +3316,83 @@ export default function ClientesPage() {
           </div>
         </div>
       )}
+
+      {/* Modal Generar Link de Documento Especial para Cliente */}
+      {clientDocModal && clientDocModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Link2 className="w-5 h-5 text-purple-600" />
+                  <span>Enlace para Documento de Cliente</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Comparte este link con el cliente para que rellene: <strong>{clientDocModal.presetName}</strong>
+                </p>
+              </div>
+              <button
+                onClick={() => setClientDocModal(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                Link Único Generado:
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={clientDocModal.linkUrl}
+                  className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(clientDocModal.linkUrl);
+                    setClientDocModal({ ...clientDocModal, copied: true });
+                    setTimeout(() => {
+                      if (clientDocModal) setClientDocModal({ ...clientDocModal, copied: false });
+                    }, 2500);
+                  }}
+                  className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer shrink-0"
+                >
+                  {clientDocModal.copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span>{clientDocModal.copied ? '¡Copiado!' : 'Copiar'}</span>
+                </button>
+              </div>
+
+              <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 rounded-2xl flex items-center justify-between gap-3 text-xs">
+                <span className="text-purple-900 dark:text-purple-200 font-medium">
+                  Cliente: <strong>{clientDocModal.clienteNombre}</strong>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleShareDocLinkWhatsApp}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm cursor-pointer shrink-0"
+                >
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setClientDocModal(null)}
+                className="px-5 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3173,7 +3422,7 @@ function ManualPointsCanvas({
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         const resp = await fetch(imageUrl);
         const buffer = await resp.arrayBuffer();
-        const doc = await pdfjsLib.getDocument({ data: buffer }).promise;
+        const doc = await pdfjsLib.getDocument({ data: buffer.slice(0) }).promise;
         const page = await doc.getPage(1);
         const viewport = page.getViewport({ scale: 2.0 });
         const c = document.createElement('canvas');

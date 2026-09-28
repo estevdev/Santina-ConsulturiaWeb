@@ -10,6 +10,9 @@ import {
   UserCheck,
   Trash2,
   CheckCircle2,
+  Phone,
+  Mail,
+  CreditCard,
 } from 'lucide-react';
 import { Cliente } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
@@ -39,7 +42,7 @@ export function ClienteQuickView({
 }: ClienteQuickViewProps) {
   if (!selectedCliente) {
     return (
-      <div className="lg:col-span-2 bg-[#0d0e12] rounded-2xl border border-zinc-800 shadow-sm p-6 h-[750px] overflow-y-auto">
+      <div className="hidden lg:block lg:col-span-2 bg-[#0d0e12] rounded-2xl border border-zinc-800 shadow-sm p-6 h-[750px] overflow-y-auto">
         <div className="flex flex-col items-center justify-center h-full text-center text-zinc-400">
           <FileCheck2 className="w-12 h-12 text-zinc-700 mb-3" />
           <p className="text-base font-semibold text-zinc-300">Ningún cliente seleccionado</p>
@@ -55,7 +58,7 @@ export function ClienteQuickView({
   const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
 
   return (
-    <div className="lg:col-span-2 bg-[#0d0e12] rounded-2xl border border-zinc-800 shadow-sm p-6 h-[750px] overflow-y-auto">
+    <div className="hidden lg:block lg:col-span-2 bg-[#0d0e12] rounded-2xl border border-zinc-800 shadow-sm p-6 h-[750px] overflow-y-auto">
       <div className="space-y-6">
         {/* Header Compacto del Cliente - Vista Checklist Rápida */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-sm">
@@ -99,15 +102,30 @@ export function ClienteQuickView({
               </div>
 
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-400 mt-1">
-                {selectedCliente.telefono && <span>📞 {selectedCliente.telefono}</span>}
-                {selectedCliente.email && <span>✉️ {selectedCliente.email}</span>}
+                {selectedCliente.telefono && (
+                  <span className="flex items-center gap-1 text-zinc-300">
+                    <Phone className="w-3 h-3 text-[#c5a059]" />
+                    {selectedCliente.telefono}
+                  </span>
+                )}
+                {selectedCliente.email && (
+                  <span className="flex items-center gap-1 text-zinc-400">
+                    <Mail className="w-3 h-3 text-zinc-500" />
+                    {selectedCliente.email}
+                  </span>
+                )}
                 {selectedCliente.estado && (
                   <span className="font-semibold text-emerald-400 flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {selectedCliente.estado}
                   </span>
                 )}
-                {selectedCliente.curp && <span className="font-mono font-semibold text-[#dfba73]">🆔 {selectedCliente.curp}</span>}
+                {selectedCliente.curp && (
+                  <span className="font-mono font-semibold text-[#dfba73] flex items-center gap-1">
+                    <CreditCard className="w-3 h-3 text-[#c5a059]" />
+                    {selectedCliente.curp}
+                  </span>
+                )}
               </div>
             </div>
           </div>

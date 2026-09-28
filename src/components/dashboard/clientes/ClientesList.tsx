@@ -15,6 +15,12 @@ import {
   ChevronDown,
   Check,
   Globe,
+  Building2,
+  Banknote,
+  HeartPulse,
+  MapPin,
+  Phone,
+  Mail,
 } from 'lucide-react';
 import { Cliente } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
@@ -36,6 +42,7 @@ interface ClientesListProps {
   onPermanentDeleteCliente?: (cliente: Cliente) => void;
   onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
   papeleraCount?: number;
+  clientesTramitesMap?: Record<string, string[]>;
   onNewCliente?: () => void;
 }
 
@@ -56,6 +63,7 @@ export function ClientesList({
   onPermanentDeleteCliente,
   onChangeClienteStatus,
   papeleraCount = 0,
+  clientesTramitesMap = {},
   onNewCliente,
 }: ClientesListProps) {
   const isPapelera = activeStatusFilter === 'papelera';
@@ -104,6 +112,67 @@ export function ClientesList({
       return clientes.filter((c) => Boolean(c.deleted_at)).length;
     }
     return clientes.filter((c) => !c.deleted_at && (c.estado_cliente || 'interesado') === statusValue).length;
+  };
+
+  const getInitials = (nombre: string, pat?: string | null) => {
+    const n = (nombre || '').trim().charAt(0);
+    const p = (pat || '').trim().charAt(0);
+    return `${n}${p}`.toUpperCase() || 'CL';
+  };
+
+  const renderTramitesBadges = (clienteId: string) => {
+    const tramites = clientesTramitesMap?.[clienteId] || [];
+    if (tramites.length === 0) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-medium bg-zinc-800/80 text-zinc-400 border border-zinc-700/60">
+          Sin trámite asignado
+        </span>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {tramites.map((t) => {
+          if (t === 'mejoravit') {
+            return (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-cyan-950/80 text-cyan-200 border border-cyan-700/60 shadow-sm"
+                title="Crédito Mejoravit Infonavit"
+              >
+                <img src="/tramite-mejoravit.png" alt="Mejoravit" className="w-3.5 h-3.5 object-contain rounded bg-white p-[1px] shrink-0" />
+                <span>Crédito Mejoravit</span>
+              </span>
+            );
+          }
+          if (t === 'retiro_desempleo') {
+            return (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-emerald-950/80 text-emerald-200 border border-emerald-700/60 shadow-sm"
+                title="Retiro por Desempleo AFORE"
+              >
+                <img src="/tramite-desempleo.png" alt="Retiro Desempleo" className="w-3.5 h-3.5 object-contain rounded shrink-0" />
+                <span>Retiro AFORE</span>
+              </span>
+            );
+          }
+          if (t === 'alta_medica') {
+            return (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-purple-950/80 text-purple-200 border border-purple-700/60 shadow-sm"
+                title="Alta Médica IMSS"
+              >
+                <img src="/tramite-imss.png" alt="Alta Médica IMSS" className="w-3.5 h-3.5 object-contain rounded bg-white p-[1px] shrink-0" />
+                <span>Alta Médica IMSS</span>
+              </span>
+            );
+          }
+          return null;
+        })}
+      </div>
+    );
   };
 
   const activeConfig =
@@ -293,7 +362,7 @@ export function ClientesList({
       </div>
 
       {/* Lista de Clientes */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
         {loading ? (
           <div className="flex items-center justify-center h-48 text-slate-400 text-xs">
             <div className="w-5 h-5 border-2 border-[#c5a059] border-t-transparent rounded-full animate-spin mr-2" />
@@ -324,62 +393,98 @@ export function ClientesList({
             const isSelected = selectedCliente?.id === cliente.id;
             const fullApellidos = [cliente.apellido_paterno, cliente.apellido_materno].filter(Boolean).join(' ') || cliente.apellidos || '';
             const statusConfig = getEstadoClienteConfig(cliente.estado_cliente);
+            const nombreCompleto = `${cliente.nombre} ${fullApellidos}`.trim();
 
             return (
               <div
                 key={cliente.id}
                 onClick={() => onSelectCliente(cliente, false)}
-                className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-center justify-between group cursor-pointer ${
+                className={`w-full text-left p-3.5 rounded-2xl border transition-all flex flex-col gap-2.5 group cursor-pointer ${
                   isPapelera
                     ? isSelected
-                      ? 'bg-rose-950/40 border-rose-500/60 shadow-sm'
-                      : 'bg-zinc-900/40 border-rose-950/40 hover:bg-rose-950/20'
+                      ? 'bg-rose-950/40 border-rose-500/70 shadow-md ring-1 ring-rose-500/40'
+                      : 'bg-zinc-900/50 border-rose-950/50 hover:bg-rose-950/20 hover:border-rose-900/60'
                     : isSelected
-                    ? 'bg-zinc-800/90 border-[#c5a059]/50 shadow-sm'
-                    : 'bg-zinc-900/40 border-zinc-800/60 hover:bg-zinc-800/50'
+                    ? 'bg-gradient-to-br from-zinc-900 via-[#15161c] to-zinc-900 border-[#c5a059]/70 shadow-lg ring-1 ring-[#c5a059]/40'
+                    : 'bg-zinc-900/40 border-zinc-800/70 hover:bg-zinc-900/80 hover:border-zinc-700'
                 }`}
               >
-                <div className="flex-1 min-w-0 pr-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-bold text-white truncate">
-                      {cliente.nombre} {fullApellidos}
-                    </p>
-                    {!isPapelera && (
+                {/* Cabecera de la Tarjeta: Avatar + Nombre Completo + Estado */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3 min-w-0 flex-1">
+                    {/* Avatar con Iniciales */}
+                    <div
+                      className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 border shadow-sm transition-all ${
+                        isSelected
+                          ? 'bg-[#c5a059] text-zinc-950 border-[#dfba73]'
+                          : 'bg-[#c5a059]/15 text-[#dfba73] border-[#c5a059]/30 group-hover:border-[#c5a059]/60'
+                      }`}
+                    >
+                      {getInitials(cliente.nombre, cliente.apellido_paterno)}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-bold text-white group-hover:text-[#dfba73] transition-colors leading-snug break-words">
+                        {nombreCompleto}
+                      </h4>
+
+                      {/* Contacto & Ubicación */}
+                      <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-1 flex-wrap">
+                        {cliente.telefono && (
+                          <span className="flex items-center gap-1 text-zinc-300">
+                            <Phone className="w-3 h-3 text-[#c5a059]" />
+                            {cliente.telefono}
+                          </span>
+                        )}
+                        {cliente.nss && (
+                          <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-300 border border-zinc-700">
+                            NSS: {cliente.nss}
+                          </span>
+                        )}
+                        {cliente.estado && (
+                          <span className="flex items-center gap-1 text-zinc-400">
+                            <MapPin className="w-3 h-3 text-zinc-500" />
+                            {cliente.estado}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Estado Badge */}
+                  <div className="shrink-0">
+                    {!isPapelera ? (
                       <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${statusConfig.badgeClass}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statusConfig.dotClass}`} />
                         {statusConfig.label}
                       </span>
-                    )}
-                    {isPapelera && (
+                    ) : (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">
                         En Papelera
                       </span>
                     )}
                   </div>
+                </div>
 
-                  {cliente.telefono ? (
-                    <p className="text-xs text-zinc-400 truncate mt-0.5">
-                      📞 {cliente.telefono}
-                    </p>
-                  ) : cliente.email ? (
-                    <p className="text-xs text-zinc-400 truncate mt-0.5">
-                      ✉️ {cliente.email}
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-zinc-500 italic mt-0.5">Sin contacto registrado</p>
-                  )}
+                {/* Fila de Trámite(s) que lleva a cabo */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-800/60 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-zinc-500">Trámite:</span>
+                    {renderTramitesBadges(cliente.id)}
+                  </div>
 
                   {currentUserRole === 'admin' && (
-                    <p className="text-[10px] text-[#dfba73] truncate mt-1 flex items-center gap-1 font-medium">
-                      <User className="w-3 h-3 text-[#c5a059] shrink-0" />
-                      <span className="truncate">
-                        Alta: {cliente.creado_por_nombre || cliente.creado_por_email || 'Sin registrador'}
+                    <span className="text-[10px] text-[#dfba73] truncate flex items-center gap-1 font-medium">
+                      <User className="w-3 h-3 text-[#c5a059]" />
+                      <span className="truncate max-w-[120px]">
+                        {cliente.creado_por_nombre || cliente.creado_por_email || 'Sin asesor'}
                       </span>
-                    </p>
+                    </span>
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {/* Fila de Botones de Acción */}
+                <div className="flex items-center justify-end gap-1.5 pt-1 border-t border-zinc-800/40">
                   {isPapelera ? (
                     /* Botones de acción en Papelera */
                     <>

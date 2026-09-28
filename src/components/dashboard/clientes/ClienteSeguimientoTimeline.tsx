@@ -330,7 +330,7 @@ export function ClienteSeguimientoTimeline({
             <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
               paso1Completo ? 'bg-emerald-500 text-slate-950' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
             }`}>
-              {paso1Completo ? '✓' : '1'}
+              {paso1Completo ? <Check className="w-3.5 h-3.5" /> : '1'}
             </span>
             <div className="truncate">
               <span className="font-bold block truncate">1. Credenciales & Amortización</span>
@@ -344,7 +344,7 @@ export function ClienteSeguimientoTimeline({
             <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
               paso2Completo ? 'bg-emerald-500 text-slate-950' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
             }`}>
-              {paso2Completo ? '✓' : '2'}
+              {paso2Completo ? <Check className="w-3.5 h-3.5" /> : '2'}
             </span>
             <div className="truncate">
               <span className="font-bold block truncate">2. Contrato de Servicio</span>
@@ -358,7 +358,7 @@ export function ClienteSeguimientoTimeline({
             <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
               paso3Completo ? 'bg-emerald-500 text-slate-950' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
             }`}>
-              {paso3Completo ? '✓' : '3'}
+              {paso3Completo ? <Check className="w-3.5 h-3.5" /> : '3'}
             </span>
             <div className="truncate">
               <span className="font-bold block truncate">3. Expediente Oficial</span>
@@ -372,7 +372,7 @@ export function ClienteSeguimientoTimeline({
             <span className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
               paso4Completo ? 'bg-emerald-500 text-slate-950' : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
             }`}>
-              {paso4Completo ? '✓' : '4'}
+              {paso4Completo ? <Check className="w-3.5 h-3.5" /> : '4'}
             </span>
             <div className="truncate">
               <span className="font-bold block truncate">4. Cita con Infonavit</span>
@@ -407,8 +407,8 @@ export function ClienteSeguimientoTimeline({
                     Paso 1 Obligatorio
                   </span>
                   {paso1Completo ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      ✓ Completado
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Completado
                     </span>
                   ) : (
                     <span className="text-[10px] font-medium text-amber-400 flex items-center gap-1">
@@ -626,8 +626,8 @@ export function ClienteSeguimientoTimeline({
                     Paso 2
                   </span>
                   {paso2Completo ? (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      ✓ Contrato Formalizado
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1">
+                      <Check className="w-3 h-3" /> Contrato Formalizado
                     </span>
                   ) : (
                     <span className="text-[10px] font-medium text-amber-400 flex items-center gap-1">

@@ -19,6 +19,7 @@ import {
   ClienteQuickView,
   ClienteFullDetails,
   ClienteSeguimientoTimeline,
+  ClienteMobileModal,
   TramitesChecklist,
   ClienteFormModal,
   InmuebleFotosModal,
@@ -54,9 +55,11 @@ export default function ClientesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [showFullDetails, setShowFullDetails] = useState(false);
+  const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
   const [isModoSeguimiento, setIsModoSeguimiento] = useState(true);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('todos');
+  const [clientesTramitesMap, setClientesTramitesMap] = useState<Record<string, string[]>>({});
 
   // Form State Cliente
   const [formCliente, setFormCliente] = useState<FormClienteData>({
@@ -219,13 +222,39 @@ export default function ClientesPage() {
         }
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      const [clientesRes, retiroRes, mejoravitRes, altaMedicaRes] = await Promise.all([
+        query.order('created_at', { ascending: false }),
+        supabase.from('tramites_retiro_desempleo').select('id, cliente_id'),
+        supabase.from('tramites_mejoravit').select('id, cliente_id'),
+        supabase.from('tramites_alta_medica_imss').select('id, cliente_id'),
+      ]);
 
-      if (error) {
-        console.warn('Error fetching clientes:', error.message);
-      } else if (data) {
-        setClientes(data);
+      if (clientesRes.error) {
+        console.warn('Error fetching clientes:', clientesRes.error.message);
+      } else if (clientesRes.data) {
+        setClientes(clientesRes.data);
       }
+
+      const tMap: Record<string, string[]> = {};
+      (retiroRes.data || []).forEach((t: any) => {
+        if (t.cliente_id) {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('retiro_desempleo')) tMap[t.cliente_id].push('retiro_desempleo');
+        }
+      });
+      (mejoravitRes.data || []).forEach((t: any) => {
+        if (t.cliente_id) {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('mejoravit')) tMap[t.cliente_id].push('mejoravit');
+        }
+      });
+      (altaMedicaRes.data || []).forEach((t: any) => {
+        if (t.cliente_id) {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('alta_medica')) tMap[t.cliente_id].push('alta_medica');
+        }
+      });
+      setClientesTramitesMap(tMap);
     } catch (e) {
       console.error(e);
     } finally {
@@ -258,6 +287,7 @@ export default function ClientesPage() {
     setSelectedCliente(cliente);
     setShowFullDetails(openDetails);
     setIsModoSeguimiento(true);
+    setIsMobileModalOpen(true);
     await fetchTramites(cliente.id);
   };
 
@@ -1543,6 +1573,7 @@ export default function ClientesPage() {
             onPermanentDeleteCliente={handlePermanentDeleteCliente}
             onChangeClienteStatus={handleUpdateEstadoCliente}
             papeleraCount={papeleraCount}
+            clientesTramitesMap={clientesTramitesMap}
             onNewCliente={() => {
               setFeedbackMsg(null);
               setIsModalOpen(true);
@@ -1887,6 +1918,65 @@ export default function ClientesPage() {
           }}
         />
       )}
+      {/* Modal Especial para Dispositivos Móviles */}
+      <ClienteMobileModal
+        isOpen={isMobileModalOpen}
+        onClose={() => setIsMobileModalOpen(false)}
+        selectedCliente={selectedCliente}
+        currentUserRole={user?.role}
+        clienteTramites={clienteTramites}
+        loadingTramites={loadingTramites}
+        docPresets={docPresets}
+        uploadingDocKey={uploadingDocKey}
+        generatingAmpliada200={generatingAmpliada200}
+        downloadingBundle={downloadingBundle}
+        isModoSeguimiento={isModoSeguimiento}
+        onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
+        onChangeClienteStatus={handleUpdateEstadoCliente}
+        onDeleteCliente={handleSoftDeleteCliente}
+        onEditCliente={handleEditCliente}
+        onOpenShareModal={openShareCredentialsModal}
+        onOpenDownloadModal={() => setDownloadExpedienteModalOpen(true)}
+        onViewDoc={(url, title) => setModalViewerDoc({ url, title })}
+        onDownloadDoc={handleDownloadInline}
+        onUploadReqDocument={handleUploadReqDocument}
+        onGenerateIneAmpliada200={handleGenerateIneAmpliada200}
+        onOpenManualIneCropper={openManualIneCropper}
+        onOpenReferenciasModal={(tramiteId, tr) => {
+          const existingRefs = tr.referencias_detalle || [];
+          const initialRefs = [0, 1, 2].map((idx) => ({
+            nombre: existingRefs[idx]?.nombre || '',
+            telefono: existingRefs[idx]?.telefono || '',
+            domicilio: existingRefs[idx]?.domicilio || '',
+          }));
+          setReferenciasModal({
+            tramiteId,
+            referencias: initialRefs,
+          });
+        }}
+        onOpenInfonavitCredsModal={(tramiteId, tr) => {
+          setInfonavitCredsModal({
+            tramiteId,
+            nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
+            password: tr.password_portal_infonavit || '',
+          });
+        }}
+        onOpenInmuebleFotosModal={(tramiteId, tr) => {
+          setInmuebleFotosModal({
+            tramiteId,
+            existingPdfUrl: tr.documentos_urls?.req_fotos_inmueble_5,
+            fotos: [],
+          });
+        }}
+        onGenerateClientDocLink={handleGenerateClientDocLink}
+        onRemoveDocPreset={handleRemoveDocPreset}
+        onSaveQuickCreds={handleSaveQuickCreds}
+        onUploadTablaAmortizacion={handleUploadTablaAmortizacion}
+        onSaveCitaInfonavit={handleSaveCitaInfonavit}
+        onUploadComprobanteCita={handleUploadComprobanteCita}
+        onDownloadOficialesPdf={handleDownloadOficialesPdf}
+        onDownloadContratosPdf={handleDownloadContratosPdf}
+      />
     </div>
   );
 }

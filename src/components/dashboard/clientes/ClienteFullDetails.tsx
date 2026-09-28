@@ -260,16 +260,14 @@ export function ClienteFullDetails({
             </span>
           </div>
 
-          {currentUserRole === 'admin' && (
-            <div className="p-3.5 bg-white dark:bg-[#0d0e12]/80 rounded-xl border border-slate-200 dark:border-slate-700/80 sm:col-span-2">
-              <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Dado de Alta Por (Asesor):</span>
-              <span className="font-semibold text-[#c5a059] dark:text-[#dfba73] flex items-center gap-1.5 mt-0.5">
-                <User className="w-3.5 h-3.5" />
-                {selectedCliente.creado_por_nombre || selectedCliente.creado_por_email || 'Sin registrador'}
-                {selectedCliente.creado_por_email && selectedCliente.creado_por_nombre ? ` (${selectedCliente.creado_por_email})` : ''}
-              </span>
-            </div>
-          )}
+          <div className="p-3.5 bg-white dark:bg-[#0d0e12]/80 rounded-xl border border-slate-200 dark:border-slate-700/80 sm:col-span-2">
+            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Asesor / Responsable del Caso:</span>
+            <span className="font-semibold text-[#c5a059] dark:text-[#dfba73] flex items-center gap-1.5 mt-0.5">
+              <User className="w-3.5 h-3.5" />
+              {selectedCliente.creado_por_nombre || selectedCliente.creado_por_email || 'Sin asesor asignado'}
+              {selectedCliente.creado_por_email && selectedCliente.creado_por_nombre ? ` (${selectedCliente.creado_por_email})` : ''}
+            </span>
+          </div>
 
           {selectedCliente.notas && (
             <div className="sm:col-span-2 lg:col-span-4 p-3.5 bg-white dark:bg-[#0d0e12]/80 rounded-xl border border-slate-200 dark:border-slate-700/80">

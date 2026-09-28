@@ -34,6 +34,7 @@ import {
   DocumentViewerModal,
   ClientDocLinkModal,
   FormClienteData,
+  StaffUser,
   FormRetiroData,
   FormMejoravitData,
   FormAltaMedicaData,
@@ -62,6 +63,7 @@ export default function ClientesPage() {
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('todos');
   const [clientesTramitesMap, setClientesTramitesMap] = useState<Record<string, string[]>>({});
+  const [availableAdvisors, setAvailableAdvisors] = useState<StaffUser[]>([]);
 
   // Form State Cliente
   const [formCliente, setFormCliente] = useState<FormClienteData>({
@@ -73,6 +75,9 @@ export default function ClientesPage() {
     estado: 'Jalisco',
     estado_cliente: 'interesado',
     notas: '',
+    creado_por: null,
+    creado_por_nombre: null,
+    creado_por_email: null,
   });
 
   const [estadoSearchQuery, setEstadoSearchQuery] = useState('');
@@ -207,6 +212,26 @@ export default function ClientesPage() {
   }, []);
 
   useEffect(() => {
+    async function loadStaffUsers() {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, name, email, role')
+          .order('name', { ascending: true });
+
+        if (!error && data) {
+          const staff = data.filter((p: any) => p.role === 'admin' || p.role === 'socios');
+          setAvailableAdvisors(staff.length > 0 ? (staff as StaffUser[]) : (data as StaffUser[]));
+        }
+      } catch (err) {
+        console.warn('Error cargando lista de asesores:', err);
+      }
+    }
+
+    loadStaffUsers();
+  }, []);
+
+  useEffect(() => {
     fetchClientes();
   }, [user]);
 
@@ -325,8 +350,31 @@ export default function ClientesPage() {
       telefono: cli.telefono || '',
       email: cli.email || '',
       estado: cli.estado || 'Jalisco',
-      estado_cliente: cli.estado_cliente || 'interesado',
+      estado_cliente: (cli.estado_cliente as string) || 'interesado',
       notas: cli.notas || '',
+      creado_por: cli.creado_por || null,
+      creado_por_nombre: cli.creado_por_nombre || null,
+      creado_por_email: cli.creado_por_email || null,
+    });
+    setCrearTramiteInicial(false);
+    setFeedbackMsg(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenNewClienteModal = () => {
+    setEditingClienteId(null);
+    setFormCliente({
+      nombre: '',
+      apellido_paterno: '',
+      apellido_materno: '',
+      telefono: '',
+      email: '',
+      estado: 'Jalisco',
+      estado_cliente: 'interesado',
+      notas: '',
+      creado_por: user?.id || null,
+      creado_por_nombre: user?.name || null,
+      creado_por_email: user?.email || null,
     });
     setCrearTramiteInicial(false);
     setFeedbackMsg(null);
@@ -513,19 +561,28 @@ export default function ClientesPage() {
 
     try {
       if (editingClienteId) {
+        const updatePayload: any = {
+          nombre: formCliente.nombre.trim(),
+          apellido_paterno: pat || null,
+          apellido_materno: mat || null,
+          apellidos: fullApellidos,
+          telefono: formCliente.telefono.trim() || null,
+          email: formCliente.email.trim() || null,
+          estado: formCliente.estado || 'Jalisco',
+          estado_cliente: formCliente.estado_cliente || 'interesado',
+          notas: formCliente.notas.trim() || null,
+        };
+
+        // Si es administrador, permitir actualizar y transferir el asesor a cargo
+        if (user?.role === 'admin') {
+          updatePayload.creado_por = formCliente.creado_por || null;
+          updatePayload.creado_por_nombre = formCliente.creado_por_nombre || null;
+          updatePayload.creado_por_email = formCliente.creado_por_email || null;
+        }
+
         const { data: updatedData, error: updateErr } = await supabase
           .from('clientes')
-          .update({
-            nombre: formCliente.nombre.trim(),
-            apellido_paterno: pat || null,
-            apellido_materno: mat || null,
-            apellidos: fullApellidos,
-            telefono: formCliente.telefono.trim() || null,
-            email: formCliente.email.trim() || null,
-            estado: formCliente.estado || 'Jalisco',
-            estado_cliente: formCliente.estado_cliente || 'interesado',
-            notas: formCliente.notas.trim() || null,
-          })
+          .update(updatePayload)
           .eq('id', editingClienteId)
           .select()
           .single();
@@ -537,31 +594,48 @@ export default function ClientesPage() {
           description: `Se guardaron los cambios de "${formCliente.nombre.trim()}".`,
           duration: 3500,
         });
+        
+        if (updatedData) {
+          setClientes((prev) => prev.map((c) => (c.id === editingClienteId ? updatedData : c)));
+        }
+
         if (selectedCliente && selectedCliente.id === editingClienteId && updatedData) {
           setSelectedCliente(updatedData);
         }
       } else {
+        const insertPayload: any = {
+          nombre: formCliente.nombre.trim(),
+          apellido_paterno: pat || null,
+          apellido_materno: mat || null,
+          apellidos: fullApellidos,
+          telefono: formCliente.telefono.trim() || null,
+          email: formCliente.email.trim() || null,
+          estado: formCliente.estado || 'Jalisco',
+          estado_cliente: formCliente.estado_cliente || 'interesado',
+          notas: formCliente.notas.trim() || null,
+          creado_por: (user?.role === 'admin' && formCliente.creado_por !== undefined)
+            ? formCliente.creado_por
+            : (user?.id || null),
+          creado_por_nombre: (user?.role === 'admin' && formCliente.creado_por_nombre !== undefined)
+            ? formCliente.creado_por_nombre
+            : (user?.name || null),
+          creado_por_email: (user?.role === 'admin' && formCliente.creado_por_email !== undefined)
+            ? formCliente.creado_por_email
+            : (user?.email || null),
+        };
+
         const { data: clienteData, error: clienteError } = await supabase
           .from('clientes')
-          .insert([{
-            nombre: formCliente.nombre.trim(),
-            apellido_paterno: pat || null,
-            apellido_materno: mat || null,
-            apellidos: fullApellidos,
-            telefono: formCliente.telefono.trim() || null,
-            email: formCliente.email.trim() || null,
-            estado: formCliente.estado || 'Jalisco',
-            estado_cliente: formCliente.estado_cliente || 'interesado',
-            notas: formCliente.notas.trim() || null,
-            creado_por: user?.id || null,
-            creado_por_nombre: user?.name || null,
-            creado_por_email: user?.email || null,
-          }])
+          .insert([insertPayload])
           .select()
           .single();
 
         if (clienteError) {
           throw new Error(clienteError.message);
+        }
+
+        if (clienteData) {
+          setClientes((prev) => [clienteData, ...prev]);
         }
 
         if (crearTramiteInicial && clienteData) {
@@ -949,6 +1023,11 @@ export default function ClientesPage() {
   };
 
   const handleGenerateIneAmpliada200 = async (trId: string, reqIneNormalUrl?: string | null) => {
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden generar o modificar documentos.' });
+      return;
+    }
+
     const ineSourceUrl = reqIneNormalUrl || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url;
     if (!ineSourceUrl) {
       setFeedbackMsg({ type: 'error', text: 'Primero debes subir o escanear la INE Normal (requisito 1).' });
@@ -977,6 +1056,12 @@ export default function ClientesPage() {
     file: File
   ) => {
     if (!selectedCliente) return;
+
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden subir o modificar documentos.' });
+      return;
+    }
+
     setUploadingDocKey(`${tramiteId}_${reqKey}`);
     try {
       const ext = file.name.split('.').pop() || 'png';
@@ -1105,6 +1190,12 @@ export default function ClientesPage() {
 
   const handleUploadCurpPdf = async (file: File) => {
     if (!selectedCliente) return;
+
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden subir o modificar constancias de CURP.' });
+      return;
+    }
+
     setFeedbackMsg({ type: 'success', text: 'Subiendo constancia original de RENAPO al Storage...' });
     try {
       const curpVal = selectedCliente.curp || 'RENAPO';
@@ -1147,6 +1238,8 @@ export default function ClientesPage() {
   };
 
   useEffect(() => {
+    if (user?.role !== 'admin') return;
+
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
       if (e.dataTransfer?.types?.includes('Files')) {
@@ -1182,7 +1275,7 @@ export default function ClientesPage() {
       window.removeEventListener('dragleave', handleDragLeave);
       window.removeEventListener('drop', handleDrop);
     };
-  }, [selectedCliente]);
+  }, [selectedCliente, user?.role]);
 
   const handleGenerateClientDocLink = async (preset: Preset, tramiteType: string) => {
     if (!selectedCliente) return;
@@ -1232,6 +1325,11 @@ export default function ClientesPage() {
   };
 
   const handleRemoveDocPreset = async (preset: Preset, docKey: string) => {
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden eliminar o quitar documentos del expediente.' });
+      return;
+    }
+
     const confirmDelete = window.confirm(
       `⚠️ ATENCIÓN: El contrato "${preset.name}" ya fue completado por el cliente.\n\n` +
       `Si eliminas el documento del expediente, la versión anterior NO se borrará de la base de datos (quedará archivada como historial), pero podrás VOLVER A GENERAR un nuevo link para que el cliente lo rellene nuevamente.\n\n` +
@@ -1309,6 +1407,12 @@ export default function ClientesPage() {
   // Handler para subir Tabla de Amortización
   const handleUploadTablaAmortizacion = async (file: File) => {
     if (!selectedCliente) return;
+
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden subir la tabla de amortización.' });
+      return;
+    }
+
     setUploadingDocKey('tabla_amortizacion');
     setFeedbackMsg({ type: 'success', text: 'Subiendo archivo de Tabla de Amortización...' });
     try {
@@ -1422,6 +1526,12 @@ export default function ClientesPage() {
   // Handler para subir comprobante oficial de Cita Infonavit
   const handleUploadComprobanteCita = async (file: File) => {
     if (!selectedCliente) return;
+
+    if (user?.role !== 'admin') {
+      toast.error('Acceso denegado', { description: 'Solo los administradores pueden subir comprobantes de cita.' });
+      return;
+    }
+
     setUploadingDocKey('comprobante_cita_infonavit');
     setFeedbackMsg({ type: 'success', text: 'Subiendo comprobante oficial de cita...' });
     try {
@@ -1492,13 +1602,11 @@ export default function ClientesPage() {
           onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
           onChangeClienteStatus={handleUpdateEstadoCliente}
           onDeleteCliente={handleSoftDeleteCliente}
-          onNewCliente={() => {
-            setFeedbackMsg(null);
-            setIsModalOpen(true);
-          }}
+          onNewCliente={handleOpenNewClienteModal}
           timelineComponent={
             <ClienteSeguimientoTimeline
               selectedCliente={selectedCliente}
+              currentUserRole={user?.role}
               clienteTramites={clienteTramites}
               docPresets={docPresets}
               uploadingDocKey={uploadingDocKey}
@@ -1558,6 +1666,7 @@ export default function ClientesPage() {
             loadingTramites={loadingTramites}
             clienteTramites={clienteTramites}
             selectedCliente={selectedCliente}
+            currentUserRole={user?.role}
             uploadingDocKey={uploadingDocKey}
             generatingAmpliada200={generatingAmpliada200}
             docPresets={docPresets}
@@ -1616,10 +1725,7 @@ export default function ClientesPage() {
             onChangeClienteStatus={handleUpdateEstadoCliente}
             papeleraCount={papeleraCount}
             clientesTramitesMap={clientesTramitesMap}
-            onNewCliente={() => {
-              setFeedbackMsg(null);
-              setIsModalOpen(true);
-            }}
+            onNewCliente={handleOpenNewClienteModal}
           />
 
           <ClienteQuickView
@@ -1642,6 +1748,7 @@ export default function ClientesPage() {
               loadingTramites={loadingTramites}
               clienteTramites={clienteTramites}
               selectedCliente={selectedCliente}
+              currentUserRole={user?.role}
               uploadingDocKey={uploadingDocKey}
               generatingAmpliada200={generatingAmpliada200}
               docPresets={docPresets}
@@ -1710,6 +1817,9 @@ export default function ClientesPage() {
         formAltaMedica={formAltaMedica}
         setFormAltaMedica={setFormAltaMedica}
         onSubmit={handleSubmitCliente}
+        currentUserRole={user?.role}
+        currentUserId={user?.id}
+        availableAdvisors={availableAdvisors}
       />
 
       {/* Drag & Drop Overlay */}

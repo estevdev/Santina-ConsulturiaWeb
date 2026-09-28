@@ -17,6 +17,7 @@ interface DocPresetsSectionProps {
   tramiteType: 'retiro_desempleo' | 'mejoravit' | 'alta_medica_imss';
   docPresets: Preset[];
   selectedCliente: Cliente | null;
+  isAdmin?: boolean;
   onGenerateLink: (preset: Preset, tramiteType: string) => void;
   onRemoveDoc: (preset: Preset, docKey: string) => Promise<void>;
   onViewDoc?: (url: string, title: string) => void;
@@ -26,6 +27,7 @@ export function DocPresetsSection({
   tramiteType,
   docPresets,
   selectedCliente,
+  isAdmin = false,
   onGenerateLink,
   onRemoveDoc,
   onViewDoc,
@@ -121,8 +123,8 @@ export function DocPresetsSection({
                   </button>
                 )}
 
-                {/* Eliminar del expediente */}
-                {existingUrl && (
+                {/* Eliminar del expediente (Solo Administradores) */}
+                {existingUrl && isAdmin && (
                   <button
                     type="button"
                     onClick={() => onRemoveDoc(preset, docKey)}

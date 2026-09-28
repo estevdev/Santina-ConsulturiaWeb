@@ -4,14 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Preset } from '@/types/preset';
 import { getPresets, savePreset, deletePreset, fetchPresetsFromSupabase } from '@/utils/storage';
+import { useAuth } from '@/context/AuthContext';
 import PresetList from '@/components/PresetList';
 import PresetBuilder from '@/components/PresetBuilder';
 import PdfProcessor from '@/components/PdfProcessor';
-import { FileEdit, Layers, Sparkles, Plus } from 'lucide-react';
+import { FileEdit, Layers, Sparkles, Plus, ShieldAlert } from 'lucide-react';
 
 type ViewMode = 'list' | 'create-preset' | 'edit-preset' | 'process-pdf';
 
 export default function PdfPresetStudioView() {
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const [presets, setPresets] = useState<Preset[]>([]);
   const [activeView, setActiveView] = useState<ViewMode>('list');
@@ -75,6 +77,29 @@ export default function PdfPresetStudioView() {
     setSelectedPreset(preset);
     setActiveView('process-pdf');
   };
+
+  // Restricción: Exclusivo para administradores
+  if (user && user.role !== 'admin') {
+    return (
+      <div className="min-h-[500px] flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="p-4 rounded-3xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
+          <ShieldAlert className="w-12 h-12" />
+        </div>
+        <div className="max-w-md space-y-1.5">
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Herramienta Exclusiva para Administradores</h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            El módulo de <strong>PDF Studio</strong> y edición de plantillas presets está restringido únicamente a usuarios con rol de Administrador.
+          </p>
+        </div>
+        <a
+          href="/dashboard"
+          className="px-5 py-2.5 rounded-xl bg-[#c5a059] hover:bg-[#b08d4b] text-white text-xs font-semibold shadow-md transition-colors"
+        >
+          Volver al Dashboard
+        </a>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

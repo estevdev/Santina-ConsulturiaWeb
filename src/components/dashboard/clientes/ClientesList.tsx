@@ -95,8 +95,10 @@ export function ClientesList({
     // 2. Filtrado por Búsqueda de texto
     const q = search.toLowerCase();
     const fullName = `${c.nombre} ${c.apellido_paterno || ''} ${c.apellido_materno || ''} ${c.apellidos || ''}`.toLowerCase();
+    const advisorInfo = `${c.creado_por_nombre || ''} ${c.creado_por_email || ''}`.toLowerCase();
     return (
       fullName.includes(q) ||
+      advisorInfo.includes(q) ||
       (c.telefono && c.telefono.includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q)) ||
       (c.curp && c.curp.toLowerCase().includes(q)) ||

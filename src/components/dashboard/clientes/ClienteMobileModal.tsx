@@ -309,6 +309,7 @@ export function ClienteMobileModal({
                 loadingTramites={loadingTramites}
                 clienteTramites={clienteTramites}
                 selectedCliente={selectedCliente}
+                currentUserRole={currentUserRole}
                 uploadingDocKey={uploadingDocKey}
                 generatingAmpliada200={generatingAmpliada200}
                 docPresets={docPresets}
@@ -328,6 +329,7 @@ export function ClienteMobileModal({
             /* Modo Seguimiento (Línea de Tiempo con los 4 hitos) */
             <ClienteSeguimientoTimeline
               selectedCliente={selectedCliente}
+              currentUserRole={currentUserRole}
               clienteTramites={clienteTramites}
               docPresets={docPresets}
               uploadingDocKey={uploadingDocKey}

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   Plus,
@@ -12,6 +12,12 @@ import {
   Banknote,
   Building2,
   HeartPulse,
+  ShieldCheck,
+  User,
+  UserCheck,
+  ChevronDown,
+  Sparkles,
+  Briefcase,
 } from 'lucide-react';
 import { TipoTramite } from '@/types/cliente';
 import { ESTADOS_MEXICO } from '@/constants/estadosMexico';
@@ -26,6 +32,16 @@ export interface FormClienteData {
   estado: string;
   estado_cliente?: string;
   notas: string;
+  creado_por?: string | null;
+  creado_por_nombre?: string | null;
+  creado_por_email?: string | null;
+}
+
+export interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 export interface FormRetiroData {
@@ -99,6 +115,9 @@ interface ClienteFormModalProps {
   formAltaMedica: FormAltaMedicaData;
   setFormAltaMedica: React.Dispatch<React.SetStateAction<FormAltaMedicaData>>;
   onSubmit: (e: React.FormEvent) => Promise<void>;
+  currentUserRole?: string;
+  currentUserId?: string;
+  availableAdvisors?: StaffUser[];
 }
 
 export function ClienteFormModal({
@@ -124,7 +143,53 @@ export function ClienteFormModal({
   formAltaMedica,
   setFormAltaMedica,
   onSubmit,
+  currentUserRole,
+  currentUserId,
+  availableAdvisors = [],
 }: ClienteFormModalProps) {
+  const [showAdvisorSelector, setShowAdvisorSelector] = useState(false);
+  const [isAdvisorDropdownOpen, setIsAdvisorDropdownOpen] = useState(false);
+  const [advisorSearchQuery, setAdvisorSearchQuery] = useState('');
+  const [advisorRoleFilter, setAdvisorRoleFilter] = useState<'all' | 'admin' | 'socios'>('all');
+  const advisorDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Resetear estados al abrir el modal para que inicie escondido por defecto
+  useEffect(() => {
+    if (isOpen) {
+      setShowAdvisorSelector(false);
+      setIsAdvisorDropdownOpen(false);
+      setAdvisorSearchQuery('');
+    }
+  }, [isOpen, editingClienteId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (advisorDropdownRef.current && !advisorDropdownRef.current.contains(event.target as Node)) {
+        setIsAdvisorDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedAdvisor = availableAdvisors.find((a) => a.id === formCliente.creado_por);
+
+  const filteredAdvisors = availableAdvisors.filter((adv) => {
+    const q = advisorSearchQuery.toLowerCase().trim();
+    const matchesSearch =
+      !q ||
+      (adv.name && adv.name.toLowerCase().includes(q)) ||
+      (adv.email && adv.email.toLowerCase().includes(q)) ||
+      (adv.role && adv.role.toLowerCase().includes(q));
+
+    const matchesRole =
+      advisorRoleFilter === 'all' ||
+      adv.role === advisorRoleFilter ||
+      (advisorRoleFilter === 'socios' && adv.role !== 'admin');
+
+    return matchesSearch && matchesRole;
+  });
+
   if (!isOpen) return null;
 
   return (
@@ -153,9 +218,290 @@ export function ClienteFormModal({
         <form onSubmit={onSubmit} className="space-y-6 pt-4">
           {/* Información Básica */}
           <div>
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-              1. Información del Cliente
-            </h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                1. Información del Cliente
+              </h3>
+              {currentUserRole === 'admin' && (
+                <span className="text-[10px] font-semibold text-[#c5a059] flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Modo Administrador
+                </span>
+              )}
+            </div>
+
+            {/* SELECCIÓN DE ASESOR / ADMINISTRADOR RESPONSABLE (ESCONDIDO POR DEFECTO) */}
+            {currentUserRole === 'admin' ? (
+              <div className="mb-5 rounded-2xl border border-[#c5a059]/30 bg-gradient-to-br from-[#121318] via-zinc-950 to-[#121318] shadow-lg overflow-hidden transition-all">
+                {/* Resumen Compacto siempre visible */}
+                <div className="p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 shadow-md ${
+                      selectedAdvisor?.role === 'admin'
+                        ? 'bg-gradient-to-br from-amber-400 via-[#c5a059] to-[#9a7b38] text-zinc-950 border border-amber-300/60'
+                        : (formCliente.creado_por || formCliente.creado_por_nombre)
+                        ? 'bg-gradient-to-br from-emerald-500 via-teal-600 to-zinc-900 text-white border border-emerald-400/40'
+                        : 'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                    }`}>
+                      {(formCliente.creado_por || formCliente.creado_por_nombre) ? (
+                        ((selectedAdvisor?.name || formCliente.creado_por_nombre || 'A').trim().charAt(0)).toUpperCase()
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[10px] uppercase font-bold text-zinc-400 tracking-wider">
+                          Asesor a cargo:
+                        </span>
+                        <span className="text-xs font-extrabold text-white truncate">
+                          {selectedAdvisor?.name || formCliente.creado_por_nombre || 'Sin asignar (General)'}
+                        </span>
+                        {(selectedAdvisor?.id === currentUserId || formCliente.creado_por === currentUserId) && (
+                          <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-500/20 text-[#dfba73] border border-[#c5a059]/40">
+                            Tú
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                          selectedAdvisor?.role === 'admin'
+                            ? 'bg-amber-500/10 text-[#dfba73] border-[#c5a059]/40'
+                            : (formCliente.creado_por || formCliente.creado_por_nombre)
+                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                        }`}>
+                          {selectedAdvisor?.role === 'admin'
+                            ? '🛡️ Admin'
+                            : (formCliente.creado_por || formCliente.creado_por_nombre)
+                            ? '💼 Asesor'
+                            : 'General'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-zinc-400 truncate mt-0.5">
+                        {selectedAdvisor?.email || formCliente.creado_por_email || 'Ningún asesor asignado'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdvisorSelector((prev) => !prev);
+                      setIsAdvisorDropdownOpen(true);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/15 via-[#c5a059]/25 to-amber-500/15 hover:brightness-110 text-[#dfba73] hover:text-amber-200 border border-[#c5a059]/50 font-semibold text-xs transition-all flex items-center gap-1.5 shrink-0 self-start sm:self-auto cursor-pointer shadow-sm"
+                  >
+                    <Edit className="w-3.5 h-3.5 text-amber-400" />
+                    <span>
+                      {showAdvisorSelector
+                        ? 'Ocultar Selector'
+                        : (formCliente.creado_por || formCliente.creado_por_nombre)
+                        ? 'Modificar Asesor'
+                        : 'Asignar Asesor'}
+                    </span>
+                  </button>
+                </div>
+
+                {/* Apartado Extendido de Búsqueda y Selección (Completamente visible e interactivo en el flujo del modal) */}
+                {showAdvisorSelector && (
+                  <div className="p-4 border-t border-[#c5a059]/30 bg-zinc-950 space-y-3 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between pb-1">
+                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                        <Search className="w-3.5 h-3.5 text-[#c5a059]" />
+                        <span>Selecciona o busca el asesor responsable:</span>
+                      </div>
+                      <span className="text-[10px] font-semibold text-zinc-400">
+                        {filteredAdvisors.length} disponible(s)
+                      </span>
+                    </div>
+
+                    {/* Buscador Integrado */}
+                    <div className="relative">
+                      <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        autoFocus
+                        value={advisorSearchQuery}
+                        onChange={(e) => setAdvisorSearchQuery(e.target.value)}
+                        placeholder="Buscar por nombre, correo o rol..."
+                        className="w-full pl-9 pr-8 py-2.5 text-xs bg-zinc-900 border border-zinc-700 focus:border-[#c5a059] rounded-xl text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-[#c5a059]"
+                      />
+                      {advisorSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setAdvisorSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Filtro Rápido de Roles */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] text-zinc-400 font-semibold mr-1">Filtrar:</span>
+                      <button
+                        type="button"
+                        onClick={() => setAdvisorRoleFilter('all')}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                          advisorRoleFilter === 'all'
+                            ? 'bg-[#c5a059] text-zinc-950 shadow-sm'
+                            : 'bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-700'
+                        }`}
+                      >
+                        Todos ({availableAdvisors.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdvisorRoleFilter('socios')}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                          advisorRoleFilter === 'socios'
+                            ? 'bg-emerald-500 text-zinc-950 font-bold shadow-sm'
+                            : 'bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-700'
+                        }`}
+                      >
+                        Asesores ({availableAdvisors.filter((a) => a.role === 'socios').length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdvisorRoleFilter('admin')}
+                        className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all cursor-pointer ${
+                          advisorRoleFilter === 'admin'
+                            ? 'bg-amber-400 text-zinc-950 font-bold shadow-sm'
+                            : 'bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-700'
+                        }`}
+                      >
+                        Admins ({availableAdvisors.filter((a) => a.role === 'admin').length})
+                      </button>
+                    </div>
+
+                    {/* Lista Scrolleable de Asesores */}
+                    <div className="max-h-56 overflow-y-auto p-1 bg-zinc-900/80 rounded-xl border border-zinc-800 space-y-1">
+                      {/* Opción Sin Asignar */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFormCliente({
+                            ...formCliente,
+                            creado_por: null,
+                            creado_por_nombre: null,
+                            creado_por_email: null,
+                          });
+                        }}
+                        className={`w-full p-2.5 rounded-xl text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                          !formCliente.creado_por
+                            ? 'bg-[#c5a059]/20 text-[#dfba73] border border-[#c5a059]/40 font-bold'
+                            : 'hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-transparent'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded-lg bg-zinc-800 flex items-center justify-center text-zinc-400">
+                            <User className="w-3.5 h-3.5" />
+                          </div>
+                          <span>-- Sin Asesor Asignado (Caso General) --</span>
+                        </div>
+                        {!formCliente.creado_por && <Check className="w-4 h-4 text-[#c5a059] stroke-[3]" />}
+                      </button>
+
+                      {filteredAdvisors.length === 0 ? (
+                        <div className="py-6 text-center text-xs text-zinc-500">
+                          No se encontró ningún asesor matching &quot;{advisorSearchQuery}&quot;
+                        </div>
+                      ) : (
+                        filteredAdvisors.map((adv) => {
+                          const isSelected = formCliente.creado_por === adv.id;
+                          const isMe = adv.id === currentUserId;
+                          const initial = (adv.name || adv.email || 'A').trim().charAt(0).toUpperCase();
+
+                          return (
+                            <button
+                              type="button"
+                              key={adv.id}
+                              onClick={() => {
+                                setFormCliente({
+                                  ...formCliente,
+                                  creado_por: adv.id,
+                                  creado_por_nombre: adv.name,
+                                  creado_por_email: adv.email,
+                                });
+                              }}
+                              className={`w-full p-2.5 rounded-xl text-left text-xs flex items-center justify-between transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-gradient-to-r from-[#c5a059]/25 to-amber-500/15 border border-[#c5a059]/60 text-white shadow-sm'
+                                  : 'hover:bg-zinc-800/90 text-zinc-300 hover:text-white border border-transparent'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 shadow-sm ${
+                                  adv.role === 'admin'
+                                    ? 'bg-gradient-to-br from-amber-400 to-[#9a7b38] text-zinc-950'
+                                    : 'bg-gradient-to-br from-emerald-500 to-teal-700 text-white'
+                                }`}>
+                                  {initial}
+                                </div>
+
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-white truncate max-w-[170px] sm:max-w-[220px]">
+                                      {adv.name || adv.email}
+                                    </span>
+                                    {isMe && (
+                                      <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-400/20 text-[#dfba73] border border-[#c5a059]/30">
+                                        Tú
+                                      </span>
+                                    )}
+                                    <span className={`text-[9px] font-semibold px-1.5 py-0.2 rounded-full border ${
+                                      adv.role === 'admin'
+                                        ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                    }`}>
+                                      {adv.role === 'admin' ? '🛡️ Admin' : '💼 Asesor'}
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-zinc-400 truncate mt-0.5">
+                                    {adv.email}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {isSelected && (
+                                <div className="w-5 h-5 rounded-full bg-[#c5a059] flex items-center justify-center text-zinc-950 shrink-0 ml-2 shadow-md">
+                                  <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+
+                    <div className="pt-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowAdvisorSelector(false)}
+                        className="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-zinc-200 border border-zinc-700 transition-colors cursor-pointer"
+                      >
+                        ✓ Listo
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              formCliente.creado_por_nombre && (
+                <div className="mb-4 p-3 bg-zinc-900/60 border border-[#c5a059]/20 rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-zinc-400 flex items-center gap-2">
+                    <User className="w-4 h-4 text-[#c5a059]" />
+                    <span>Asesor a cargo:</span>
+                    <strong className="text-amber-200">{formCliente.creado_por_nombre}</strong>
+                    {formCliente.creado_por_email && (
+                      <span className="text-zinc-500 text-[11px]">({formCliente.creado_por_email})</span>
+                    )}
+                  </span>
+                </div>
+              )
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nombre(s) *</label>

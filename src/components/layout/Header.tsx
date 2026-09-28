@@ -8,28 +8,35 @@ import ThemeToggle from './ThemeToggle';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
+  isTransparent?: boolean;
 }
 
-export default function Header({ onMobileMenuToggle }: HeaderProps) {
+export default function Header({ onMobileMenuToggle, isTransparent = false }: HeaderProps) {
   const { user } = useAuth();
 
   return (
-    <header className="h-16 bg-[#0d0e12] dark:bg-[#0d0e12] border-b border-zinc-800 sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 transition-colors duration-200">
+    <header
+      className={`h-16 sticky top-0 z-20 flex items-center justify-between px-4 sm:px-6 transition-all duration-300 ${
+        isTransparent
+          ? 'bg-gradient-to-b from-black/90 via-black/50 to-transparent border-b border-transparent backdrop-blur-[2px]'
+          : 'bg-[#0d0e12] dark:bg-[#0d0e12] border-b border-zinc-800'
+      }`}
+    >
       {/* Left side: Mobile Toggle & Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onMobileMenuToggle}
-          className="lg:hidden p-2 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+          className="lg:hidden p-2 text-zinc-300 hover:text-white rounded-lg hover:bg-zinc-800/60 transition-colors backdrop-blur-sm"
           aria-label="Abrir menú"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#c5a059]/10 text-[#dfba73] border border-[#c5a059]/30">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#c5a059]/20 text-[#dfba73] border border-[#c5a059]/40 backdrop-blur-md shadow-sm">
             Santina Hub
           </span>
-          <span className="hidden sm:inline-block text-xs text-zinc-400">
+          <span className="hidden sm:inline-block text-xs text-zinc-300 drop-shadow-sm font-medium">
             &bull; Gestión de Documentos & Plantillas
           </span>
         </div>
@@ -41,16 +48,16 @@ export default function Header({ onMobileMenuToggle }: HeaderProps) {
         <ThemeToggle />
 
         {/* User Info Capsule */}
-        <div className="flex items-center gap-2.5 pl-2.5 sm:pl-3 border-l border-zinc-800">
+        <div className={`flex items-center gap-2.5 pl-2.5 sm:pl-3 ${isTransparent ? 'border-l border-white/20' : 'border-l border-zinc-800'}`}>
           <div className="text-right hidden sm:block">
-            <p className="text-xs font-semibold text-white leading-tight">
+            <p className="text-xs font-semibold text-white leading-tight drop-shadow-sm">
               {user?.name || 'Usuario'}
             </p>
-            <p className="text-[11px] text-zinc-400 capitalize">
+            <p className="text-[11px] text-zinc-300 capitalize font-medium">
               {user?.role || 'editor'}
             </p>
           </div>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c5a059] to-[#dfba73] text-zinc-950 border border-[#c5a059]/40 flex items-center justify-center font-bold text-xs shadow-md">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#c5a059] to-[#dfba73] text-zinc-950 border border-[#c5a059]/50 flex items-center justify-center font-bold text-xs shadow-lg">
             {user?.name ? user.name.charAt(0).toUpperCase() : <UserIcon className="w-4 h-4 text-zinc-950" />}
           </div>
         </div>

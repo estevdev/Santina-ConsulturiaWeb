@@ -23,6 +23,7 @@ interface TramitesChecklistProps {
   loadingTramites: boolean;
   clienteTramites: ClienteTramitesState;
   selectedCliente: Cliente | null;
+  currentUserRole?: string;
   uploadingDocKey: string | null;
   generatingAmpliada200: boolean;
   docPresets: Preset[];
@@ -42,6 +43,7 @@ export function TramitesChecklist({
   loadingTramites,
   clienteTramites,
   selectedCliente,
+  currentUserRole,
   uploadingDocKey,
   generatingAmpliada200,
   docPresets,
@@ -56,6 +58,7 @@ export function TramitesChecklist({
   onGenerateClientDocLink,
   onRemoveDocPreset,
 }: TramitesChecklistProps) {
+  const isAdmin = currentUserRole === 'admin';
   if (loadingTramites) {
     return (
       <div className="flex items-center justify-center p-4 text-xs text-slate-400">
@@ -123,6 +126,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_ine_vigente}
                 existingDocUrl={tr.documentos_urls?.req_ine_vigente || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
                 isUploading={uploadingDocKey === `${tr.id}_req_ine_vigente`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -135,6 +139,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_app_aforemovil_instalada}
                 existingDocUrl={tr.documentos_urls?.req_app_aforemovil_instalada}
                 isUploading={uploadingDocKey === `${tr.id}_req_app_aforemovil_instalada`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -147,6 +152,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_comprobante_domicilio}
                 existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio}
                 isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -159,6 +165,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_registro_aforemovil_realizado}
                 existingDocUrl={tr.documentos_urls?.req_registro_aforemovil_realizado}
                 isUploading={uploadingDocKey === `${tr.id}_req_registro_aforemovil_realizado`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -171,6 +178,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_curp}
                 existingDocUrl={tr.documentos_urls?.req_curp || selectedCliente?.curp_document_url}
                 isUploading={uploadingDocKey === `${tr.id}_req_curp`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -183,6 +191,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_saldo_visible_aforemovil}
                 existingDocUrl={tr.documentos_urls?.req_saldo_visible_aforemovil}
                 isUploading={uploadingDocKey === `${tr.id}_req_saldo_visible_aforemovil`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -195,6 +204,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_constancia_situacion_fiscal}
                 existingDocUrl={tr.documentos_urls?.req_constancia_situacion_fiscal}
                 isUploading={uploadingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -207,6 +217,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_anexo_sindo}
                 existingDocUrl={tr.documentos_urls?.req_anexo_sindo}
                 isUploading={uploadingDocKey === `${tr.id}_req_anexo_sindo`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -219,6 +230,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_reporte_semanas_imss}
                 existingDocUrl={tr.documentos_urls?.req_reporte_semanas_imss}
                 isUploading={uploadingDocKey === `${tr.id}_req_reporte_semanas_imss`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -229,6 +241,7 @@ export function TramitesChecklist({
               tramiteType="retiro_desempleo"
               docPresets={docPresets}
               selectedCliente={selectedCliente}
+              isAdmin={isAdmin}
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
               onViewDoc={onViewDoc}
@@ -241,7 +254,7 @@ export function TramitesChecklist({
       {clienteTramites.mejoravit && clienteTramites.mejoravit.length > 0 && (
         clienteTramites.mejoravit.map((tr) => {
           const normalIneUrl = tr.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url;
-          const btnGetIne200 = normalIneUrl ? (
+          const btnGetIne200 = normalIneUrl && isAdmin ? (
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -297,6 +310,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
                   numberTag={1}
                   isUploading={uploadingDocKey === `${tr.id}_req_ine_normal`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -310,6 +324,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_estado_cuenta_bancario}
                   numberTag={6}
                   isUploading={uploadingDocKey === `${tr.id}_req_estado_cuenta_bancario`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -324,6 +339,7 @@ export function TramitesChecklist({
                   numberTag={2}
                   extraAction={btnGetIne200}
                   isUploading={uploadingDocKey === `${tr.id}_req_ine_ampliada_200`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -337,6 +353,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_constancia_situacion_fiscal}
                   numberTag={7}
                   isUploading={uploadingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -350,6 +367,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_curp_actualizada || selectedCliente?.curp_document_url}
                   numberTag={3}
                   isUploading={uploadingDocKey === `${tr.id}_req_curp_actualizada`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -411,6 +429,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_acta_nacimiento}
                   numberTag={4}
                   isUploading={uploadingDocKey === `${tr.id}_req_acta_nacimiento`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -467,6 +486,7 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio}
                   numberTag={5}
                   isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -481,17 +501,20 @@ export function TramitesChecklist({
                   existingDocUrl={tr.documentos_urls?.req_fotos_inmueble_5}
                   numberTag={10}
                   extraAction={
-                    <button
-                      type="button"
-                      onClick={() => onOpenInmuebleFotosModal(tr.id, tr)}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer mr-1"
-                      title="Subir y ordenar hasta 5 fotos para generar el PDF automáticamente"
-                    >
-                      <Camera className="w-3 h-3 text-[#c5a059]" />
-                      <span>{tr.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
-                    </button>
+                    isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenInmuebleFotosModal(tr.id, tr)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer mr-1"
+                        title="Subir y ordenar hasta 5 fotos para generar el PDF automáticamente"
+                      >
+                        <Camera className="w-3 h-3 text-[#c5a059]" />
+                        <span>{tr.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
+                      </button>
+                    ) : null
                   }
                   isUploading={uploadingDocKey === `${tr.id}_req_fotos_inmueble_5`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -502,6 +525,7 @@ export function TramitesChecklist({
                 tramiteType="mejoravit"
                 docPresets={docPresets}
                 selectedCliente={selectedCliente}
+                isAdmin={isAdmin}
                 onGenerateLink={onGenerateClientDocLink}
                 onRemoveDoc={onRemoveDocPreset}
                 onViewDoc={onViewDoc}
@@ -536,6 +560,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_curp_validada}
                 existingDocUrl={tr.documentos_urls?.req_curp_validada || selectedCliente?.curp_document_url}
                 isUploading={uploadingDocKey === `${tr.id}_req_curp_validada`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -548,6 +573,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_comprobante_domicilio_reciente}
                 existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio_reciente}
                 isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio_reciente`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -560,6 +586,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_identificacion_oficial}
                 existingDocUrl={tr.documentos_urls?.req_identificacion_oficial || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
                 isUploading={uploadingDocKey === `${tr.id}_req_identificacion_oficial`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -572,6 +599,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_fotografia_infantil}
                 existingDocUrl={tr.documentos_urls?.req_fotografia_infantil}
                 isUploading={uploadingDocKey === `${tr.id}_req_fotografia_infantil`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -584,6 +612,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_cartilla_nacional_salud}
                 existingDocUrl={tr.documentos_urls?.req_cartilla_nacional_salud}
                 isUploading={uploadingDocKey === `${tr.id}_req_cartilla_nacional_salud`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -596,6 +625,7 @@ export function TramitesChecklist({
                 isCompleted={tr.req_alta_patronal_vigente}
                 existingDocUrl={tr.documentos_urls?.req_alta_patronal_vigente}
                 isUploading={uploadingDocKey === `${tr.id}_req_alta_patronal_vigente`}
+                isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
@@ -606,6 +636,7 @@ export function TramitesChecklist({
               tramiteType="alta_medica_imss"
               docPresets={docPresets}
               selectedCliente={selectedCliente}
+              isAdmin={isAdmin}
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
               onViewDoc={onViewDoc}

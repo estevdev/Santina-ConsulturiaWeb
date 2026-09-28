@@ -40,6 +40,7 @@ interface RichTextEditorProps {
   onDuplicateZone?: (zone: FieldZone) => void;
   onExtractOcr?: (zone: FieldZone) => void;
   isOcrLoading?: boolean;
+  isAdvancedMode?: boolean;
 }
 
 export default function RichTextEditor({
@@ -51,6 +52,7 @@ export default function RichTextEditor({
   onDuplicateZone,
   onExtractOcr,
   isOcrLoading = false,
+  isAdvancedMode = false,
 }: RichTextEditorProps) {
   const [showPositionControls, setShowPositionControls] = useState(false);
 
@@ -80,6 +82,23 @@ export default function RichTextEditor({
       },
     },
     onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      const json = editor.getJSON();
+      const plainText = editor.getText();
+      const lines = parseTiptapJsonToLines(
+        json, 
+        zone.fontFamily || 'Helvetica', 
+        zone.fontSize || 12, 
+        zone.color || '#000000'
+      );
+      
+      onChange({
+        html,
+        lines,
+        plainText,
+      });
+    },
+    onBlur: ({ editor }) => {
       const html = editor.getHTML();
       const json = editor.getJSON();
       const plainText = editor.getText();
@@ -133,268 +152,294 @@ export default function RichTextEditor({
 
   return (
     <div className="border border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden shadow-xs bg-white dark:bg-[#0d0e12] focus-within:ring-2 focus-within:ring-amber-500 focus-within:border-[#c5a059] transition-all">
-      {/* Barra de herramientas estilo Word */}
+      {/* Barra de herramientas */}
       <div className="bg-slate-50 dark:bg-slate-800/80 p-2 border-b border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-1.5 select-none">
-        
-        {/* Fuente y Tamaño */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <select
-            value={zone.fontFamily || 'Helvetica'}
-            onChange={(e) => {
-              const newFamily = e.target.value as any;
-              onUpdateZone(zone.id, { fontFamily: newFamily });
-              if (editor) {
-                const html = editor.getHTML();
-                const json = editor.getJSON();
-                const plainText = editor.getText();
-                const lines = parseTiptapJsonToLines(
-                  json,
-                  newFamily,
-                  zone.fontSize || 12,
-                  zone.color || '#000000'
-                );
-                onChange({ html, lines, plainText });
-              }
-            }}
-            className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200"
-          >
-            <option value="Helvetica">Arial / Sans</option>
-            <option value="TimesRoman">Times New Roman</option>
-            <option value="Courier">Courier</option>
-            <option value="CourierWide">✨ Courier Espaciado</option>
-          </select>
-
-          <div className="flex items-center gap-0.5" title="Tamaño base de fuente">
-            <Type className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ml-1" />
-            <input
-              type="number"
-              min="6"
-              max="72"
-              value={zone.fontSize || 12}
-              onChange={(e) => {
-                const newSize = Number(e.target.value) || 12;
-                onUpdateZone(zone.id, { fontSize: newSize });
-                if (editor) {
-                  const html = editor.getHTML();
-                  const json = editor.getJSON();
-                  const plainText = editor.getText();
-                  const lines = parseTiptapJsonToLines(
-                    json,
-                    zone.fontFamily || 'Helvetica',
-                    newSize,
-                    zone.color || '#000000'
-                  );
-                  onChange({ html, lines, plainText });
-                }
-              }}
-              className="w-11 bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
-            />
-            <span className="text-[10px] text-slate-400 dark:text-slate-500">pt</span>
+        {!isAdvancedMode ? (
+          /* Modo Simple (por defecto): Únicamente botón de Negrita */
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                  editor.isActive('bold')
+                    ? 'bg-[#c5a059] text-zinc-950 border-[#c5a059] shadow-xs'
+                    : 'bg-white dark:bg-zinc-900 text-slate-700 dark:text-slate-200 border-slate-300 dark:border-zinc-700 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                }`}
+                title="Poner en negrita texto seleccionado (Ctrl+B)"
+              >
+                <Bold className="w-3.5 h-3.5" />
+                <span>Negrita (B)</span>
+              </button>
+              <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                Escribe o selecciona texto para cambiar formato
+              </span>
+            </div>
           </div>
-
-          {/* Espaciado entre renglones / Interlineado */}
-          <div className="flex items-center gap-0.5" title="Espaciado entre renglones (Interlineado)">
-            <FoldVertical className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ml-1" />
-            <select
-              value={zone.lineHeight || 1.15}
-              onChange={(e) => {
-                const newLineHeight = Number(e.target.value) || 1.15;
-                onUpdateZone(zone.id, { lineHeight: newLineHeight });
-              }}
-              className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
-            >
-              <option value="0.9">0.9x</option>
-              <option value="1.0">1.0x (Sencillo)</option>
-              <option value="1.15">1.15x (Normal)</option>
-              <option value="1.25">1.25x</option>
-              <option value="1.35">1.35x</option>
-              <option value="1.5">1.5x (1.5)</option>
-              <option value="1.75">1.75x</option>
-              <option value="2.0">2.0x (Doble)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Formatos de selección de texto: B, I, U */}
-        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleBold().run()}
-            className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('bold') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059] font-bold' : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Poner en negrita texto seleccionado (Ctrl+B)"
-          >
-            <Bold className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-            className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('italic') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Poner en cursiva texto seleccionado (Ctrl+I)"
-          >
-            <Italic className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-            className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive('underline') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Subrayar texto seleccionado (Ctrl+U)"
-          >
-            <UnderlineIcon className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Alineación */}
-        <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
-          <button
-            type="button"
-            onClick={() => {
-              editor.chain().focus().setTextAlign('left').run();
-              onUpdateZone(zone.id, { alignment: 'left' });
-            }}
-            className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' }))
-                ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]'
-                : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Alinear a la izquierda"
-          >
-            <AlignLeft className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              editor.chain().focus().setTextAlign('center').run();
-              onUpdateZone(zone.id, { alignment: 'center' });
-            }}
-            className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive({ textAlign: 'center' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Centrar"
-          >
-            <AlignCenter className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              editor.chain().focus().setTextAlign('right').run();
-              onUpdateZone(zone.id, { alignment: 'right' });
-            }}
-            className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
-              editor.isActive({ textAlign: 'right' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
-            }`}
-            title="Alinear a la derecha"
-          >
-            <AlignRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Color de texto y color de fondo de zona */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex items-center gap-1" title="Color de las letras">
-            <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <input
-              type="color"
-              value={zone.color || '#000000'}
-              onChange={(e) => {
-                const newColor = e.target.value;
-                onUpdateZone(zone.id, { color: newColor });
-                if (editor) {
-                  const { empty } = editor.state.selection;
-                  if (empty) {
-                    editor.chain().focus().selectAll().setColor(newColor).run();
-                  } else {
-                    editor.chain().focus().setColor(newColor).run();
+        ) : (
+          /* Modo Avanzado: Todas las herramientas de tipografía, tamaño, colores, alineación y coordenadas */
+          <>
+            {/* Fuente y Tamaño */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <select
+                value={zone.fontFamily || 'Helvetica'}
+                onChange={(e) => {
+                  const newFamily = e.target.value as any;
+                  onUpdateZone(zone.id, { fontFamily: newFamily });
+                  if (editor) {
+                    const html = editor.getHTML();
+                    const json = editor.getJSON();
+                    const plainText = editor.getText();
+                    const lines = parseTiptapJsonToLines(
+                      json,
+                      newFamily,
+                      zone.fontSize || 12,
+                      zone.color || '#000000'
+                    );
+                    onChange({ html, lines, plainText });
                   }
-                  const html = editor.getHTML();
-                  const json = editor.getJSON();
-                  const plainText = editor.getText();
-                  const lines = parseTiptapJsonToLines(
-                    json,
-                    zone.fontFamily || 'Helvetica',
-                    zone.fontSize || 12,
-                    newColor
-                  );
-                  onChange({ html, lines, plainText });
-                }
-              }}
-              className="w-5 h-5 border border-slate-300 dark:border-slate-700 rounded cursor-pointer p-0 bg-transparent"
-            />
-          </div>
+                }}
+                className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-slate-200"
+              >
+                <option value="Helvetica">Arial / Sans</option>
+                <option value="TimesRoman">Times New Roman</option>
+                <option value="Courier">Courier</option>
+                <option value="CourierWide">✨ Courier Espaciado</option>
+              </select>
 
-          <div className="flex items-center gap-1" title="Color de fondo (parche para tapar original)">
-            <PaintBucket className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
-            <input
-              type="color"
-              value={zone.bgColor || '#ffffff'}
-              onChange={(e) => onUpdateZone(zone.id, { bgColor: e.target.value })}
-              className="w-5 h-5 border border-slate-300 dark:border-slate-700 rounded cursor-pointer p-0 bg-transparent"
-            />
-          </div>
+              <div className="flex items-center gap-0.5" title="Tamaño base de fuente">
+                <Type className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ml-1" />
+                <input
+                  type="number"
+                  min="6"
+                  max="72"
+                  value={zone.fontSize || 12}
+                  onChange={(e) => {
+                    const newSize = Number(e.target.value) || 12;
+                    onUpdateZone(zone.id, { fontSize: newSize });
+                    if (editor) {
+                      const html = editor.getHTML();
+                      const json = editor.getJSON();
+                      const plainText = editor.getText();
+                      const lines = parseTiptapJsonToLines(
+                        json,
+                        zone.fontFamily || 'Helvetica',
+                        newSize,
+                        zone.color || '#000000'
+                      );
+                      onChange({ html, lines, plainText });
+                    }
+                  }}
+                  className="w-11 bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1 py-1 text-xs text-center"
+                />
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">pt</span>
+              </div>
 
-          {/* Botón para abrir ajustes de posición / desfase */}
-          <button
-            type="button"
-            onClick={() => setShowPositionControls(!showPositionControls)}
-            className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors cursor-pointer ${
-              showPositionControls
-                ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700/80'
-                : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
-            }`}
-            title="Ajustar posición y desfase de la zona"
-          >
-            <Move className="w-3 h-3 text-slate-600 dark:text-slate-300" />
-            <span>Mover</span>
-          </button>
+              {/* Espaciado entre renglones / Interlineado */}
+              <div className="flex items-center gap-0.5" title="Espaciado entre renglones (Interlineado)">
+                <FoldVertical className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 ml-1" />
+                <select
+                  value={zone.lineHeight || 1.15}
+                  onChange={(e) => {
+                    const newLineHeight = Number(e.target.value) || 1.15;
+                    onUpdateZone(zone.id, { lineHeight: newLineHeight });
+                  }}
+                  className="bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-1.5 py-1 text-xs"
+                >
+                  <option value="0.9">0.9x</option>
+                  <option value="1.0">1.0x (Sencillo)</option>
+                  <option value="1.15">1.15x (Normal)</option>
+                  <option value="1.25">1.25x</option>
+                  <option value="1.35">1.35x</option>
+                  <option value="1.5">1.5x (1.5)</option>
+                  <option value="1.75">1.75x</option>
+                  <option value="2.0">2.0x (Doble)</option>
+                </select>
+              </div>
+            </div>
 
-          {onExtractOcr && (
-            <button
-              type="button"
-              onClick={() => onExtractOcr(zone)}
-              disabled={isOcrLoading}
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#dfba73] dark:text-[#dfba73] bg-[#9a7b38] dark:bg-[#9a7b38]/60 hover:bg-[#9a7b38] dark:hover:bg-[#9a7b38]/50 border border-stone-200 dark:border-stone-800/60 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
-              title="Re-extraer texto de esta zona con OCR"
-            >
-              {isOcrLoading ? (
-                <RefreshCw className="w-3 h-3 animate-spin text-[#dfba73] dark:text-[#dfba73]" />
-              ) : (
-                <ScanText className="w-3 h-3 text-[#dfba73] dark:text-[#dfba73]" />
+            {/* Formatos de selección de texto: B, I, U */}
+            <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleBold().run()}
+                className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive('bold') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059] font-bold' : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Poner en negrita texto seleccionado (Ctrl+B)"
+              >
+                <Bold className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleItalic().run()}
+                className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive('italic') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Poner en cursiva texto seleccionado (Ctrl+I)"
+              >
+                <Italic className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => editor.chain().focus().toggleUnderline().run()}
+                className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive('underline') ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Subrayar texto seleccionado (Ctrl+U)"
+              >
+                <UnderlineIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Alineación */}
+            <div className="flex items-center bg-white dark:bg-[#0d0e12] border border-slate-300 dark:border-slate-700 rounded-lg overflow-hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  editor.chain().focus().setTextAlign('left').run();
+                  onUpdateZone(zone.id, { alignment: 'left' });
+                }}
+                className={`p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive({ textAlign: 'left' }) || (!editor.isActive({ textAlign: 'center' }) && !editor.isActive({ textAlign: 'right' }))
+                    ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]'
+                    : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Alinear a la izquierda"
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  editor.chain().focus().setTextAlign('center').run();
+                  onUpdateZone(zone.id, { alignment: 'center' });
+                }}
+                className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive({ textAlign: 'center' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Centrar"
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  editor.chain().focus().setTextAlign('right').run();
+                  onUpdateZone(zone.id, { alignment: 'right' });
+                }}
+                className={`p-1.5 border-l border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${
+                  editor.isActive({ textAlign: 'right' }) ? 'bg-[#c5a059] dark:bg-[#c5a059] text-[#c5a059] dark:text-[#c5a059]' : 'text-slate-600 dark:text-slate-300'
+                }`}
+                title="Alinear a la derecha"
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Color de texto y color de fondo de zona */}
+            <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1" title="Color de las letras">
+                <Palette className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <input
+                  type="color"
+                  value={zone.color || '#000000'}
+                  onChange={(e) => {
+                    const newColor = e.target.value;
+                    onUpdateZone(zone.id, { color: newColor });
+                    if (editor) {
+                      const { empty } = editor.state.selection;
+                      if (empty) {
+                        editor.chain().focus().selectAll().setColor(newColor).run();
+                      } else {
+                        editor.chain().focus().setColor(newColor).run();
+                      }
+                      const html = editor.getHTML();
+                      const json = editor.getJSON();
+                      const plainText = editor.getText();
+                      const lines = parseTiptapJsonToLines(
+                        json,
+                        zone.fontFamily || 'Helvetica',
+                        zone.fontSize || 12,
+                        newColor
+                      );
+                      onChange({ html, lines, plainText });
+                    }
+                  }}
+                  className="w-5 h-5 border border-slate-300 dark:border-slate-700 rounded cursor-pointer p-0 bg-transparent"
+                />
+              </div>
+
+              <div className="flex items-center gap-1" title="Color de fondo (parche para tapar original)">
+                <PaintBucket className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
+                <input
+                  type="color"
+                  value={zone.bgColor || '#ffffff'}
+                  onChange={(e) => onUpdateZone(zone.id, { bgColor: e.target.value })}
+                  className="w-5 h-5 border border-slate-300 dark:border-slate-700 rounded cursor-pointer p-0 bg-transparent"
+                />
+              </div>
+
+              {/* Botón para abrir ajustes de posición / desfase */}
+              <button
+                type="button"
+                onClick={() => setShowPositionControls(!showPositionControls)}
+                className={`flex items-center gap-1 px-2 py-1 text-[11px] font-medium rounded-lg border transition-colors cursor-pointer ${
+                  showPositionControls
+                    ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-700/80'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700'
+                }`}
+                title="Ajustar posición y desfase de la zona"
+              >
+                <Move className="w-3 h-3 text-slate-600 dark:text-slate-300" />
+                <span>Mover</span>
+              </button>
+
+              {onExtractOcr && (
+                <button
+                  type="button"
+                  onClick={() => onExtractOcr(zone)}
+                  disabled={isOcrLoading}
+                  className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-[#dfba73] dark:text-[#dfba73] bg-[#9a7b38] dark:bg-[#9a7b38]/60 hover:bg-[#9a7b38] dark:hover:bg-[#9a7b38]/50 border border-stone-200 dark:border-stone-800/60 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                  title="Re-extraer texto de esta zona con OCR"
+                >
+                  {isOcrLoading ? (
+                    <RefreshCw className="w-3 h-3 animate-spin text-[#dfba73] dark:text-[#dfba73]" />
+                  ) : (
+                    <ScanText className="w-3 h-3 text-[#dfba73] dark:text-[#dfba73]" />
+                  )}
+                  <span>OCR</span>
+                </button>
               )}
-              <span>OCR</span>
-            </button>
-          )}
 
-          {onDuplicateZone && (
-            <button
-              type="button"
-              onClick={() => onDuplicateZone(zone)}
-              className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors ml-0.5 cursor-pointer"
-              title="Duplicar zona con mismo tamaño y configuraciones"
-            >
-              <Copy className="w-3.5 h-3.5" />
-            </button>
-          )}
+              {onDuplicateZone && (
+                <button
+                  type="button"
+                  onClick={() => onDuplicateZone(zone)}
+                  className="p-1 hover:bg-indigo-100 dark:hover:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg transition-colors ml-0.5 cursor-pointer"
+                  title="Duplicar zona con mismo tamaño y configuraciones"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                </button>
+              )}
 
-          {onDeleteZone && (
-            <button
-              type="button"
-              onClick={() => onDeleteZone(zone.id)}
-              className="p-1 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-colors ml-0.5 cursor-pointer"
-              title="Eliminar zona"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
+              {onDeleteZone && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteZone(zone.id)}
+                  className="p-1 hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-600 dark:text-rose-400 rounded-lg transition-colors ml-0.5 cursor-pointer"
+                  title="Eliminar zona"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Panel desplegable de Ajuste Fino de Posición y Desfase */}
-      {showPositionControls && (
+      {/* Panel desplegable de Ajuste Fino de Posición y Desfase (Solo en modo avanzado) */}
+      {isAdvancedMode && showPositionControls && (
         <div className="bg-amber-50/70 dark:bg-amber-950/40 p-2.5 border-b border-amber-200 dark:border-amber-800/60 flex flex-wrap items-center justify-between gap-2 text-xs">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-amber-900 dark:text-amber-200 text-[11px]">Coordenadas:</span>

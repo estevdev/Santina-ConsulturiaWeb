@@ -59,26 +59,26 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         name: 'PDF Studio',
         href: '/dashboard/pdf-preset-studio',
         icon: FileEdit,
-        badge: 'Editor',
-        roles: ['admin', 'socios'], // Solo Admin y Socios
+        badge: 'Admin',
+        roles: ['admin'], // Solo Administradores
       },
     ],
   },
   {
     title: 'Acceso Rápido',
-    roles: ['admin', 'socios'], // Sección completa visible solo para Admin y Socios
+    roles: ['admin'], // Sección completa visible solo para Administradores
     items: [
       {
         name: 'Gestor de Presets',
         href: '/dashboard/pdf-preset-studio?view=list',
         icon: Layers,
-        roles: ['admin', 'socios'],
+        roles: ['admin'],
       },
       {
         name: 'Procesador de PDFs',
         href: '/dashboard/pdf-preset-studio?view=process',
         icon: Sparkles,
-        roles: ['admin', 'socios'],
+        roles: ['admin'],
       },
     ],
   },

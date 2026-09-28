@@ -36,6 +36,7 @@ import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosClie
 
 interface ClienteSeguimientoTimelineProps {
   selectedCliente: Cliente;
+  currentUserRole?: string;
   clienteTramites: ClienteTramitesState;
   docPresets: Preset[];
   uploadingDocKey: string | null;
@@ -74,6 +75,7 @@ interface ClienteSeguimientoTimelineProps {
 
 export function ClienteSeguimientoTimeline({
   selectedCliente,
+  currentUserRole,
   clienteTramites,
   docPresets,
   uploadingDocKey,
@@ -97,6 +99,7 @@ export function ClienteSeguimientoTimeline({
   onDownloadContratosPdf,
   downloadingBundle,
 }: ClienteSeguimientoTimelineProps) {
+  const isAdmin = currentUserRole === 'admin';
   // Trámite principal (Mejoravit / Infonavit o Retiro)
   const trMejoravit = clienteTramites.mejoravit?.[0];
   const trRetiro = clienteTramites.retiro?.[0];
@@ -564,40 +567,48 @@ export function ClienteSeguimientoTimeline({
                         <FileDown className="w-3.5 h-3.5" />
                         <span>Bajar</span>
                       </button>
-                      <label className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-lg border border-zinc-700 flex items-center gap-1 cursor-pointer">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Reemplazar</span>
-                        <input
-                          type="file"
-                          accept=".pdf,image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) onUploadTablaAmortizacion(file);
-                          }}
-                        />
-                      </label>
+                      {isAdmin && (
+                        <label className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-lg border border-zinc-700 flex items-center gap-1 cursor-pointer">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Reemplazar</span>
+                          <input
+                            type="file"
+                            accept=".pdf,image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) onUploadTablaAmortizacion(file);
+                            }}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-[#c5a059]/40 hover:border-[#c5a059] bg-zinc-900/40 hover:bg-zinc-900/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all group/upload">
-                    <Upload className="w-7 h-7 text-[#c5a059] mb-1 group-hover/upload:scale-110 transition-transform" />
-                    <span className="text-xs font-bold text-white">
-                      Haz clic para subir la Tabla de Amortización
-                    </span>
-                    <span className="text-[10px] text-zinc-500 mt-0.5">
-                      Archivos aceptados: PDF, JPG, PNG
-                    </span>
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onUploadTablaAmortizacion(file);
-                      }}
-                    />
-                  </label>
+                  isAdmin ? (
+                    <label className="border-2 border-dashed border-[#c5a059]/40 hover:border-[#c5a059] bg-zinc-900/40 hover:bg-zinc-900/80 rounded-2xl p-4 flex flex-col items-center justify-center text-center cursor-pointer transition-all group/upload">
+                      <Upload className="w-7 h-7 text-[#c5a059] mb-1 group-hover/upload:scale-110 transition-transform" />
+                      <span className="text-xs font-bold text-white">
+                        Haz clic para subir la Tabla de Amortización
+                      </span>
+                      <span className="text-[10px] text-zinc-500 mt-0.5">
+                        Archivos aceptados: PDF, JPG, PNG
+                      </span>
+                      <input
+                        type="file"
+                        accept=".pdf,image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) onUploadTablaAmortizacion(file);
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div className="border border-dashed border-zinc-800 bg-zinc-900/40 rounded-2xl p-4 text-center text-zinc-500 text-xs font-medium">
+                      (Tabla de Amortización pendiente de subir por un Administrador)
+                    </div>
+                  )
                 )}
               </div>
             </div>
@@ -734,8 +745,8 @@ export function ClienteSeguimientoTimeline({
                         </button>
                       )}
 
-                      {/* Quitar para volver a generar */}
-                      {existingUrl && (
+                      {/* Quitar para volver a generar (Solo Administradores) */}
+                      {existingUrl && isAdmin && (
                         <button
                           type="button"
                           onClick={() => onRemoveDocPreset(preset, docKey)}
@@ -813,6 +824,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
                   numberTag={1}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_ine_normal`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -828,7 +840,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_ine_ampliada_200}
                   numberTag={2}
                   extraAction={
-                    normalIneUrl ? (
+                    normalIneUrl && isAdmin ? (
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
@@ -851,6 +863,7 @@ export function ClienteSeguimientoTimeline({
                     ) : null
                   }
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_ine_ampliada_200`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -866,6 +879,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_curp_actualizada || selectedCliente?.curp_document_url}
                   numberTag={3}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_curp_actualizada`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -881,6 +895,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_acta_nacimiento}
                   numberTag={4}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_acta_nacimiento`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -896,6 +911,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_comprobante_domicilio}
                   numberTag={5}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_comprobante_domicilio`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -911,6 +927,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_estado_cuenta_bancario}
                   numberTag={6}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_estado_cuenta_bancario`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -926,6 +943,7 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_constancia_situacion_fiscal}
                   numberTag={7}
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_constancia_situacion_fiscal`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -988,16 +1006,19 @@ export function ClienteSeguimientoTimeline({
                   existingDocUrl={trMejoravit.documentos_urls?.req_fotos_inmueble_5}
                   numberTag={9}
                   extraAction={
-                    <button
-                      type="button"
-                      onClick={() => onOpenInmuebleFotosModal(trMejoravit.id, trMejoravit)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer mr-1"
-                    >
-                      <Camera className="w-3 h-3 text-[#c5a059]" />
-                      <span>{trMejoravit.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
-                    </button>
+                    isAdmin ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenInmuebleFotosModal(trMejoravit.id, trMejoravit)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] border border-[#c5a059]/30 rounded-lg shadow-sm transition-all cursor-pointer mr-1"
+                      >
+                        <Camera className="w-3 h-3 text-[#c5a059]" />
+                        <span>{trMejoravit.documentos_urls?.req_fotos_inmueble_5 ? 'Editar 5 Fotos' : 'Subir 5 Fotos'}</span>
+                      </button>
+                    ) : null
                   }
                   isUploading={uploadingDocKey === `${trMejoravit.id}_req_fotos_inmueble_5`}
+                  isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
@@ -1181,35 +1202,43 @@ export function ClienteSeguimientoTimeline({
                         <Eye className="w-3.5 h-3.5" />
                         <span>Ver</span>
                       </button>
-                      <label className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-lg border border-zinc-700 flex items-center gap-1 cursor-pointer">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        <span>Reemplazar</span>
-                        <input
-                          type="file"
-                          accept=".pdf,image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) onUploadComprobanteCita(file);
-                          }}
-                        />
-                      </label>
+                      {isAdmin && (
+                        <label className="px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] font-semibold rounded-lg border border-zinc-700 flex items-center gap-1 cursor-pointer">
+                          <RefreshCw className="w-3.5 h-3.5" />
+                          <span>Reemplazar</span>
+                          <input
+                            type="file"
+                            accept=".pdf,image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) onUploadComprobanteCita(file);
+                            }}
+                          />
+                        </label>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <label className="border-2 border-dashed border-zinc-700 hover:border-[#c5a059] bg-zinc-900/40 hover:bg-zinc-900/80 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all">
-                    <Upload className="w-5 h-5 text-[#c5a059] mb-1" />
-                    <span className="text-xs font-bold text-white">Subir Comprobante de Cita (PDF o Imagen)</span>
-                    <input
-                      type="file"
-                      accept=".pdf,image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) onUploadComprobanteCita(file);
-                      }}
-                    />
-                  </label>
+                  isAdmin ? (
+                    <label className="border-2 border-dashed border-zinc-700 hover:border-[#c5a059] bg-zinc-900/40 hover:bg-zinc-900/80 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all">
+                      <Upload className="w-5 h-5 text-[#c5a059] mb-1" />
+                      <span className="text-xs font-bold text-white">Subir Comprobante de Cita (PDF o Imagen)</span>
+                      <input
+                        type="file"
+                        accept=".pdf,image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) onUploadComprobanteCita(file);
+                        }}
+                      />
+                    </label>
+                  ) : (
+                    <div className="border border-dashed border-zinc-800 bg-zinc-900/40 rounded-xl p-3 text-center text-zinc-500 text-xs font-medium">
+                      (Comprobante de cita pendiente de adjuntar por un Administrador)
+                    </div>
+                  )
                 )}
               </div>
 

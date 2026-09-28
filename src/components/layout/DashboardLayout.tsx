@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,6 +13,8 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const isDashboardHome = pathname === '/dashboard';
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
@@ -36,7 +38,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[#08080a] dark:bg-[#08080a] text-zinc-100 flex transition-colors duration-200">
+    <div className="min-h-screen bg-[#08080a] dark:bg-[#08080a] text-zinc-100 flex transition-colors duration-200 relative">
       {/* Sidebar with Slider/Collapse toggle */}
       <Sidebar
         isOpen={isSidebarOpen}
@@ -47,12 +49,15 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
       {/* Main Container adjusting according to sidebar width */}
       <div
-        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out ${
+        className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out relative ${
           isSidebarOpen ? 'lg:pl-64' : 'lg:pl-20'
         }`}
       >
-        <Header onMobileMenuToggle={() => setIsMobileOpen(true)} />
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 w-full min-w-0">
+        <Header 
+          onMobileMenuToggle={() => setIsMobileOpen(true)} 
+          isTransparent={isDashboardHome}
+        />
+        <main className={`flex-1 w-full min-w-0 ${isDashboardHome ? 'p-0' : 'p-3 sm:p-4 lg:p-6'}`}>
           {children}
         </main>
       </div>

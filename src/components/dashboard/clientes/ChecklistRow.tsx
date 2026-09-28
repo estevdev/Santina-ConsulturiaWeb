@@ -13,6 +13,7 @@ interface ChecklistRowProps {
   numberTag?: number;
   extraAction?: React.ReactNode;
   isUploading: boolean;
+  isAdmin?: boolean;
   onViewDoc: (url: string, title: string) => void;
   onDownloadDoc: (url: string, title: string) => void;
   onUploadFile: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, file: File) => void;
@@ -28,6 +29,7 @@ export function ChecklistRow({
   numberTag,
   extraAction,
   isUploading,
+  isAdmin = false,
   onViewDoc,
   onDownloadDoc,
   onUploadFile,
@@ -87,17 +89,41 @@ export function ChecklistRow({
               <span>Descargar</span>
             </button>
 
-            {/* Cambiar / Reemplazar */}
-            <label
-              title="Cambiar o reemplazar archivo"
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg transition-colors cursor-pointer"
-            >
+            {/* Cambiar / Reemplazar (Solo Administradores) */}
+            {isAdmin && (
+              <label
+                title="Cambiar o reemplazar archivo"
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 rounded-lg transition-colors cursor-pointer"
+              >
+                {isUploading ? (
+                  <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload className="w-3 h-3 text-zinc-400" />
+                )}
+                <span>{isUploading ? '...' : 'Cambiar'}</span>
+                <input
+                  type="file"
+                  accept="image/*,application/pdf"
+                  className="hidden"
+                  disabled={isUploading}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onUploadFile(tramiteTipo, tramiteId, reqKey, f);
+                  }}
+                />
+              </label>
+            )}
+          </>
+        ) : (
+          /* Subir Archivo (Solo Administradores) */
+          isAdmin ? (
+            <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 rounded-lg shadow-sm transition-all cursor-pointer">
               {isUploading ? (
-                <div className="w-3 h-3 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                <div className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
               ) : (
-                <Upload className="w-3 h-3 text-zinc-400" />
+                <Upload className="w-3 h-3" />
               )}
-              <span>{isUploading ? '...' : 'Cambiar'}</span>
+              <span>{isUploading ? 'Subiendo...' : 'Subir Archivo'}</span>
               <input
                 type="file"
                 accept="image/*,application/pdf"
@@ -109,27 +135,11 @@ export function ChecklistRow({
                 }}
               />
             </label>
-          </>
-        ) : (
-          /* Subir Archivo */
-          <label className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 rounded-lg shadow-sm transition-all cursor-pointer">
-            {isUploading ? (
-              <div className="w-3 h-3 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Upload className="w-3 h-3" />
-            )}
-            <span>{isUploading ? 'Subiendo...' : 'Subir Archivo'}</span>
-            <input
-              type="file"
-              accept="image/*,application/pdf"
-              className="hidden"
-              disabled={isUploading}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onUploadFile(tramiteTipo, tramiteId, reqKey, f);
-              }}
-            />
-          </label>
+          ) : (
+            <span className="text-[10px] text-zinc-500 font-medium px-1.5 py-0.5">
+              (Sin documento)
+            </span>
+          )
         )}
       </div>
     </div>

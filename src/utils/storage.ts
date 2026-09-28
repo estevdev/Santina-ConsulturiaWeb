@@ -164,7 +164,33 @@ export function exportPresetsToJson(presetsToExport?: Preset[], filename = 'pres
   URL.revokeObjectURL(url);
 }
 
-export function importPresetsFromJson(jsonString: string): { success: boolean; count: number; error?: string; presets: Preset[] } {
+export async function savePresetsBatchToSupabase(presets: Preset[]): Promise<void> {
+  if (!presets || presets.length === 0) return;
+  try {
+    const supabase = createClient();
+    const rows = presets.map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description || null,
+      preset_type: preset.presetType || 'standard',
+      target_tramite_type: preset.targetTramiteType || 'todos',
+      sample_pdf_url: preset.samplePdfUrl || null,
+      identifier_keywords: Array.isArray(preset.identifierKeywords) ? preset.identifierKeywords : [],
+      zones: Array.isArray(preset.zones) ? preset.zones : [],
+      created_at: preset.createdAt,
+      updated_at: preset.updatedAt || Date.now(),
+    }));
+
+    const { error } = await supabase.from('pdf_presets').upsert(rows);
+    if (error) {
+      console.error('Error al guardar lote de presets en Supabase:', error);
+    }
+  } catch (err) {
+    console.error('Excepción al guardar lote de presets en Supabase:', err);
+  }
+}
+
+export async function importPresetsFromJson(jsonString: string): Promise<{ success: boolean; count: number; error?: string; presets: Preset[] }> {
   try {
     const parsed = JSON.parse(jsonString);
     const rawList = Array.isArray(parsed) ? parsed : [parsed];
@@ -174,9 +200,12 @@ export function importPresetsFromJson(jsonString: string): { success: boolean; c
     for (const item of rawList) {
       if (item && typeof item === 'object' && item.name && Array.isArray(item.zones)) {
         validPresets.push({
-          id: item.id || `preset-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          id: item.id || `preset-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
           name: String(item.name),
           description: item.description ? String(item.description) : undefined,
+          presetType: item.presetType || 'standard',
+          targetTramiteType: item.targetTramiteType || 'todos',
+          samplePdfUrl: item.samplePdfUrl || undefined,
           identifierKeywords: Array.isArray(item.identifierKeywords) ? item.identifierKeywords : [],
           zones: item.zones,
           createdAt: item.createdAt || Date.now(),
@@ -202,9 +231,21 @@ export function importPresetsFromJson(jsonString: string): { success: boolean; c
     }
 
     saveAllPresets(merged);
-    return { success: true, count: validPresets.length, presets: merged };
+
+    // Guardar todos los presets importados en Supabase para que estén disponibles para todos los usuarios
+    await savePresetsBatchToSupabase(validPresets);
+
+    // Obtener lista actualizada desde Supabase
+    const freshPresets = await fetchPresetsFromSupabase();
+
+    return { 
+      success: true, 
+      count: validPresets.length, 
+      presets: freshPresets.length > 0 ? freshPresets : merged 
+    };
   } catch (err: any) {
     return { success: false, count: 0, error: `Error al leer el archivo JSON: ${err.message || 'Formato no válido'}`, presets: getPresets() };
   }
 }
+
 

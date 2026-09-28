@@ -400,13 +400,9 @@ export default function CanvasPdfViewer({
                     width: `${zone.width}%`,
                     height: `${zone.height}%`,
                     backgroundColor:
-                      zone.bgColor &&
-                      zone.bgColor !== 'transparent' &&
-                      zone.bgColor !== 'none' &&
-                      zone.bgColor.toLowerCase() !== '#ffffff' &&
-                      zone.bgColor.toLowerCase() !== '#fff'
-                        ? zone.bgColor
-                        : 'transparent',
+                      zone.bgColor === 'transparent' || zone.bgColor === 'none'
+                        ? 'transparent'
+                        : (zone.bgColor || '#FFFFFF'),
                     color: zone.color || '#000000',
                     fontFamily: getFontFamilyCss(zone.fontFamily),
                     fontSize: `${(zone.fontSize || 12) * displayScale}px`,

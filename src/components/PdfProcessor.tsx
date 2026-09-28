@@ -466,22 +466,50 @@ export default function PdfProcessor({
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Preset de Zonas
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Preset de Zonas
+                  </label>
+                  {selectedPresetId !== 'custom' && (
+                    (() => {
+                      const cur = presets.find((p) => p.id === selectedPresetId);
+                      if (!cur) return null;
+                      return cur.presetType === 'client_document' ? (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                          📝 Doc. Cliente (Firma Web)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                          📄 Edición Directa (OCR)
+                        </span>
+                      );
+                    })()
+                  )}
+                </div>
                 <select
                   value={selectedPresetId}
                   onChange={(e) => handlePresetSelect(e.target.value)}
                   className="w-full text-xs p-2.5 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 >
                   <option value="custom">✏️ Personalizado (Definir o agregar zonas)</option>
-                  <optgroup label="Presets Guardados">
-                    {presets.map((preset) => (
-                      <option key={preset.id} value={preset.id}>
-                        📄 {preset.name} ({preset.zones.length} zonas)
-                      </option>
-                    ))}
-                  </optgroup>
+                  {presets.filter(p => p.presetType === 'client_document').length > 0 && (
+                    <optgroup label="📝 DOCUMENTOS PARA CLIENTE (Firma Digital Web)">
+                      {presets.filter(p => p.presetType === 'client_document').map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          📝 {preset.name} ({preset.zones.length} zonas)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {presets.filter(p => p.presetType !== 'client_document').length > 0 && (
+                    <optgroup label="📄 EDICIÓN DIRECTA (OCR & Reemplazo Interno)">
+                      {presets.filter(p => p.presetType !== 'client_document').map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          📄 {preset.name} ({preset.zones.length} zonas)
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
@@ -1251,18 +1279,37 @@ export default function PdfProcessor({
                         setOcrStatusMessage(null);
                       }
                     }}
-                    className="w-full text-left p-3 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-500 dark:hover:border-amber-500 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-all flex items-center justify-between cursor-pointer group"
+                    className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center justify-between cursor-pointer group ${
+                      p.presetType === 'client_document'
+                        ? 'border-purple-200 dark:border-purple-900/60 hover:border-purple-500 bg-purple-50/40 dark:bg-purple-950/20 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-[#c5a059] bg-slate-50/60 dark:bg-slate-800/40 hover:bg-amber-50/50 dark:hover:bg-amber-950/30'
+                    }`}
                   >
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 block">
-                        📄 {p.name}
-                      </span>
-                      <span className="text-[10px] text-slate-400 block mt-0.5">
-                        {p.zones.length} zonas configuradas {p.targetTramiteType ? `• (${p.targetTramiteType})` : ''}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-[#c5a059] dark:group-hover:text-[#c5a059]">
+                          {p.presetType === 'client_document' ? '📝' : '📄'} {p.name}
+                        </span>
+                        {p.presetType === 'client_document' ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-900/80 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                            Doc. Cliente
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 dark:bg-amber-900/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                            Edición Directa
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400 block">
+                        {p.zones.length} zonas {p.targetTramiteType ? `• (${p.targetTramiteType})` : ''}
                       </span>
                     </div>
-                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/80 px-2.5 py-1 rounded-xl">
-                      ⚡ Cargar esta
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-xl transition-colors ${
+                      p.presetType === 'client_document'
+                        ? 'text-purple-700 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 group-hover:bg-purple-600 group-hover:text-white'
+                        : 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 group-hover:bg-[#c5a059] group-hover:text-white'
+                    }`}>
+                      ⚡ Probar
                     </span>
                   </button>
                 ))

@@ -88,15 +88,13 @@ export async function applyEditsToPdf(
 
     const boxYBottom = pageHeight - boxYTop - boxHeight;
 
-    // 1. Dibujar parche de fondo SOLO si se especificó explícitamente un color de fondo distinto de blanco o transparente
-    if (
-      zone.bgColor &&
+    // 1. Dibujar parche de fondo para blanquear y tapar el texto anterior del PDF base
+    const shouldDrawBg =
       zone.bgColor !== 'transparent' &&
-      zone.bgColor !== 'none' &&
-      zone.bgColor.toLowerCase() !== '#ffffff' &&
-      zone.bgColor.toLowerCase() !== '#fff'
-    ) {
-      const bgColor = hexToRgb(zone.bgColor);
+      zone.bgColor !== 'none';
+
+    if (shouldDrawBg) {
+      const bgColor = hexToRgb(zone.bgColor || '#FFFFFF');
       page.drawRectangle({
         x: boxX,
         y: boxYBottom,

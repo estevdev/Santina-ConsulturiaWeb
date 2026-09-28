@@ -89,7 +89,7 @@ export default function PdfPresetStudioView() {
               PDF Studio
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Diseño de plantillas de reemplazo de texto, coordenadas y procesamiento
+              Gestión de plantillas para firma web de clientes 📝 y presets de edición directa con OCR 📄
             </p>
           </div>
         </div>

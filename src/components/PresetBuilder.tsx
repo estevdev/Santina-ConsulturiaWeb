@@ -229,68 +229,103 @@ export default function PresetBuilder({
             </h3>
 
             {/* SELECCIÓN DEL TIPO DE PRESET */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                Tipo de Preset *
-              </label>
-              <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
+                  ¿Para qué usarás esta Plantilla? *
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">Selecciona un tipo</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Opción 1: Edición Directa */}
                 <button
                   type="button"
                   onClick={() => setPresetType('standard')}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                  className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden ${
                     presetType === 'standard'
-                      ? 'border-[#c5a059] bg-[#c5a059]/60 dark:bg-[#c5a059]/40 text-[#c5a059] dark:text-[#c5a059] ring-2 ring-amber-500/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      ? 'border-[#c5a059] bg-gradient-to-b from-amber-500/10 via-white to-amber-500/5 dark:from-amber-950/30 dark:via-zinc-900/90 dark:to-zinc-900 ring-2 ring-[#c5a059]/30 shadow-xs'
+                      : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/60 text-slate-700 dark:text-slate-300 opacity-85 hover:opacity-100'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs">
-                    <FileText className="w-4 h-4 text-[#c5a059]" />
-                    <span>Edición Directa</span>
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900 dark:text-white">
+                        <span className="p-1 rounded-lg bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300">
+                          <FileText className="w-3.5 h-3.5" />
+                        </span>
+                        <span>📄 Edición Directa</span>
+                      </div>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        Interno
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Para que el <strong>asesor</strong> cargue PDFs en PDF Studio, extraiga datos con OCR, reemplace campos y descargue el PDF corregido.
+                    </p>
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                    Reemplazo de campos en PDFs subidos manualmente
-                  </span>
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-zinc-800/80 text-[10px] text-amber-700 dark:text-amber-400 font-medium flex items-center gap-1">
+                    <span>⚡ Uso en: PDF Studio &rarr; Procesar PDF</span>
+                  </div>
                 </button>
 
+                {/* Opción 2: Doc. para Cliente */}
                 <button
                   type="button"
                   onClick={() => setPresetType('client_document')}
-                  className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                  className={`p-3 rounded-2xl border text-left flex flex-col justify-between transition-all cursor-pointer relative overflow-hidden ${
                     presetType === 'client_document'
-                      ? 'border-purple-500 bg-purple-50/60 dark:bg-purple-950/40 text-purple-900 dark:text-purple-200 ring-2 ring-purple-500/20'
-                      : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      ? 'border-purple-500 bg-gradient-to-b from-purple-500/10 via-white to-purple-500/5 dark:from-purple-950/40 dark:via-zinc-900/90 dark:to-zinc-900 ring-2 ring-purple-500/30 shadow-xs'
+                      : 'border-slate-200 dark:border-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-900/60 text-slate-700 dark:text-slate-300 opacity-85 hover:opacity-100'
                   }`}
                 >
-                  <div className="flex items-center gap-1.5 font-bold text-xs">
-                    <UserCheck className="w-4 h-4 text-purple-600" />
-                    <span>Doc. para Cliente</span>
+                  <div>
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-purple-950 dark:text-purple-200">
+                        <span className="p-1 rounded-lg bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300">
+                          <UserCheck className="w-3.5 h-3.5" />
+                        </span>
+                        <span>📝 Doc. para Cliente</span>
+                      </div>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                        Firma Web
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                      Genera un <strong>enlace web único</strong> para que el cliente llene datos y firme digitalmente desde su celular/PC en su trámite.
+                    </p>
                   </div>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                    Genera link por cliente para rellenar contratos/formatos
-                  </span>
+                  <div className="mt-2.5 pt-2 border-t border-purple-100 dark:border-purple-900/40 text-[10px] text-purple-700 dark:text-purple-400 font-medium flex items-center gap-1">
+                    <span>🔗 Uso en: Expediente del Cliente &rarr; Trámites</span>
+                  </div>
                 </button>
               </div>
             </div>
 
-            {/* SI ES TIPO DOCUMENTO PARA CLIENTE: MOSTRAR ASIGNACIÓN DE TRÁMITE */}
+            {/* SI ES TIPO DOCUMENTO PARA CLIENTE: MOSTRAR ASIGNACIÓN DE TRÁMITE Y GUÍA */}
             {presetType === 'client_document' && (
-              <div className="p-3 bg-purple-50/60 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/60 rounded-xl space-y-2 animate-in fade-in duration-200">
-                <label className="block text-xs font-bold text-purple-900 dark:text-purple-200">
-                  ¿En qué tipo de trámite saldrá la opción para generar el link? *
-                </label>
+              <div className="p-3.5 bg-gradient-to-r from-purple-50/80 to-purple-50/40 dark:from-purple-950/40 dark:to-zinc-900 border border-purple-200 dark:border-purple-900/60 rounded-2xl space-y-2.5 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-purple-950 dark:text-purple-200">
+                    🎯 Trámite Asignado para Enlace de Cliente *
+                  </label>
+                  <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300">Integración con Expediente</span>
+                </div>
                 <select
                   value={targetTramiteType}
                   onChange={(e) => setTargetTramiteType(e.target.value as TargetTramiteType)}
-                  className="w-full bg-white dark:bg-slate-800 border border-purple-300 dark:border-purple-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  className="w-full bg-white dark:bg-zinc-800 border border-purple-300 dark:border-purple-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium shadow-2xs"
                 >
-                  <option value="todos">Todos los Trámites</option>
-                  <option value="retiro_desempleo">Retiro por Desempleo</option>
-                  <option value="mejoravit">Mejoravit (Infonavit)</option>
-                  <option value="alta_medica_imss">Alta Médica IMSS</option>
+                  <option value="todos">Todos los Trámites (Disponible globalmente)</option>
+                  <option value="retiro_desempleo">Solo en Trámites de Retiro por Desempleo</option>
+                  <option value="mejoravit">Solo en Trámites de Mejoravit (Infonavit)</option>
+                  <option value="alta_medica_imss">Solo en Trámites de Alta Médica IMSS</option>
                 </select>
-                <p className="text-[10px] text-purple-700 dark:text-purple-300">
-                  En la sección de expediente del cliente, bajo el trámite correspondiente, aparecerá un botón de 1-clic para generar y enviar este enlace al cliente.
-                </p>
+                <div className="text-[11px] text-purple-900/80 dark:text-purple-300/80 bg-purple-100/60 dark:bg-purple-950/60 p-2.5 rounded-xl border border-purple-200/60 dark:border-purple-900/40 space-y-1">
+                  <p className="font-semibold text-purple-950 dark:text-purple-200">💡 ¿Cómo funciona para el cliente?</p>
+                  <p>1. En el expediente del cliente verás el botón <strong>"Generar Link para Cliente"</strong>.</p>
+                  <p>2. El cliente abrirá el link en su navegador, verá este PDF, completará sus datos y estampará su firma digital.</p>
+                  <p>3. El PDF final firmado se vinculará de inmediato al expediente del cliente.</p>
+                </div>
               </div>
             )}
 

@@ -105,8 +105,8 @@ export default function ClientesPage() {
   const [crearTramiteInicial, setCrearTramiteInicial] = useState(false);
   const [tipoTramiteInicial, setTipoTramiteInicial] = useState<TipoTramite>('retiro_desempleo');
 
-  // Form Retiro por Desempleo
-  const [formRetiro, setFormRetiro] = useState<FormRetiroData>({
+  // Estados iniciales limpios para trámites
+  const initialRetiroData: FormRetiroData = {
     semanas_cotizadas: '',
     ultimo_salario_registrado: '',
     validado_inactivo_imss: false,
@@ -121,10 +121,9 @@ export default function ClientesPage() {
     req_tiene_semanas_descontadas: false,
     req_anexo_sindo: false,
     observaciones: '',
-  });
+  };
 
-  // Form Mejoravit
-  const [formMejoravit, setFormMejoravit] = useState<FormMejoravitData>({
+  const initialMejoravitData: FormMejoravitData = {
     req_ine_normal: false,
     req_ine_ampliada_200: false,
     req_curp_actualizada: false,
@@ -139,10 +138,9 @@ export default function ClientesPage() {
     req_portal_infonavit_validado: false,
     req_fotos_inmueble_5: false,
     observaciones: '',
-  });
+  };
 
-  // Form Alta Médica IMSS
-  const [formAltaMedica, setFormAltaMedica] = useState<FormAltaMedicaData>({
+  const initialAltaMedicaData: FormAltaMedicaData = {
     clinica_umf_asignada: '',
     turno_preferido: 'Matutino',
     codigo_postal_clinica: '',
@@ -154,7 +152,16 @@ export default function ClientesPage() {
     req_cartilla_nacional_salud: false,
     req_alta_patronal_vigente: false,
     observaciones: '',
-  });
+  };
+
+  // Form Retiro por Desempleo
+  const [formRetiro, setFormRetiro] = useState<FormRetiroData>(initialRetiroData);
+
+  // Form Mejoravit
+  const [formMejoravit, setFormMejoravit] = useState<FormMejoravitData>(initialMejoravitData);
+
+  // Form Alta Médica IMSS
+  const [formAltaMedica, setFormAltaMedica] = useState<FormAltaMedicaData>(initialAltaMedicaData);
 
   const [saving, setSaving] = useState(false);
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
@@ -341,7 +348,7 @@ export default function ClientesPage() {
     });
   };
 
-  const handleEditCliente = (cli: Cliente) => {
+  const handleEditCliente = async (cli: Cliente) => {
     setEditingClienteId(cli.id);
     setFormCliente({
       nombre: cli.nombre || '',
@@ -356,9 +363,86 @@ export default function ClientesPage() {
       creado_por_nombre: cli.creado_por_nombre || null,
       creado_por_email: cli.creado_por_email || null,
     });
-    setCrearTramiteInicial(false);
     setFeedbackMsg(null);
     setIsModalOpen(true);
+
+    try {
+      const [retiroRes, mejoravitRes, altaMedicaRes] = await Promise.all([
+        supabase.from('tramites_retiro_desempleo').select('*').eq('cliente_id', cli.id).maybeSingle(),
+        supabase.from('tramites_mejoravit').select('*').eq('cliente_id', cli.id).maybeSingle(),
+        supabase.from('tramites_alta_medica_imss').select('*').eq('cliente_id', cli.id).maybeSingle(),
+      ]);
+
+      if (retiroRes.data) {
+        setTipoTramiteInicial('retiro_desempleo');
+        setCrearTramiteInicial(true);
+        setFormRetiro({
+          semanas_cotizadas: retiroRes.data.semanas_cotizadas ? String(retiroRes.data.semanas_cotizadas) : '',
+          ultimo_salario_registrado: retiroRes.data.ultimo_salario_registrado ? String(retiroRes.data.ultimo_salario_registrado) : '',
+          validado_inactivo_imss: Boolean(retiroRes.data.validado_inactivo_imss),
+          req_ine_vigente: Boolean(retiroRes.data.req_ine_vigente),
+          req_comprobante_domicilio: Boolean(retiroRes.data.req_comprobante_domicilio),
+          req_curp: Boolean(retiroRes.data.req_curp),
+          req_constancia_situacion_fiscal: Boolean(retiroRes.data.req_constancia_situacion_fiscal),
+          req_reporte_semanas_imss: Boolean(retiroRes.data.req_reporte_semanas_imss),
+          req_app_aforemovil_instalada: Boolean(retiroRes.data.req_app_aforemovil_instalada),
+          req_registro_aforemovil_realizado: Boolean(retiroRes.data.req_registro_aforemovil_realizado),
+          req_saldo_visible_aforemovil: Boolean(retiroRes.data.req_saldo_visible_aforemovil),
+          req_tiene_semanas_descontadas: Boolean(retiroRes.data.req_tiene_semanas_descontadas),
+          req_anexo_sindo: Boolean(retiroRes.data.req_anexo_sindo),
+          observaciones: retiroRes.data.observaciones || '',
+        });
+        setFormMejoravit(initialMejoravitData);
+        setFormAltaMedica(initialAltaMedicaData);
+      } else if (mejoravitRes.data) {
+        setTipoTramiteInicial('mejoravit');
+        setCrearTramiteInicial(true);
+        setFormMejoravit({
+          req_ine_normal: Boolean(mejoravitRes.data.req_ine_normal),
+          req_ine_ampliada_200: Boolean(mejoravitRes.data.req_ine_ampliada_200),
+          req_curp_actualizada: Boolean(mejoravitRes.data.req_curp_actualizada),
+          req_acta_nacimiento: Boolean(mejoravitRes.data.req_acta_nacimiento),
+          req_comprobante_domicilio: Boolean(mejoravitRes.data.req_comprobante_domicilio),
+          comprobante_familiar_anexo_acta: Boolean(mejoravitRes.data.comprobante_familiar_anexo_acta),
+          req_estado_cuenta_bancario: Boolean(mejoravitRes.data.req_estado_cuenta_bancario),
+          req_constancia_situacion_fiscal: Boolean(mejoravitRes.data.req_constancia_situacion_fiscal),
+          req_3_referencias_personales: Boolean(mejoravitRes.data.req_3_referencias_personales),
+          nss_portal_infonavit: mejoravitRes.data.nss_portal_infonavit || '',
+          password_portal_infonavit: mejoravitRes.data.password_portal_infonavit || '',
+          req_portal_infonavit_validado: Boolean(mejoravitRes.data.req_portal_infonavit_validado),
+          req_fotos_inmueble_5: Boolean(mejoravitRes.data.req_fotos_inmueble_5),
+          observaciones: mejoravitRes.data.observaciones || '',
+        });
+        setFormRetiro(initialRetiroData);
+        setFormAltaMedica(initialAltaMedicaData);
+      } else if (altaMedicaRes.data) {
+        setTipoTramiteInicial('alta_medica_imss');
+        setCrearTramiteInicial(true);
+        setFormAltaMedica({
+          clinica_umf_asignada: altaMedicaRes.data.clinica_umf_asignada || '',
+          turno_preferido: altaMedicaRes.data.turno_preferido || 'Matutino',
+          codigo_postal_clinica: altaMedicaRes.data.codigo_postal_clinica || '',
+          modalidad_aseguramiento: altaMedicaRes.data.modalidad_aseguramiento || 'Modalidad 10 (Trabajador)',
+          req_curp_validada: Boolean(altaMedicaRes.data.req_curp_validada),
+          req_comprobante_domicilio_reciente: Boolean(altaMedicaRes.data.req_comprobante_domicilio_reciente),
+          req_identificacion_oficial: Boolean(altaMedicaRes.data.req_identificacion_oficial),
+          req_fotografia_infantil: Boolean(altaMedicaRes.data.req_fotografia_infantil),
+          req_cartilla_nacional_salud: Boolean(altaMedicaRes.data.req_cartilla_nacional_salud),
+          req_alta_patronal_vigente: Boolean(altaMedicaRes.data.req_alta_patronal_vigente),
+          observaciones: altaMedicaRes.data.observaciones || '',
+        });
+        setFormRetiro(initialRetiroData);
+        setFormMejoravit(initialMejoravitData);
+      } else {
+        setCrearTramiteInicial(false);
+        setTipoTramiteInicial('retiro_desempleo');
+        setFormRetiro(initialRetiroData);
+        setFormMejoravit(initialMejoravitData);
+        setFormAltaMedica(initialAltaMedicaData);
+      }
+    } catch (e) {
+      console.error('Error fetching tramites for edit:', e);
+    }
   };
 
   const handleOpenNewClienteModal = () => {
@@ -377,6 +461,10 @@ export default function ClientesPage() {
       creado_por_email: user?.email || null,
     });
     setCrearTramiteInicial(false);
+    setTipoTramiteInicial('retiro_desempleo');
+    setFormRetiro(initialRetiroData);
+    setFormMejoravit(initialMejoravitData);
+    setFormAltaMedica(initialAltaMedicaData);
     setFeedbackMsg(null);
     setIsModalOpen(true);
   };
@@ -589,6 +677,113 @@ export default function ClientesPage() {
 
         if (updateErr) throw new Error(updateErr.message);
 
+        // Actualizar o crear trámite si crearTramiteInicial está activo
+        if (crearTramiteInicial) {
+          if (tipoTramiteInicial === 'retiro_desempleo') {
+            const { data: existingTr } = await supabase
+              .from('tramites_retiro_desempleo')
+              .select('id')
+              .eq('cliente_id', editingClienteId)
+              .maybeSingle();
+
+            const retiroPayload = {
+              semanas_cotizadas: formRetiro.semanas_cotizadas ? parseInt(formRetiro.semanas_cotizadas) : null,
+              ultimo_salario_registrado: formRetiro.ultimo_salario_registrado ? parseFloat(formRetiro.ultimo_salario_registrado) : null,
+              validado_inactivo_imss: formRetiro.validado_inactivo_imss,
+              req_ine_vigente: formRetiro.req_ine_vigente,
+              req_comprobante_domicilio: formRetiro.req_comprobante_domicilio,
+              req_curp: formRetiro.req_curp,
+              req_constancia_situacion_fiscal: formRetiro.req_constancia_situacion_fiscal,
+              req_reporte_semanas_imss: formRetiro.req_reporte_semanas_imss,
+              req_app_aforemovil_instalada: formRetiro.req_app_aforemovil_instalada,
+              req_registro_aforemovil_realizado: formRetiro.req_registro_aforemovil_realizado,
+              req_saldo_visible_aforemovil: formRetiro.req_saldo_visible_aforemovil,
+              req_tiene_semanas_descontadas: formRetiro.req_tiene_semanas_descontadas,
+              req_anexo_sindo: formRetiro.req_anexo_sindo,
+              observaciones: formRetiro.observaciones || null,
+            };
+
+            if (existingTr) {
+              await supabase.from('tramites_retiro_desempleo').update(retiroPayload).eq('cliente_id', editingClienteId);
+            } else {
+              await supabase.from('tramites_retiro_desempleo').insert([{ cliente_id: editingClienteId, ...retiroPayload }]);
+            }
+
+            // Eliminar de los otros tipos de trámites al cambiar
+            await Promise.all([
+              supabase.from('tramites_mejoravit').delete().eq('cliente_id', editingClienteId),
+              supabase.from('tramites_alta_medica_imss').delete().eq('cliente_id', editingClienteId),
+            ]);
+          } else if (tipoTramiteInicial === 'mejoravit') {
+            const { data: existingTr } = await supabase
+              .from('tramites_mejoravit')
+              .select('id')
+              .eq('cliente_id', editingClienteId)
+              .maybeSingle();
+
+            const mejoravitPayload = {
+              req_ine_normal: formMejoravit.req_ine_normal,
+              req_ine_ampliada_200: formMejoravit.req_ine_ampliada_200,
+              req_curp_actualizada: formMejoravit.req_curp_actualizada,
+              req_acta_nacimiento: formMejoravit.req_acta_nacimiento,
+              req_comprobante_domicilio: formMejoravit.req_comprobante_domicilio,
+              comprobante_familiar_anexo_acta: formMejoravit.comprobante_familiar_anexo_acta,
+              req_estado_cuenta_bancario: formMejoravit.req_estado_cuenta_bancario,
+              req_constancia_situacion_fiscal: formMejoravit.req_constancia_situacion_fiscal,
+              req_3_referencias_personales: formMejoravit.req_3_referencias_personales,
+              nss_portal_infonavit: formMejoravit.nss_portal_infonavit || null,
+              password_portal_infonavit: formMejoravit.password_portal_infonavit || null,
+              req_portal_infonavit_validado: formMejoravit.req_portal_infonavit_validado,
+              req_fotos_inmueble_5: formMejoravit.req_fotos_inmueble_5,
+              observaciones: formMejoravit.observaciones || null,
+            };
+
+            if (existingTr) {
+              await supabase.from('tramites_mejoravit').update(mejoravitPayload).eq('cliente_id', editingClienteId);
+            } else {
+              await supabase.from('tramites_mejoravit').insert([{ cliente_id: editingClienteId, ...mejoravitPayload }]);
+            }
+
+            // Eliminar de los otros tipos de trámites al cambiar
+            await Promise.all([
+              supabase.from('tramites_retiro_desempleo').delete().eq('cliente_id', editingClienteId),
+              supabase.from('tramites_alta_medica_imss').delete().eq('cliente_id', editingClienteId),
+            ]);
+          } else if (tipoTramiteInicial === 'alta_medica_imss') {
+            const { data: existingTr } = await supabase
+              .from('tramites_alta_medica_imss')
+              .select('id')
+              .eq('cliente_id', editingClienteId)
+              .maybeSingle();
+
+            const altaMedicaPayload = {
+              clinica_umf_asignada: formAltaMedica.clinica_umf_asignada || null,
+              turno_preferido: formAltaMedica.turno_preferido,
+              codigo_postal_clinica: formAltaMedica.codigo_postal_clinica || null,
+              modalidad_aseguramiento: formAltaMedica.modalidad_aseguramiento,
+              req_curp_validada: formAltaMedica.req_curp_validada,
+              req_comprobante_domicilio_reciente: formAltaMedica.req_comprobante_domicilio_reciente,
+              req_identificacion_oficial: formAltaMedica.req_identificacion_oficial,
+              req_fotografia_infantil: formAltaMedica.req_fotografia_infantil,
+              req_cartilla_nacional_salud: formAltaMedica.req_cartilla_nacional_salud,
+              req_alta_patronal_vigente: formAltaMedica.req_alta_patronal_vigente,
+              observaciones: formAltaMedica.observaciones || null,
+            };
+
+            if (existingTr) {
+              await supabase.from('tramites_alta_medica_imss').update(altaMedicaPayload).eq('cliente_id', editingClienteId);
+            } else {
+              await supabase.from('tramites_alta_medica_imss').insert([{ cliente_id: editingClienteId, ...altaMedicaPayload }]);
+            }
+
+            // Eliminar de los otros tipos de trámites al cambiar
+            await Promise.all([
+              supabase.from('tramites_retiro_desempleo').delete().eq('cliente_id', editingClienteId),
+              supabase.from('tramites_mejoravit').delete().eq('cliente_id', editingClienteId),
+            ]);
+          }
+        }
+
         setFeedbackMsg({ type: 'success', text: 'Información del cliente actualizada correctamente.' });
         toast.success('Cliente actualizado', {
           description: `Se guardaron los cambios de "${formCliente.nombre.trim()}".`,
@@ -599,8 +794,9 @@ export default function ClientesPage() {
           setClientes((prev) => prev.map((c) => (c.id === editingClienteId ? updatedData : c)));
         }
 
-        if (selectedCliente && selectedCliente.id === editingClienteId && updatedData) {
-          setSelectedCliente(updatedData);
+        if (selectedCliente && selectedCliente.id === editingClienteId) {
+          if (updatedData) setSelectedCliente(updatedData);
+          await fetchTramites(editingClienteId);
         }
       } else {
         const insertPayload: any = {
@@ -710,9 +906,18 @@ export default function ClientesPage() {
         telefono: '',
         email: '',
         estado: 'Jalisco',
+        estado_cliente: 'interesado',
         notas: '',
+        creado_por: null,
+        creado_por_nombre: null,
+        creado_por_email: null,
       });
-      fetchClientes();
+      setCrearTramiteInicial(false);
+      setTipoTramiteInicial('retiro_desempleo');
+      setFormRetiro(initialRetiroData);
+      setFormMejoravit(initialMejoravitData);
+      setFormAltaMedica(initialAltaMedicaData);
+      await fetchClientes();
     } catch (err: any) {
       setFeedbackMsg({ type: 'error', text: err.message || 'Error al guardar cliente' });
     } finally {

@@ -18,6 +18,7 @@ import {
   ChevronDown,
   Sparkles,
   Briefcase,
+  CreditCard,
 } from 'lucide-react';
 import { TipoTramite } from '@/types/cliente';
 import { ESTADOS_MEXICO } from '@/constants/estadosMexico';
@@ -29,6 +30,7 @@ export interface FormClienteData {
   apellido_materno: string;
   telefono: string;
   email: string;
+  nss?: string;
   estado: string;
   estado_cliente?: string;
   notas: string;
@@ -560,6 +562,23 @@ export function ClienteFormModal({
                   onChange={(e) => setFormCliente({ ...formCliente, email: e.target.value })}
                   placeholder="cliente@ejemplo.com"
                   className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-[#c5a059]" />
+                    Número de Seguridad Social (NSS)
+                  </span>
+                  <span className="text-slate-400 text-[10px] font-normal">Opcional (11 dígitos)</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={11}
+                  value={formCliente.nss || ''}
+                  onChange={(e) => setFormCliente({ ...formCliente, nss: e.target.value.replace(/\D/g, '') })}
+                  placeholder="ej: 12345678901"
+                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono tracking-wider"
                 />
               </div>
 

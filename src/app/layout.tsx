@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
   title: 'Santina Consultoría Web | PDF Studio',
@@ -39,6 +40,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <Toaster position="top-right" richColors closeButton />
           </AuthProvider>
         </ThemeProvider>
       </body>

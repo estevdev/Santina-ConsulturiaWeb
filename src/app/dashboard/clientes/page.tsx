@@ -13,6 +13,8 @@ import { generateInmuebleFotosPdf } from '@/utils/inmuebleFotosPdfGenerator';
 import { useAuth } from '@/context/AuthContext';
 import { mergePdfAndImageUrls } from '@/utils/pdfMerger';
 import { Users, Plus, ShieldCheck, User, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { getEstadoClienteConfig } from '@/constants/estadosCliente';
 
 import {
   ClientesList,
@@ -332,6 +334,12 @@ export default function ClientesPage() {
   };
 
   const handleUpdateEstadoCliente = async (clienteId: string, newStatus: string) => {
+    const statusConfig = getEstadoClienteConfig(newStatus);
+    const targetCli = clientes.find((c) => c.id === clienteId);
+    const clientName = targetCli
+      ? `${targetCli.nombre} ${targetCli.apellido_paterno || ''}`.trim()
+      : 'Cliente';
+
     try {
       const { error } = await supabase
         .from('clientes')
@@ -348,16 +356,26 @@ export default function ClientesPage() {
         setSelectedCliente((prev) => (prev ? { ...prev, estado_cliente: newStatus as any } : null));
       }
 
-      setFeedbackMsg({ type: 'success', text: `Estado del cliente actualizado a "${newStatus}".` });
+      setFeedbackMsg({ type: 'success', text: `Estado del cliente actualizado a "${statusConfig.label}".` });
+      
+      toast.success(`Estado: ${statusConfig.label}`, {
+        description: `Se actualizó el estado de "${clientName}" a "${statusConfig.label}".`,
+        duration: 4000,
+      });
     } catch (err: any) {
       console.error('Error actualizando estado del cliente:', err);
       setFeedbackMsg({ type: 'error', text: `Error al actualizar estado: ${err.message || 'Error desconocido'}` });
+      toast.error('Error al actualizar estado', {
+        description: err.message || 'No se pudo guardar el cambio de estado.',
+      });
     }
   };
 
   const handleSoftDeleteCliente = async (cliente: Cliente) => {
     if (user?.role !== 'admin') {
-      alert('Solo los administradores pueden enviar clientes a la papelera.');
+      toast.error('Acceso denegado', {
+        description: 'Solo los administradores pueden enviar clientes a la papelera.',
+      });
       return;
     }
     const confirmed = window.confirm(
@@ -387,15 +405,24 @@ export default function ClientesPage() {
         type: 'success',
         text: `El cliente "${cliente.nombre}" ha sido movido a la papelera.`,
       });
+      toast.info('Cliente en papelera', {
+        description: `"${cliente.nombre} ${cliente.apellido_paterno || ''}" fue movido a la papelera.`,
+        duration: 4000,
+      });
     } catch (err: any) {
       console.error('Error al enviar cliente a la papelera:', err);
       setFeedbackMsg({ type: 'error', text: `Error al mover a papelera: ${err.message || 'Error desconocido'}` });
+      toast.error('Error al mover a papelera', {
+        description: err.message || 'Ocurrió un error inesperado.',
+      });
     }
   };
 
   const handleRestoreCliente = async (cliente: Cliente) => {
     if (user?.role !== 'admin') {
-      alert('Solo los administradores pueden restaurar clientes.');
+      toast.error('Acceso denegado', {
+        description: 'Solo los administradores pueden restaurar clientes.',
+      });
       return;
     }
     try {
@@ -418,9 +445,16 @@ export default function ClientesPage() {
         type: 'success',
         text: `El cliente "${cliente.nombre}" ha sido restaurado exitosamente.`,
       });
+      toast.success('Cliente restaurado', {
+        description: `"${cliente.nombre} ${cliente.apellido_paterno || ''}" ha sido restaurado exitosamente.`,
+        duration: 4000,
+      });
     } catch (err: any) {
       console.error('Error al restaurar cliente:', err);
       setFeedbackMsg({ type: 'error', text: `Error al restaurar: ${err.message || 'Error desconocido'}` });
+      toast.error('Error al restaurar', {
+        description: err.message || 'No se pudo restaurar el cliente.',
+      });
     }
   };
 
@@ -499,6 +533,10 @@ export default function ClientesPage() {
         if (updateErr) throw new Error(updateErr.message);
 
         setFeedbackMsg({ type: 'success', text: 'Información del cliente actualizada correctamente.' });
+        toast.success('Cliente actualizado', {
+          description: `Se guardaron los cambios de "${formCliente.nombre.trim()}".`,
+          duration: 3500,
+        });
         if (selectedCliente && selectedCliente.id === editingClienteId && updatedData) {
           setSelectedCliente(updatedData);
         }
@@ -583,6 +621,10 @@ export default function ClientesPage() {
           }
         }
         setFeedbackMsg({ type: 'success', text: 'Cliente registrado exitosamente.' });
+        toast.success('Cliente registrado', {
+          description: `"${formCliente.nombre.trim()}" fue registrado con éxito.`,
+          duration: 3500,
+        });
       }
 
       setIsModalOpen(false);

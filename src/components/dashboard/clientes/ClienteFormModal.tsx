@@ -180,6 +180,37 @@ export function ClienteFormModal({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Sincronización estricta de NSS bidireccional (siempre actualiza ambos objetos sin excepción)
+  const handleNssChange = (rawValue: string) => {
+    const cleanDigits = rawValue.replace(/\D/g, '').slice(0, 11);
+    setFormCliente((prev) => ({ ...prev, nss: cleanDigits }));
+    setFormMejoravit((prev) => ({ ...prev, nss_portal_infonavit: cleanDigits }));
+  };
+
+  // Sincronización estricta de Contraseña del Portal Infonavit bidireccional
+  const handleInfonavitPasswordChange = (rawPass: string) => {
+    setFormMejoravit((prev) => ({
+      ...prev,
+      password_portal_infonavit: rawPass,
+      req_portal_infonavit_validado: rawPass.trim().length > 0 ? true : prev.req_portal_infonavit_validado,
+    }));
+  };
+
+  // Garantizar sincronización inicial de NSS entre cliente y trámite mejoravit al abrir o cambiar trámite
+  useEffect(() => {
+    if (crearTramiteInicial && tipoTramiteInicial === 'mejoravit') {
+      const activeNss = formCliente.nss || formMejoravit.nss_portal_infonavit || '';
+      if (activeNss) {
+        if (formCliente.nss !== activeNss) {
+          setFormCliente((prev) => ({ ...prev, nss: activeNss }));
+        }
+        if (formMejoravit.nss_portal_infonavit !== activeNss) {
+          setFormMejoravit((prev) => ({ ...prev, nss_portal_infonavit: activeNss }));
+        }
+      }
+    }
+  }, [crearTramiteInicial, tipoTramiteInicial, isOpen]);
+
   const selectedAdvisor = availableAdvisors.find((a) => a.id === formCliente.creado_por);
 
   const filteredAdvisors = availableAdvisors.filter((adv) => {
@@ -589,11 +620,7 @@ export function ClienteFormModal({
                     type="text"
                     maxLength={11}
                     value={formCliente.nss || ''}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setFormCliente({ ...formCliente, nss: val });
-                      setFormMejoravit((prev) => ({ ...prev, nss_portal_infonavit: val }));
-                    }}
+                    onChange={(e) => handleNssChange(e.target.value)}
                     placeholder="ej: 12345678901"
                     className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono tracking-wider"
                   />
@@ -612,14 +639,7 @@ export function ClienteFormModal({
                       <input
                         type={showInfonavitPass ? 'text' : 'password'}
                         value={formMejoravit.password_portal_infonavit || ''}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormMejoravit((prev) => ({
-                            ...prev,
-                            password_portal_infonavit: val,
-                            req_portal_infonavit_validado: val.trim().length > 0 ? true : prev.req_portal_infonavit_validado,
-                          }));
-                        }}
+                        onChange={(e) => handleInfonavitPasswordChange(e.target.value)}
                         placeholder="Contraseña del portal Infonavit..."
                         className="w-full pl-3 pr-9 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-red-300 dark:border-red-900/60 focus:border-red-500 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:outline-none text-slate-900 dark:text-white"
                       />
@@ -1015,32 +1035,33 @@ export function ClienteFormModal({
                             <span><strong>9. Acceso al Portal Infonavit:</strong></span>
                           </label>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
-                            <input
-                              type="text"
-                              maxLength={11}
-                              value={formMejoravit.nss_portal_infonavit || formCliente.nss || ''}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '');
-                                setFormMejoravit({ ...formMejoravit, nss_portal_infonavit: val });
-                                if (!formCliente.nss) setFormCliente({ ...formCliente, nss: val });
-                              }}
-                              placeholder="NSS Infonavit (11 dígitos)"
-                              className="w-full px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono"
-                            />
-                            <input
-                              type="text"
-                              value={formMejoravit.password_portal_infonavit || ''}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                setFormMejoravit({
-                                  ...formMejoravit,
-                                  password_portal_infonavit: val,
-                                  req_portal_infonavit_validado: val.trim().length > 0 ? true : formMejoravit.req_portal_infonavit_validado,
-                                });
-                              }}
-                              placeholder="Contraseña Portal Infonavit"
-                              className="w-full px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"
-                            />
+                            <div>
+                              <input
+                                type="text"
+                                maxLength={11}
+                                value={formCliente.nss || ''}
+                                onChange={(e) => handleNssChange(e.target.value)}
+                                placeholder="NSS Infonavit (11 dígitos)"
+                                className="w-full px-2.5 py-1.5 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono focus:ring-1 focus:ring-[#c5a059] focus:outline-none"
+                              />
+                            </div>
+                            <div className="relative">
+                              <input
+                                type={showInfonavitPass ? 'text' : 'password'}
+                                value={formMejoravit.password_portal_infonavit || ''}
+                                onChange={(e) => handleInfonavitPasswordChange(e.target.value)}
+                                placeholder="Contraseña Portal Infonavit"
+                                className="w-full pl-2.5 pr-8 py-1.5 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-1 focus:ring-red-500 focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowInfonavitPass(!showInfonavitPass)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                                title={showInfonavitPass ? 'Ocultar contraseña' : 'Ver contraseña'}
+                              >
+                                {showInfonavitPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
                           </div>
                         </div>
 

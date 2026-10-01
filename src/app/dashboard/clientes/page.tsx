@@ -411,8 +411,12 @@ export default function ClientesPage() {
         setFormMejoravit(initialMejoravitData);
         setFormAltaMedica(initialAltaMedicaData);
       } else if (mejoravitRes.data) {
+        const unifiedNss = mejoravitRes.data.nss_portal_infonavit || cli.nss || '';
         setTipoTramiteInicial('mejoravit');
         setCrearTramiteInicial(true);
+        if (unifiedNss && !cli.nss) {
+          setFormCliente((prev) => ({ ...prev, nss: unifiedNss }));
+        }
         setFormMejoravit({
           req_ine_normal: Boolean(mejoravitRes.data.req_ine_normal),
           req_ine_ampliada_200: Boolean(mejoravitRes.data.req_ine_ampliada_200),
@@ -423,7 +427,7 @@ export default function ClientesPage() {
           req_estado_cuenta_bancario: Boolean(mejoravitRes.data.req_estado_cuenta_bancario),
           req_constancia_situacion_fiscal: Boolean(mejoravitRes.data.req_constancia_situacion_fiscal),
           req_3_referencias_personales: Boolean(mejoravitRes.data.req_3_referencias_personales),
-          nss_portal_infonavit: mejoravitRes.data.nss_portal_infonavit || '',
+          nss_portal_infonavit: unifiedNss,
           password_portal_infonavit: mejoravitRes.data.password_portal_infonavit || '',
           req_portal_infonavit_validado: Boolean(mejoravitRes.data.req_portal_infonavit_validado),
           req_fotos_inmueble_5: Boolean(mejoravitRes.data.req_fotos_inmueble_5),

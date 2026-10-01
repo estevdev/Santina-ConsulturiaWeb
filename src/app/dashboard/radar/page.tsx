@@ -17,6 +17,7 @@ import {
   RadarColumnsView,
   RadarListView,
   RadarQuickPeekModal,
+  RadarMobileView,
 } from '@/components/dashboard/radar';
 
 export default function RadarPage() {
@@ -179,79 +180,108 @@ export default function RadarPage() {
 
   return (
     <div className="space-y-3 pb-4">
-      {/* 1. Header Toolbar */}
-      <RadarHeader
-        totalClientes={filteredClientes.length}
-        loading={loading}
-        onRefresh={fetchRadarData}
-        search={search}
-        onSearchChange={setSearch}
-        selectedAdvisor={selectedAdvisor}
-        onAdvisorChange={setSelectedAdvisor}
-        advisorsList={advisors}
-        selectedTramite={selectedTramite}
-        onTramiteChange={setSelectedTramite}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        lastUpdated={lastUpdated}
-      />
-
-      {/* 2. Compact KPI & Pipeline Strip */}
-      <RadarKpiStrip
-        clientes={processedRadarClientes}
-        activeStatusFilter={activeStatusFilter}
-        onSelectStatusFilter={setActiveStatusFilter}
-      />
-
-      {/* 3. Operational Highlights: A Punto de Salir & Próximas Citas (Side by side on large screens) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-        <RadarProximosASalir
+      {/* ======================================================== */}
+      {/* VISTA ESPECÍFICA PARA MÓVILES (block lg:hidden)           */}
+      {/* ======================================================== */}
+      <div className="block lg:hidden">
+        <RadarMobileView
           clientes={filteredClientes}
-          onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
-        />
-        <RadarProximasCitas
-          clientes={filteredClientes}
-          onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
+          allClientes={processedRadarClientes}
+          loading={loading}
+          onRefresh={fetchRadarData}
+          search={search}
+          onSearchChange={setSearch}
+          selectedAdvisor={selectedAdvisor}
+          onAdvisorChange={setSelectedAdvisor}
+          advisorsList={advisors}
+          selectedTramite={selectedTramite}
+          onTramiteChange={setSelectedTramite}
+          activeStatusFilter={activeStatusFilter}
+          onSelectStatusFilter={setActiveStatusFilter}
+          onChangeClienteStatus={handleChangeClienteStatus}
+          lastUpdated={lastUpdated}
         />
       </div>
 
-      {/* 4. Main Body: Kanban Columns or Compact List or Dedicated Citas */}
-      {viewMode === 'kanban' && (
-        <RadarColumnsView
-          clientes={filteredClientes}
-          onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
-          onChangeClienteStatus={handleChangeClienteStatus}
+      {/* ======================================================== */}
+      {/* VISTA ORIGINAL DE ESCRITORIO / PC (hidden lg:block)      */}
+      {/* Totalmente intacta e inalterada para no tocar PC          */}
+      {/* ======================================================== */}
+      <div className="hidden lg:block space-y-3">
+        {/* 1. Header Toolbar */}
+        <RadarHeader
+          totalClientes={filteredClientes.length}
+          loading={loading}
+          onRefresh={fetchRadarData}
+          search={search}
+          onSearchChange={setSearch}
+          selectedAdvisor={selectedAdvisor}
+          onAdvisorChange={setSelectedAdvisor}
+          advisorsList={advisors}
+          selectedTramite={selectedTramite}
+          onTramiteChange={setSelectedTramite}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          lastUpdated={lastUpdated}
         />
-      )}
 
-      {viewMode === 'compact' && (
-        <RadarListView
-          clientes={filteredClientes}
-          onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
-          onChangeClienteStatus={handleChangeClienteStatus}
+        {/* 2. Compact KPI & Pipeline Strip */}
+        <RadarKpiStrip
+          clientes={processedRadarClientes}
+          activeStatusFilter={activeStatusFilter}
+          onSelectStatusFilter={setActiveStatusFilter}
         />
-      )}
 
-      {viewMode === 'citas' && (
-        <div className="space-y-3">
+        {/* 3. Operational Highlights: A Punto de Salir & Próximas Citas (Side by side on large screens) */}
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+          <RadarProximosASalir
+            clientes={filteredClientes}
+            onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
+          />
           <RadarProximasCitas
             clientes={filteredClientes}
             onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
           />
-          <RadarListView
-            clientes={filteredClientes.filter((c) => c.cita && c.cita.fecha)}
+        </div>
+
+        {/* 4. Main Body: Kanban Columns or Compact List or Dedicated Citas */}
+        {viewMode === 'kanban' && (
+          <RadarColumnsView
+            clientes={filteredClientes}
             onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
             onChangeClienteStatus={handleChangeClienteStatus}
           />
-        </div>
-      )}
+        )}
 
-      {/* 5. Quick Peek Modal (Slide-over overlay without page refresh) */}
-      <RadarQuickPeekModal
-        cliente={quickPeekCliente}
-        onClose={() => setQuickPeekCliente(null)}
-        onChangeClienteStatus={handleChangeClienteStatus}
-      />
+        {viewMode === 'compact' && (
+          <RadarListView
+            clientes={filteredClientes}
+            onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
+            onChangeClienteStatus={handleChangeClienteStatus}
+          />
+        )}
+
+        {viewMode === 'citas' && (
+          <div className="space-y-3">
+            <RadarProximasCitas
+              clientes={filteredClientes}
+              onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
+            />
+            <RadarListView
+              clientes={filteredClientes.filter((c) => c.cita && c.cita.fecha)}
+              onOpenQuickPeek={(cli) => setQuickPeekCliente(cli)}
+              onChangeClienteStatus={handleChangeClienteStatus}
+            />
+          </div>
+        )}
+
+        {/* 5. Quick Peek Modal (Slide-over overlay without page refresh) */}
+        <RadarQuickPeekModal
+          cliente={quickPeekCliente}
+          onClose={() => setQuickPeekCliente(null)}
+          onChangeClienteStatus={handleChangeClienteStatus}
+        />
+      </div>
     </div>
   );
 }

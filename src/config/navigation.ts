@@ -11,6 +11,7 @@ import {
   FolderLock,
   BarChart3,
   Radar,
+  GraduationCap,
   LucideIcon
 } from 'lucide-react';
 
@@ -69,6 +70,19 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         icon: FileEdit,
         badge: 'Admin',
         roles: ['admin'], // Solo Administradores
+      },
+    ],
+  },
+  {
+    title: 'Capacitaciones',
+    roles: ['admin', 'socios'],
+    items: [
+      {
+        name: 'Capacitaciones',
+        href: '/dashboard/capacitaciones',
+        icon: GraduationCap,
+        badge: 'Videos',
+        roles: ['admin', 'socios'],
       },
     ],
   },

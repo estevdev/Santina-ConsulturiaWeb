@@ -326,6 +326,20 @@ export default function ClientesPage() {
     await fetchTramites(cliente.id);
   };
 
+  // Auto-seleccionar cliente si viene en los parámetros de la URL (?clienteId=...)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && clientes.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const targetId = params.get('clienteId');
+      if (targetId) {
+        const found = clientes.find((c) => c.id === targetId);
+        if (found) {
+          handleSelectCliente(found, true);
+        }
+      }
+    }
+  }, [clientes]);
+
   const openShareCredentialsModal = (cli: Cliente) => {
     const trRetiro = clienteTramites.retiro?.[0];
     const trMejoravit = clienteTramites.mejoravit?.[0];
@@ -735,7 +749,7 @@ export default function ClientesPage() {
               req_estado_cuenta_bancario: formMejoravit.req_estado_cuenta_bancario,
               req_constancia_situacion_fiscal: formMejoravit.req_constancia_situacion_fiscal,
               req_3_referencias_personales: formMejoravit.req_3_referencias_personales,
-              nss_portal_infonavit: formMejoravit.nss_portal_infonavit || null,
+              nss_portal_infonavit: formMejoravit.nss_portal_infonavit || formCliente.nss?.trim() || null,
               password_portal_infonavit: formMejoravit.password_portal_infonavit || null,
               req_portal_infonavit_validado: formMejoravit.req_portal_infonavit_validado,
               req_fotos_inmueble_5: formMejoravit.req_fotos_inmueble_5,

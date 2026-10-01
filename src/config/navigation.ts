@@ -10,6 +10,7 @@ import {
   Settings,
   FolderLock,
   BarChart3,
+  Radar,
   LucideIcon
 } from 'lucide-react';
 
@@ -47,6 +48,13 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         icon: LayoutDashboard,
         matchExact: true,
         // Todos los roles tienen acceso
+      },
+      {
+        name: 'Radar de Clientes',
+        href: '/dashboard/radar',
+        icon: Radar,
+        badge: '360°',
+        roles: ['admin', 'socios'], // Solo Admin y Socios
       },
       {
         name: 'Clientes',

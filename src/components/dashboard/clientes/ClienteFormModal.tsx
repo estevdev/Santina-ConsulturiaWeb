@@ -19,6 +19,10 @@ import {
   Sparkles,
   Briefcase,
   CreditCard,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Ban,
 } from 'lucide-react';
 import { TipoTramite } from '@/types/cliente';
 import { ESTADOS_MEXICO } from '@/constants/estadosMexico';
@@ -153,6 +157,7 @@ export function ClienteFormModal({
   const [isAdvisorDropdownOpen, setIsAdvisorDropdownOpen] = useState(false);
   const [advisorSearchQuery, setAdvisorSearchQuery] = useState('');
   const [advisorRoleFilter, setAdvisorRoleFilter] = useState<'all' | 'admin' | 'socios'>('all');
+  const [showInfonavitPass, setShowInfonavitPass] = useState(false);
   const advisorDropdownRef = useRef<HTMLDivElement>(null);
 
   // Resetear estados al abrir el modal para que inicie escondido por defecto
@@ -161,6 +166,7 @@ export function ClienteFormModal({
       setShowAdvisorSelector(false);
       setIsAdvisorDropdownOpen(false);
       setAdvisorSearchQuery('');
+      setShowInfonavitPass(false);
     }
   }, [isOpen, editingClienteId]);
 
@@ -195,42 +201,47 @@ export function ClienteFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm overflow-y-auto">
-      <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-2xl shadow-2xl p-6 my-8 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-zinc-800">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 lg:p-6 bg-slate-950/70 backdrop-blur-md overflow-hidden">
+      <div className="bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl w-full max-w-[1560px] h-[95vh] shadow-2xl flex flex-col overflow-hidden">
+        {/* Header Modal Fijo */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-zinc-800 bg-white/80 dark:bg-[#0d0e12]/80 backdrop-blur-sm shrink-0">
+          <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             {editingClienteId ? <Edit className="w-5 h-5 text-[#dfba73]" /> : <Plus className="w-5 h-5 text-[#c5a059]" />}
             {editingClienteId ? 'Editar Información del Cliente' : 'Registrar Nuevo Cliente & Expediente'}
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {feedbackMsg && (
-          <div className={`mt-4 p-3 rounded-xl border text-xs flex items-center gap-2 ${feedbackMsg.type === 'error' ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'}`}>
+          <div className={`mx-6 mt-3 p-3 rounded-xl border text-xs flex items-center gap-2 shrink-0 ${feedbackMsg.type === 'error' ? 'bg-red-50 dark:bg-red-950/50 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300' : 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300'}`}>
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{feedbackMsg.text}</span>
           </div>
         )}
 
-        <form onSubmit={onSubmit} className="space-y-6 pt-4">
-          {/* Información Básica */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                1. Información del Cliente
-              </h3>
-              {currentUserRole === 'admin' && (
-                <span className="text-[10px] font-semibold text-[#c5a059] flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Modo Administrador
-                </span>
-              )}
-            </div>
+        <form onSubmit={onSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Contenido scrolleable en 2 columnas para aprovechar todo el ancho de pantalla */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+              {/* COLUMNA 1: Información Básica del Cliente */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-1">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-[#c5a059]" />
+                    <span>1. Información del Cliente</span>
+                  </h3>
+                  {currentUserRole === 'admin' && (
+                    <span className="text-[10px] font-semibold text-[#c5a059] flex items-center gap-1">
+                      <ShieldCheck className="w-3.5 h-3.5" />
+                      Modo Administrador
+                    </span>
+                  )}
+                </div>
 
             {/* SELECCIÓN DE ASESOR / ADMINISTRADOR RESPONSABLE (ESCONDIDO POR DEFECTO) */}
             {currentUserRole === 'admin' ? (
@@ -564,22 +575,65 @@ export function ClienteFormModal({
                   className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <CreditCard className="w-3.5 h-3.5 text-[#c5a059]" />
-                    Número de Seguridad Social (NSS)
-                  </span>
-                  <span className="text-slate-400 text-[10px] font-normal">Opcional (11 dígitos)</span>
-                </label>
-                <input
-                  type="text"
-                  maxLength={11}
-                  value={formCliente.nss || ''}
-                  onChange={(e) => setFormCliente({ ...formCliente, nss: e.target.value.replace(/\D/g, '') })}
-                  placeholder="ej: 12345678901"
-                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono tracking-wider"
-                />
+              {/* CAMPO NSS & CONTRASEÑA PORTAL INFONAVIT SI SE SELECCIONA MEJORAVIT */}
+              <div className={crearTramiteInicial && tipoTramiteInicial === 'mejoravit' ? 'grid grid-cols-1 sm:grid-cols-2 gap-3 sm:col-span-2' : 'sm:col-span-2'}>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-[#c5a059]" />
+                      Número de Seguridad Social (NSS)
+                    </span>
+                    <span className="text-slate-400 text-[10px] font-normal">Opcional (11 dígitos)</span>
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={11}
+                    value={formCliente.nss || ''}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setFormCliente({ ...formCliente, nss: val });
+                      setFormMejoravit((prev) => ({ ...prev, nss_portal_infonavit: val }));
+                    }}
+                    placeholder="ej: 12345678901"
+                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none font-mono tracking-wider"
+                  />
+                </div>
+
+                {crearTramiteInicial && tipoTramiteInicial === 'mejoravit' && (
+                  <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="block text-xs font-semibold text-red-600 dark:text-red-400 mb-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 font-bold">
+                        <KeyRound className="w-3.5 h-3.5 text-red-500" />
+                        Contraseña Portal Infonavit
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-normal">Mi Cuenta Infonavit</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showInfonavitPass ? 'text' : 'password'}
+                        value={formMejoravit.password_portal_infonavit || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setFormMejoravit((prev) => ({
+                            ...prev,
+                            password_portal_infonavit: val,
+                            req_portal_infonavit_validado: val.trim().length > 0 ? true : prev.req_portal_infonavit_validado,
+                          }));
+                        }}
+                        placeholder="Contraseña del portal Infonavit..."
+                        className="w-full pl-3 pr-9 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-red-300 dark:border-red-900/60 focus:border-red-500 rounded-xl focus:ring-2 focus:ring-red-500/20 focus:outline-none text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowInfonavitPass(!showInfonavitPass)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        title={showInfonavitPass ? 'Ocultar contraseña' : 'Ver contraseña'}
+                      >
+                        {showInfonavitPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* CAMPO ESTADO DE LA REPÚBLICA */}
@@ -669,67 +723,86 @@ export function ClienteFormModal({
                 />
               </div>
             </div>
-          </div>
+              </div>
 
-          {/* Trámite Inicial y Checklist */}
-          <div className="pt-4 border-t border-slate-100 dark:border-zinc-800">
-            <div className="flex items-center justify-between mb-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={crearTramiteInicial}
-                  onChange={(e) => setCrearTramiteInicial(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#c5a059] focus:ring-amber-500 border-slate-300"
-                />
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                  {editingClienteId ? 'Agregar o Cambiar Trámite / Checklist' : 'Asignar Trámite Inicial y Checklist de Documentos'}
-                </span>
-              </label>
+              {/* COLUMNA 2: Trámite Inicial & Checklist de Documentos */}
+              <div className="space-y-4 lg:border-l lg:border-slate-100 lg:dark:border-zinc-800/80 lg:pl-8">
+                <div className="flex items-center justify-between pb-1">
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Briefcase className="w-3.5 h-3.5 text-[#c5a059]" />
+                    <span>2. {editingClienteId ? 'Trámite & Expediente del Cliente' : 'Seleccionar Trámite Inicial'}</span>
+                  </h3>
+                  <span className="text-[10px] font-semibold text-slate-400">
+                    {crearTramiteInicial ? '1 trámite seleccionado' : 'Sin trámite asignado'}
+                  </span>
+                </div>
+
+            {/* Selector directo de trámites con icono y nombre */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => setCrearTramiteInicial(false)}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  !crearTramiteInicial
+                    ? 'bg-slate-800 text-white border-slate-700 shadow-sm dark:bg-zinc-800 dark:border-zinc-600 ring-2 ring-[#c5a059]/40'
+                    : 'bg-white dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
+              >
+                <Ban className="w-4 h-4 text-slate-400" />
+                <span>Sin Trámite</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCrearTramiteInicial(true);
+                  setTipoTramiteInicial('retiro_desempleo');
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  crearTramiteInicial && tipoTramiteInicial === 'retiro_desempleo'
+                    ? 'bg-emerald-600 text-white border-emerald-500 shadow-md ring-2 ring-emerald-500/30'
+                    : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-emerald-500/50'
+                }`}
+              >
+                <Banknote className="w-4 h-4" />
+                <span>Retiro Desempleo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCrearTramiteInicial(true);
+                  setTipoTramiteInicial('mejoravit');
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  crearTramiteInicial && tipoTramiteInicial === 'mejoravit'
+                    ? 'bg-red-600 text-white border-red-500 shadow-md ring-2 ring-red-500/30'
+                    : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-red-500/50'
+                }`}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Mejoravit Infonavit</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCrearTramiteInicial(true);
+                  setTipoTramiteInicial('alta_medica_imss');
+                }}
+                className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  crearTramiteInicial && tipoTramiteInicial === 'alta_medica_imss'
+                    ? 'bg-amber-600 text-white border-amber-500 shadow-md ring-2 ring-amber-500/30'
+                    : 'bg-white dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-500/50'
+                }`}
+              >
+                <HeartPulse className="w-4 h-4" />
+                <span>Alta Médica IMSS</span>
+              </button>
             </div>
 
             {crearTramiteInicial && (
-              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4">
-                {/* Selector de Tipo de Trámite */}
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setTipoTramiteInicial('retiro_desempleo')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      tipoTramiteInicial === 'retiro_desempleo'
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <Banknote className="w-4 h-4" />
-                    Retiro Desempleo
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTipoTramiteInicial('mejoravit')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      tipoTramiteInicial === 'mejoravit'
-                        ? 'bg-red-600 text-white border-red-600 shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Mejoravit Infonavit
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setTipoTramiteInicial('alta_medica_imss')}
-                    className={`p-2.5 rounded-xl border text-xs font-semibold flex flex-col items-center gap-1.5 transition-all cursor-pointer ${
-                      tipoTramiteInicial === 'alta_medica_imss'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-md'
-                        : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
-                    }`}
-                  >
-                    <HeartPulse className="w-4 h-4" />
-                    Alta Médica IMSS
-                  </button>
-                </div>
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-4 animate-in fade-in duration-150">
 
                 {/* Checklist RETIRO POR DESEMPLEO */}
                 {tipoTramiteInicial === 'retiro_desempleo' && (
@@ -941,11 +1014,30 @@ export function ClienteFormModal({
                             />
                             <span><strong>9. Acceso al Portal Infonavit:</strong></span>
                           </label>
-                          <div className="grid grid-cols-2 gap-2 pl-6">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pl-6">
                             <input
                               type="text"
-                              value={formMejoravit.password_portal_infonavit}
-                              onChange={(e) => setFormMejoravit({ ...formMejoravit, password_portal_infonavit: e.target.value })}
+                              maxLength={11}
+                              value={formMejoravit.nss_portal_infonavit || formCliente.nss || ''}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '');
+                                setFormMejoravit({ ...formMejoravit, nss_portal_infonavit: val });
+                                if (!formCliente.nss) setFormCliente({ ...formCliente, nss: val });
+                              }}
+                              placeholder="NSS Infonavit (11 dígitos)"
+                              className="w-full px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded font-mono"
+                            />
+                            <input
+                              type="text"
+                              value={formMejoravit.password_portal_infonavit || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setFormMejoravit({
+                                  ...formMejoravit,
+                                  password_portal_infonavit: val,
+                                  req_portal_infonavit_validado: val.trim().length > 0 ? true : formMejoravit.req_portal_infonavit_validado,
+                                });
+                              }}
                               placeholder="Contraseña Portal Infonavit"
                               className="w-full px-2 py-1 text-[11px] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"
                             />
@@ -1030,24 +1122,52 @@ export function ClienteFormModal({
                 )}
               </div>
             )}
+
+            {!crearTramiteInicial && (
+              <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 dark:border-zinc-800 bg-slate-50/50 dark:bg-zinc-900/20 flex flex-col items-center justify-center min-h-[220px]">
+                <div className="w-12 h-12 rounded-2xl bg-[#c5a059]/10 text-[#c5a059] flex items-center justify-center mb-3">
+                  <Briefcase className="w-6 h-6" />
+                </div>
+                <h4 className="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">
+                  Sin Trámite Inicial Asignado
+                </h4>
+                <p className="text-[11px] text-slate-400 max-w-sm">
+                  Puedes registrar o guardar al cliente con sus datos de contacto, o hacer clic en cualquiera de las opciones arriba para desplegar su expediente y checklist de documentos.
+                </p>
+              </div>
+            )}
+              </div>
+            </div>
           </div>
 
-          {/* Botón Guardar */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2 text-xs font-semibold bg-[#c5a059] hover:bg-[#d5b069] text-white rounded-xl shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
-            >
-              {saving ? 'Guardando...' : editingClienteId ? 'Guardar Cambios' : 'Registrar Cliente & Expediente'}
-            </button>
+          {/* Footer Fijo con botones de acción */}
+          <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 dark:border-zinc-800 bg-slate-50/60 dark:bg-zinc-950/80 shrink-0">
+            <span className="text-xs text-slate-400 hidden sm:inline">
+              {crearTramiteInicial ? (
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5" />
+                  Trámite configurado
+                </span>
+              ) : (
+                'Sin trámite inicial'
+              )}
+            </span>
+            <div className="flex items-center gap-3 ml-auto">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-xl cursor-pointer transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-6 py-2 text-xs font-semibold bg-[#c5a059] hover:bg-[#d5b069] text-white rounded-xl shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer transition-all"
+              >
+                {saving ? 'Guardando...' : editingClienteId ? 'Guardar Cambios' : 'Registrar Cliente & Expediente'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

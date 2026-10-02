@@ -99,7 +99,7 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
   },
   {
     title: 'Administración',
-    roles: ['admin'], // Exclusivo para administradores
+    roles: ['admin', 'socios'], // Exclusivo para administradores y socios de dirección
     items: [
       {
         name: 'Gestión de Usuarios',
@@ -111,7 +111,8 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         name: 'Reportes y Métricas',
         href: '/dashboard/reportes',
         icon: BarChart3,
-        roles: ['admin'],
+        badge: 'KPIs',
+        roles: ['admin', 'socios'],
       },
       {
         name: 'Configuración Global',

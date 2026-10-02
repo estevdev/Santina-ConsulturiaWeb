@@ -5,8 +5,8 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from 'sonner';
 
 export const metadata: Metadata = {
-  title: 'Santina Consultoría Web | PDF Studio',
-  description: 'Gestión y edición de zonas en documentos PDF mediante plantillas presets',
+  title: 'Santina Consultoría Web | Trámites IMSS, AFORE e Infonavit',
+  description: 'Asesoría especializada en Retiro por Desempleo AFORE, Crédito Mejoravit Infonavit y Alta Médica IMSS con certeza jurídica y seguimiento en vivo.',
 };
 
 export default function RootLayout({

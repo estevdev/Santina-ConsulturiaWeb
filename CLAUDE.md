@@ -3,6 +3,7 @@
 ## 1. Principio Fundamental: Arquitectura Basada en Componentes
 - **Modularidad estricta**: No colocar lógica compleja ni interfaces completas en un solo archivo de ruta (`page.tsx`).
 - **Separación de responsabilidades**:
+  - `src/components/landing/`: Componentes modulares de la landing page pública (`LandingNavbar.tsx`, `LandingHero.tsx`, `LandingTramitesCatalog.tsx`, `LandingTramiteDetailModal.tsx`, `LandingQuickTracker.tsx`, `LandingSimulator.tsx`, `LandingProcessSteps.tsx`, `LandingWhyChooseUs.tsx`, `LandingFaq.tsx`, `LandingContact.tsx`, `LandingFooter.tsx`).
   - `src/components/layout/`: Barra lateral (`Sidebar.tsx`), encabezado (`Header.tsx`), layout unificado (`DashboardLayout.tsx`).
   - `src/components/auth/`: Formularios de autenticación (`LoginForm.tsx`), protectores de ruta.
   - `src/components/dashboard/`: Widgets y tarjetas (`StatCards.tsx`, `QuickActions.tsx`, `RecentPresets.tsx`, `SystemStatusCard.tsx`).
@@ -13,7 +14,8 @@
 ---
 
 ## 2. Estructura de Rutas
-- `/`: Redirección automática según el estado de sesión (a `/dashboard` o `/login`).
+- `/`: Landing page oficial para clientes con catálogo completo de trámites (Retiro por Desempleo AFORE, Crédito Mejoravit Infonavit, Alta Médica IMSS y Expediente Digital PDF Studio), precalificador/simulador interactivo, rastreador de folio/NSS en vivo y accesos directos al panel/login.
+- `/seguimiento`: Portal cliente para consulta detallada de avance de trámite con folio y NSS y notificaciones push.
 - `/login`: Pantalla de inicio de sesión con selector rápido de usuarios de prueba.
 - `/dashboard`: Panel principal con estadísticas, acciones rápidas, presets recientes y estado del sistema.
 - `/dashboard/pdf-preset-studio`: Herramienta de edición, creación de plantillas/zonas y procesamiento de PDFs.

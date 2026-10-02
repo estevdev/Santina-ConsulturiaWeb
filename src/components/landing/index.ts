@@ -1,0 +1,12 @@
+export { LandingNavbar } from './LandingNavbar';
+export { LandingHero } from './LandingHero';
+export { LandingTramitesCatalog } from './LandingTramitesCatalog';
+export { LandingTramiteDetailModal } from './LandingTramiteDetailModal';
+export { LandingQuickTracker } from './LandingQuickTracker';
+export { LandingSimulator } from './LandingSimulator';
+export { LandingProcessSteps } from './LandingProcessSteps';
+export { LandingWhyChooseUs } from './LandingWhyChooseUs';
+export { LandingFaq } from './LandingFaq';
+export { LandingContact } from './LandingContact';
+export { LandingFooter } from './LandingFooter';
+export * from './tramitesData';

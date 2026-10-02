@@ -10,6 +10,7 @@ import {
   BarChart3,
   Radar,
   GraduationCap,
+  Inbox,
   LucideIcon
 } from 'lucide-react';
 
@@ -60,6 +61,13 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         href: '/dashboard/clientes',
         icon: Users,
         badge: 'Gestión',
+        roles: ['admin', 'socios'], // Solo Admin y Socios
+      },
+      {
+        name: 'Solicitudes Web',
+        href: '/dashboard/solicitudes',
+        icon: Inbox,
+        badge: 'Landing',
         roles: ['admin', 'socios'], // Solo Admin y Socios
       },
       {

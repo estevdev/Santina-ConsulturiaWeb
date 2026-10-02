@@ -19,6 +19,8 @@ import {
   Check,
   Video as VideoIcon,
   Info,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,23 +33,11 @@ export default function CapacitacionPlayerModal({
   capacitacion,
   onClose,
 }: CapacitacionPlayerModalProps) {
-  const [copiedLink, setCopiedLink] = useState(false);
-
   if (!capacitacion) return null;
 
   const { provider, embedUrl, isDirectVideo } = parseVideoUrl(capacitacion.video_url);
-
   const attachments = capacitacion.archivos_adjuntos || [];
   const links = capacitacion.links || [];
-
-  const handleCopyLink = () => {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(capacitacion.video_url);
-      setCopiedLink(true);
-      toast.success('Enlace copiado al portapapeles');
-      setTimeout(() => setCopiedLink(false), 2000);
-    }
-  };
 
   const formattedDate = new Date(capacitacion.created_at).toLocaleDateString('es-MX', {
     day: 'numeric',
@@ -90,13 +80,13 @@ export default function CapacitacionPlayerModal({
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={handleCopyLink}
-              className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
-              title="Copiar enlace del video"
+            <div
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-medium"
+              title="Descarga deshabilitada para proteger el material interno"
             >
-              {copiedLink ? <Check className="w-5 h-5 text-emerald-400" /> : <Share2 className="w-5 h-5" />}
-            </button>
+              <Lock className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span>Protegido contra descargas</span>
+            </div>
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
@@ -112,37 +102,48 @@ export default function CapacitacionPlayerModal({
           {/* Main Video & Description Column (7 Cols on large screen) */}
           <div className="lg:col-span-7 xl:col-span-8 p-6 flex flex-col space-y-6">
             {/* Video Player Container */}
-            <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-zinc-800/80 shadow-2xl">
+            <div
+              onContextMenu={(e) => e.preventDefault()}
+              className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black border border-zinc-800/80 shadow-2xl select-none"
+            >
               {isDirectVideo ? (
                 <video
                   src={capacitacion.video_url}
                   controls
+                  controlsList="nodownload noplaybackrate"
+                  disablePictureInPicture
+                  onContextMenu={(e) => e.preventDefault()}
                   playsInline
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain pointer-events-auto"
                 >
                   Tu navegador no soporta la reproducción de video HTML5.
                 </video>
               ) : embedUrl ? (
-                <iframe
-                  src={embedUrl}
-                  title={capacitacion.titulo}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
+                <div className="relative w-full h-full">
+                  <iframe
+                    src={embedUrl}
+                    title={capacitacion.titulo}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                  {/* Capa invisible para evitar que hagan clic en el botón de ventana emergente / descarga de Google Drive */}
+                  {provider === 'drive' && (
+                    <div
+                      className="absolute top-0 right-0 w-16 h-16 z-20 cursor-default bg-transparent"
+                      title="Descarga deshabilitada"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center">
                   <VideoIcon className="w-12 h-12 text-zinc-600 mb-3" />
                   <p className="text-zinc-300 font-medium">No se pudo cargar el reproductor integrado.</p>
-                  <a
-                    href={capacitacion.video_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-[#c5a059] text-zinc-950 hover:bg-[#dfba73] transition-colors"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Abrir video externamente
-                  </a>
+                  <p className="text-xs text-zinc-500 mt-1">El formato del video no es compatible o el enlace no es válido.</p>
                 </div>
               )}
             </div>

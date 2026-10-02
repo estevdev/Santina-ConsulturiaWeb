@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { createClient } from '@/utils/supabase/client';
 import { Cliente } from '@/types/cliente';
+import { getEstadoClienteConfig } from '@/constants/estadosCliente';
 import { 
   Users, 
   FileText, 
@@ -29,25 +30,65 @@ export default function DashboardPage() {
   const [mejoravitCount, setMejoravitCount] = useState(0);
   const [altaMedicaCount, setAltaMedicaCount] = useState(0);
   const [recentClientes, setRecentClientes] = useState<Cliente[]>([]);
+  const [clientesTramitesMap, setClientesTramitesMap] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
       setLoading(true);
       try {
-        const [cliRes, retRes, mejRes, altaRes, recCliRes] = await Promise.all([
-          supabase.from('clientes').select('id', { count: 'exact', head: true }),
-          supabase.from('tramites_retiro_desempleo').select('id', { count: 'exact', head: true }),
-          supabase.from('tramites_mejoravit').select('id', { count: 'exact', head: true }),
-          supabase.from('tramites_alta_medica_imss').select('id', { count: 'exact', head: true }),
-          supabase.from('clientes').select('*').order('created_at', { ascending: false }).limit(4),
+        // 1. Construir consulta filtrada según el rol del usuario (Socio vs Admin)
+        let clientesQuery = supabase
+          .from('clientes')
+          .select('*')
+          .is('deleted_at', null);
+
+        if (user && user.role !== 'admin') {
+          const conditions: string[] = [];
+          if (user.id) conditions.push(`creado_por.eq.${user.id}`);
+          if (user.email) conditions.push(`creado_por_email.eq.${user.email}`);
+          if (conditions.length > 0) {
+            clientesQuery = clientesQuery.or(conditions.join(','));
+          }
+        }
+
+        // Consultar clientes filtrados y trámites
+        const [cliRes, retRes, mejRes, altaRes] = await Promise.all([
+          clientesQuery.order('created_at', { ascending: false }),
+          supabase.from('tramites_retiro_desempleo').select('id, cliente_id'),
+          supabase.from('tramites_mejoravit').select('id, cliente_id'),
+          supabase.from('tramites_alta_medica_imss').select('id, cliente_id'),
         ]);
 
-        setClientesCount(cliRes.count || 0);
-        setRetirosCount(retRes.count || 0);
-        setMejoravitCount(mejRes.count || 0);
-        setAltaMedicaCount(altaRes.count || 0);
-        setRecentClientes((recCliRes.data as Cliente[]) || []);
+        const allClients = (cliRes.data as Cliente[]) || [];
+        const clientIds = new Set(allClients.map((c) => c.id));
+
+        // Filtrar trámites pertenecientes a los clientes accesibles por la cuenta
+        const userRetiros = (retRes.data || []).filter((t: any) => t.cliente_id && clientIds.has(t.cliente_id));
+        const userMejoravit = (mejRes.data || []).filter((t: any) => t.cliente_id && clientIds.has(t.cliente_id));
+        const userAltaMedica = (altaRes.data || []).filter((t: any) => t.cliente_id && clientIds.has(t.cliente_id));
+
+        // Mapa de trámites por cliente
+        const tMap: Record<string, string[]> = {};
+        userRetiros.forEach((t: any) => {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('retiro_desempleo')) tMap[t.cliente_id].push('retiro_desempleo');
+        });
+        userMejoravit.forEach((t: any) => {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('mejoravit')) tMap[t.cliente_id].push('mejoravit');
+        });
+        userAltaMedica.forEach((t: any) => {
+          if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
+          if (!tMap[t.cliente_id].includes('alta_medica')) tMap[t.cliente_id].push('alta_medica');
+        });
+
+        setClientesCount(allClients.length);
+        setRetirosCount(userRetiros.length);
+        setMejoravitCount(userMejoravit.length);
+        setAltaMedicaCount(userAltaMedica.length);
+        setRecentClientes(allClients.slice(0, 5));
+        setClientesTramitesMap(tMap);
       } catch (err) {
         console.error('Error cargando métricas de dashboard:', err);
       } finally {
@@ -56,11 +97,11 @@ export default function DashboardPage() {
     }
 
     loadDashboardData();
-  }, []);
+  }, [user]);
 
   return (
     <div className="space-y-3 sm:space-y-3.5 pb-4 -mt-16">
-      {/* Hero Banner Panorámico Oficial a lo ancho completo (+10% adicional) */}
+      {/* Hero Banner Panorámico Oficial a lo ancho completo */}
       <div className="relative w-full h-[285px] sm:h-[325px] md:h-[365px] lg:h-[410px] xl:h-[430px] overflow-hidden bg-black border-b border-[#c5a059]/30 shadow-2xl">
         <img 
           src="/banner-dashboard.png" 
@@ -304,29 +345,40 @@ export default function DashboardPage() {
                     {recentClientes.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-2.5 text-center text-[11px] text-zinc-500">
-                          No hay actividad registrada
+                          {loading ? 'Cargando actividad...' : 'No hay actividad registrada para tus clientes'}
                         </td>
                       </tr>
                     ) : (
-                      recentClientes.slice(0, 3).map((cli) => {
+                      recentClientes.slice(0, 4).map((cli) => {
                         const fullApellidos = [cli.apellido_paterno, cli.apellido_materno].filter(Boolean).join(' ') || cli.apellidos || '';
-                        const dateStr = cli.created_at ? new Date(cli.created_at).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '27/09/2026 10:25';
+                        const dateStr = cli.created_at ? new Date(cli.created_at).toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                        const tramites = clientesTramitesMap[cli.id] || [];
+                        const tramiteText = tramites.includes('retiro_desempleo')
+                          ? 'Retiro por Desempleo'
+                          : tramites.includes('mejoravit')
+                          ? 'Mejoravit Infonavit'
+                          : tramites.includes('alta_medica')
+                          ? 'Alta Médica IMSS'
+                          : 'Trámite General';
+
+                        const stConfig = getEstadoClienteConfig(cli.estado_cliente);
+
                         return (
                           <tr key={cli.id} className="hover:bg-zinc-800/30 transition-colors">
                             <td className="py-2 text-zinc-400 text-[10px] font-mono whitespace-nowrap">{dateStr}</td>
                             <td className="py-2 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
+                              <Link href={`/dashboard/clientes?clienteId=${cli.id}`} className="flex items-center gap-1.5 group">
                                 <div className="w-5 h-5 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-[9px] text-zinc-300">
                                   {cli.nombre.charAt(0).toUpperCase()}
                                 </div>
-                                <span className="font-semibold text-white text-[11px]">{cli.nombre} {fullApellidos}</span>
-                              </div>
+                                <span className="font-semibold text-white text-[11px] group-hover:text-[#dfba73] transition-colors">{cli.nombre} {fullApellidos}</span>
+                              </Link>
                             </td>
-                            <td className="py-2 text-zinc-300 text-[11px] whitespace-nowrap">Retiro por Desempleo</td>
-                            <td className="py-2 text-zinc-400 text-[11px] whitespace-nowrap">Expediente creado</td>
+                            <td className="py-2 text-zinc-300 text-[11px] whitespace-nowrap">{tramiteText}</td>
+                            <td className="py-2 text-zinc-400 text-[11px] whitespace-nowrap">Expediente actualizado</td>
                             <td className="py-2 text-right whitespace-nowrap">
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                En proceso
+                              <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border ${stConfig.badgeClass}`}>
+                                {stConfig.label}
                               </span>
                             </td>
                           </tr>
@@ -353,40 +405,49 @@ export default function DashboardPage() {
               </div>
 
               {recentClientes.length === 0 ? (
-                <p className="text-[11px] text-zinc-500 py-2.5 text-center">No hay expedientes recientes</p>
+                <p className="text-[11px] text-zinc-500 py-2.5 text-center">
+                  {loading ? 'Cargando expedientes...' : 'No hay expedientes recientes'}
+                </p>
               ) : (
                 <div className="space-y-2">
-                  {recentClientes.slice(0, 3).map((cli, idx) => {
+                  {recentClientes.slice(0, 4).map((cli) => {
                     const fullApellidos = [cli.apellido_paterno, cli.apellido_materno].filter(Boolean).join(' ') || cli.apellidos || '';
-                    const statusList = [
-                      { label: 'En proceso', style: 'bg-amber-400/20 text-amber-300 border-amber-400/30', tramite: 'Retiro por Desempleo', color: 'bg-emerald-400' },
-                      { label: 'Documentación', style: 'bg-amber-200/20 text-amber-200 border-amber-200/30', tramite: 'Mejoravit Infonavit', color: 'bg-rose-400' },
-                      { label: 'En revisión', style: 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30', tramite: 'Alta Médica IMSS', color: 'bg-blue-400' },
-                    ];
-                    const st = statusList[idx % statusList.length];
+                    const tramites = clientesTramitesMap[cli.id] || [];
+                    const tramiteText = tramites.includes('retiro_desempleo')
+                      ? 'Retiro por Desempleo'
+                      : tramites.includes('mejoravit')
+                      ? 'Mejoravit Infonavit'
+                      : tramites.includes('alta_medica')
+                      ? 'Alta Médica IMSS'
+                      : 'Expediente General';
+                    const stConfig = getEstadoClienteConfig(cli.estado_cliente);
 
                     return (
-                      <div key={cli.id} className="p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-800/50 border border-zinc-800/60 transition-all flex items-center justify-between gap-2">
+                      <Link
+                        key={cli.id}
+                        href={`/dashboard/clientes?clienteId=${cli.id}`}
+                        className="p-2 rounded-lg bg-zinc-900/40 hover:bg-zinc-800/50 border border-zinc-800/60 transition-all flex items-center justify-between gap-2 block group"
+                      >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-7 h-7 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-[11px] text-zinc-200 shrink-0">
                             {cli.nombre.charAt(0).toUpperCase()}
                           </div>
                           <div className="truncate">
-                            <h4 className="text-[11px] font-bold text-white truncate">
+                            <h4 className="text-[11px] font-bold text-white group-hover:text-[#dfba73] transition-colors truncate">
                               {cli.nombre} {fullApellidos}
                             </h4>
                             <div className="flex items-center gap-1.5 text-[9px] text-zinc-400 mt-0.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${st.color} shrink-0`} />
-                              <span className="truncate">{st.tramite}</span>
+                              <span className={`w-1.5 h-1.5 rounded-full ${stConfig.dotClass} shrink-0`} />
+                              <span className="truncate">{tramiteText}</span>
                               {cli.estado && <span className="text-zinc-500 truncate">&bull; 📍 {cli.estado}</span>}
                             </div>
                           </div>
                         </div>
 
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border shrink-0 ${st.style}`}>
-                          {st.label}
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold border shrink-0 ${stConfig.badgeClass}`}>
+                          {stConfig.label}
                         </span>
-                      </div>
+                      </Link>
                     );
                   })}
                 </div>

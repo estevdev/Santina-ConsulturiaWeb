@@ -87,3 +87,17 @@ html:not(.dark) body {
   background: rgba(197, 160, 89, 0.5);
 }
 
+/* Protección de reproducción de video: Ocultar botón de descarga nativo */
+video::-internal-media-controls-download-button {
+  display: none !important;
+}
+
+video::-webkit-media-controls-enclosure {
+  overflow: hidden;
+}
+
+video {
+  user-select: none;
+  -webkit-user-select: none;
+}
+

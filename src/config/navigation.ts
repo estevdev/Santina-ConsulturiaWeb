@@ -2,8 +2,6 @@ import { Role } from '@/types/auth';
 import {
   LayoutDashboard,
   FileEdit,
-  Layers,
-  Sparkles,
   Users,
   ShieldAlert,
   FileText,
@@ -86,24 +84,7 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
       },
     ],
   },
-  {
-    title: 'Acceso Rápido',
-    roles: ['admin'], // Sección completa visible solo para Administradores
-    items: [
-      {
-        name: 'Gestor de Presets',
-        href: '/dashboard/pdf-preset-studio?view=list',
-        icon: Layers,
-        roles: ['admin'],
-      },
-      {
-        name: 'Procesador de PDFs',
-        href: '/dashboard/pdf-preset-studio?view=process',
-        icon: Sparkles,
-        roles: ['admin'],
-      },
-    ],
-  },
+
   {
     title: 'Área Cliente',
     roles: ['cliente'], // Exclusivo para clientes

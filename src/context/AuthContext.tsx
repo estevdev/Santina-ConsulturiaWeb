@@ -35,6 +35,8 @@ export const TEST_USERS: (User & { password: string })[] = [
 interface AuthContextType extends AuthState {
   login: (identifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  updateUserData: (updated: Partial<User>) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +48,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  const updateUserData = (updated: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const newUserData = { ...prev, ...updated };
+      if (localStorage.getItem(AUTH_STORAGE_KEY)) {
+        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(newUserData));
+      }
+      return newUserData;
+    });
+  };
+
+  const refreshUser = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+
+        const userRole = (profile?.role || session.user.user_metadata?.role || 'cliente') as User['role'];
+        const userName = profile?.name || session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'Usuario';
+
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email || '',
+          name: userName,
+          role: userRole,
+          avatar: profile?.avatar_url || session.user.user_metadata?.avatar_url,
+        };
+        setUser(userData);
+      }
+    } catch (e) {
+      console.error('Error refrescando usuario:', e);
+    }
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -201,6 +241,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         login,
         logout,
+        updateUserData,
+        refreshUser,
       }}
     >
       {children}

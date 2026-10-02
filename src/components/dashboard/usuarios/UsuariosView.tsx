@@ -24,7 +24,12 @@ import {
   RefreshCw,
   Sparkles,
   Lock,
-  ChevronDown
+  ChevronDown,
+  Eye,
+  EyeOff,
+  Copy,
+  Check,
+  AlertTriangle
 } from 'lucide-react';
 
 export interface UserProfile {
@@ -70,13 +75,23 @@ export default function UsuariosView() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [deletingUser, setDeletingUser] = useState<UserProfile | null>(null);
+  const [changingPasswordUser, setChangingPasswordUser] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPasswordSubmitting, setIsPasswordSubmitting] = useState(false);
 
-  // Form State
+  // Form State (Crear / Editar)
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formRole, setFormRole] = useState<Role>('socios');
   const [formPassword, setFormPassword] = useState('');
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+
+  // Password Change Form State
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isCopiedPassword, setIsCopiedPassword] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -150,6 +165,16 @@ export default function UsuariosView() {
     };
   }, [profiles]);
 
+  // Generador de Contraseñas Seguras
+  const generateStrongPassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*';
+    let pwd = '';
+    for (let i = 0; i < 10; i++) {
+      pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pwd;
+  };
+
   // Manejador de Cambio Rápido de Rol
   const handleQuickRoleChange = async (userId: string, newRole: Role) => {
     const userToUpdate = profiles.find((p) => p.id === userId);
@@ -194,7 +219,17 @@ export default function UsuariosView() {
     setFormPassword('');
   };
 
-  // Guardar (Crear o Editar)
+  // Abrir Modal de Cambio de Contraseña
+  const openPasswordModal = (u: UserProfile) => {
+    setChangingPasswordUser(u);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setIsCopiedPassword(false);
+  };
+
+  // Manejador para Guardar (Crear o Editar)
   const handleSubmitUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formEmail || !formEmail.includes('@')) {
@@ -274,7 +309,54 @@ export default function UsuariosView() {
     }
   };
 
-  // Eliminar Usuario
+  // Manejador para Cambiar Contraseña
+  const handleSubmitChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!changingPasswordUser) return;
+
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('La nueva contraseña debe tener al menos 6 caracteres.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast.error('Las contraseñas no coinciden. Por favor verifícalas.');
+      return;
+    }
+
+    setIsPasswordSubmitting(true);
+    try {
+      const res = await fetch('/api/admin/usuarios', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: changingPasswordUser.id,
+          password: newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success('Contraseña actualizada exitosamente', {
+          description: `Se cambió la contraseña de acceso para "${changingPasswordUser.name || changingPasswordUser.email}".`,
+        });
+        setChangingPasswordUser(null);
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        toast.error('Error al actualizar contraseña', {
+          description: data.error || 'No se pudo actualizar la contraseña.',
+        });
+      }
+    } catch (err: any) {
+      toast.error('Error de red al actualizar contraseña', { description: err.message });
+    } finally {
+      setIsPasswordSubmitting(false);
+    }
+  };
+
+  // Manejador para Eliminar Usuario
   const handleConfirmDelete = async () => {
     if (!deletingUser) return;
     if (deletingUser.id === currentUser?.id) {
@@ -292,8 +374,8 @@ export default function UsuariosView() {
 
       if (res.ok) {
         setProfiles((prev) => prev.filter((p) => p.id !== deletingUser.id));
-        toast.info('Usuario eliminado', {
-          description: `Se removió el acceso de "${deletingUser.name || deletingUser.email}".`,
+        toast.success('Usuario eliminado', {
+          description: `Se removió el acceso y perfil de "${deletingUser.name || deletingUser.email}".`,
         });
         setDeletingUser(null);
       } else {
@@ -342,7 +424,7 @@ export default function UsuariosView() {
               Gestión de Usuarios
             </h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Administra accesos, roles y permisos para asesores, socios y administradores
+              Administra accesos, contraseñas, roles y permisos para asesores, socios y administradores
             </p>
           </div>
         </div>
@@ -364,6 +446,7 @@ export default function UsuariosView() {
               setFormName('');
               setFormEmail('');
               setFormPassword('');
+              setShowCreatePassword(false);
               setFormRole('socios');
               setIsCreateModalOpen(true);
             }}
@@ -524,9 +607,9 @@ export default function UsuariosView() {
                 <tr>
                   <th className="py-3.5 px-4 font-semibold">Usuario</th>
                   <th className="py-3.5 px-4 font-semibold">Rol de Acceso</th>
+                  <th className="py-3.5 px-4 font-semibold">Acciones</th>
                   <th className="py-3.5 px-4 font-semibold hidden md:table-cell">Permisos</th>
                   <th className="py-3.5 px-4 font-semibold hidden sm:table-cell">Fecha de Alta</th>
-                  <th className="py-3.5 px-4 font-semibold text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-zinc-800">
@@ -599,6 +682,42 @@ export default function UsuariosView() {
                         </div>
                       </td>
 
+                      {/* Acciones */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-1">
+                          {/* Cambiar Contraseña */}
+                          <button
+                            type="button"
+                            onClick={() => openPasswordModal(u)}
+                            className="p-1.5 hover:bg-amber-500/15 dark:hover:bg-amber-500/20 text-slate-400 hover:text-amber-500 rounded-lg transition-colors cursor-pointer"
+                            title="Cambiar contraseña"
+                          >
+                            <KeyRound className="w-4 h-4" />
+                          </button>
+
+                          {/* Editar Usuario */}
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(u)}
+                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
+                            title="Editar usuario"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+
+                          {/* Eliminar Usuario */}
+                          <button
+                            type="button"
+                            onClick={() => setDeletingUser(u)}
+                            disabled={isCurrent}
+                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isCurrent ? 'No puedes eliminar tu propio usuario' : 'Eliminar usuario'}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+
                       {/* Permisos Descripción */}
                       <td className="py-3 px-4 hidden md:table-cell">
                         <span className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs block truncate" title={roleConfig.description}>
@@ -615,29 +734,6 @@ export default function UsuariosView() {
                               year: 'numeric',
                             })
                           : 'Preconfigurado'}
-                      </td>
-
-                      {/* Acciones */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(u)}
-                            className="p-1.5 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-lg transition-colors cursor-pointer"
-                            title="Editar usuario"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingUser(u)}
-                            disabled={isCurrent}
-                            className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-slate-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                            title={isCurrent ? 'No puedes eliminar tu propio usuario' : 'Eliminar usuario'}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
                       </td>
                     </tr>
                   );
@@ -700,20 +796,42 @@ export default function UsuariosView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Contraseña Inicial *
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Contraseña Inicial *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const pwd = generateStrongPassword();
+                      setFormPassword(pwd);
+                      setShowCreatePassword(true);
+                      navigator.clipboard?.writeText(pwd);
+                      toast.success('Contraseña generada y copiada al portapapeles');
+                    }}
+                    className="text-[11px] text-[#c5a059] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Generar aleatoria</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <input
-                    type="text"
+                    type={showCreatePassword ? 'text' : 'password'}
                     required
                     minLength={6}
                     value={formPassword}
                     onChange={(e) => setFormPassword(e.target.value)}
                     placeholder="Mínimo 6 caracteres"
-                    className="w-full bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#c5a059]"
+                    className="w-full bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl pl-3 pr-10 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#c5a059]"
                   />
-                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                  <button
+                    type="button"
+                    onClick={() => setShowCreatePassword(!showCreatePassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    {showCreatePassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
 
@@ -880,6 +998,37 @@ export default function UsuariosView() {
                 </div>
               </div>
 
+              {/* Acciones Rápidas Complementarias */}
+              <div className="pt-2 pb-1 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = editingUser;
+                    setEditingUser(null);
+                    openPasswordModal(target);
+                  }}
+                  className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 font-medium cursor-pointer"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>Cambiar contraseña</span>
+                </button>
+
+                {editingUser.id !== currentUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const target = editingUser;
+                      setEditingUser(null);
+                      setDeletingUser(target);
+                    }}
+                    className="flex items-center gap-1.5 text-rose-500 hover:text-rose-600 dark:hover:text-rose-400 font-medium cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Eliminar usuario</span>
+                  </button>
+                )}
+              </div>
+
               <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
@@ -902,6 +1051,172 @@ export default function UsuariosView() {
         </div>
       )}
 
+      {/* Modal Cambiar Contraseña */}
+      {changingPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-500 border border-amber-500/20">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                    Cambiar Contraseña
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Establece una nueva clave de acceso
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setChangingPasswordUser(null)}
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tarjeta Resumen del Usuario */}
+            <div className="bg-slate-50 dark:bg-zinc-800/60 p-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-[#c5a059]/20 text-[#c5a059] flex items-center justify-center font-bold text-xs shrink-0">
+                  {(changingPasswordUser.name || changingPasswordUser.email).substring(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                    {changingPasswordUser.name || 'Sin nombre'}
+                  </p>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {changingPasswordUser.email}
+                  </p>
+                </div>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${ROLE_INFO[changingPasswordUser.role]?.badgeClass}`}>
+                {ROLE_INFO[changingPasswordUser.role]?.label}
+              </span>
+            </div>
+
+            {/* Formulario de Contraseña */}
+            <form onSubmit={handleSubmitChangePassword} className="space-y-3.5">
+              {/* Botón de Generar Contraseña */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Nueva Contraseña *
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const generated = generateStrongPassword();
+                    setNewPassword(generated);
+                    setConfirmPassword(generated);
+                    setShowNewPassword(true);
+                    setShowConfirmPassword(true);
+                    navigator.clipboard?.writeText(generated);
+                    setIsCopiedPassword(true);
+                    setTimeout(() => setIsCopiedPassword(false), 2500);
+                    toast.success('Contraseña generada y copiada al portapapeles');
+                  }}
+                  className="flex items-center gap-1.5 text-xs text-[#c5a059] hover:underline font-medium cursor-pointer"
+                >
+                  {isCopiedPassword ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-500" />
+                      <span className="text-emerald-500">Copiada</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Generar aleatoria</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {/* Input Nueva Contraseña */}
+              <div className="relative">
+                <input
+                  type={showNewPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 6 caracteres"
+                  className="w-full bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-[#c5a059]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                >
+                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+
+              {/* Input Confirmar Contraseña */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Confirmar Nueva Contraseña *
+                </label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repite la nueva contraseña"
+                    className={`w-full bg-slate-50 dark:bg-zinc-800/80 border rounded-xl pl-3 pr-10 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 ${
+                      confirmPassword && newPassword !== confirmPassword
+                        ? 'border-rose-400 focus:ring-rose-400'
+                        : 'border-slate-200 dark:border-zinc-700 focus:ring-[#c5a059]'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {confirmPassword && newPassword !== confirmPassword && (
+                  <p className="text-[11px] text-rose-500 mt-1 flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>Las contraseñas no coinciden</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Botones de Acción */}
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setChangingPasswordUser(null)}
+                  className="px-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPasswordSubmitting || !newPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                  className="flex items-center gap-2 bg-[#c5a059] hover:bg-[#b08d4b] text-white px-5 py-2 rounded-xl text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  {isPasswordSubmitting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="w-4 h-4" />
+                  )}
+                  <span>Actualizar Contraseña</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Modal Confirmar Eliminación */}
       {deletingUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
@@ -909,23 +1224,40 @@ export default function UsuariosView() {
             <div className="w-12 h-12 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6" />
             </div>
+
             <div className="text-center space-y-1">
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 ¿Eliminar este Usuario?
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Se removerán los permisos de acceso de{' '}
-                <strong className="text-slate-800 dark:text-slate-200">
-                  {deletingUser.name || deletingUser.email}
-                </strong>
-                . Esta acción no se puede deshacer.
+                Esta acción eliminará de forma permanente el acceso al sistema y la cuenta de:
               </p>
             </div>
-            <div className="flex items-center gap-2 pt-2">
+
+            {/* Ficha del usuario a eliminar */}
+            <div className="bg-slate-50 dark:bg-zinc-800/70 p-3 rounded-2xl border border-slate-200/80 dark:border-zinc-800 flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                  {deletingUser.name || 'Sin nombre'}
+                </p>
+                <p className="text-[11px] text-slate-400 truncate">
+                  {deletingUser.email}
+                </p>
+              </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border shrink-0 ${ROLE_INFO[deletingUser.role]?.badgeClass}`}>
+                {ROLE_INFO[deletingUser.role]?.label}
+              </span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-[11px] text-rose-600 dark:text-rose-400 text-center">
+              ⚠️ Esta acción no se puede deshacer. Se removerán las sesiones activas y credenciales del usuario.
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
               <button
                 type="button"
                 onClick={() => setDeletingUser(null)}
-                className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl"
+                className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl cursor-pointer"
               >
                 Cancelar
               </button>
@@ -933,7 +1265,7 @@ export default function UsuariosView() {
                 type="button"
                 onClick={handleConfirmDelete}
                 disabled={isSubmitting}
-                className="flex-1 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl text-xs font-semibold shadow-sm transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Sí, Eliminar</span>

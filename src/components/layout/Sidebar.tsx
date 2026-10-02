@@ -11,6 +11,7 @@ import {
   ChevronRight,
   FileText,
   X,
+  Settings,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -123,19 +124,29 @@ export default function Sidebar({
       {/* User Profile & Collapse Bar */}
       <div className="p-3 border-t border-zinc-800 bg-zinc-900/60 shrink-0 space-y-2">
         {/* User Card */}
-        <div
-          className={`flex items-center gap-3 p-2 rounded-xl bg-zinc-800/60 border border-zinc-700/50 ${
+        <Link
+          href="/dashboard/profile"
+          onClick={onMobileClose}
+          className={`flex items-center gap-2.5 p-2 rounded-xl bg-zinc-800/60 hover:bg-zinc-800 border border-zinc-700/50 hover:border-[#c5a059]/40 transition-all cursor-pointer group ${
             !isOpen && 'justify-center'
           }`}
+          title={isOpen ? 'Ir a mi perfil y configuración' : `${user?.name || 'Usuario'} - Perfil`}
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#c5a059] to-[#dfba73] flex items-center justify-center text-zinc-950 font-bold text-sm shrink-0 shadow-sm">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#c5a059] to-[#dfba73] flex items-center justify-center text-zinc-950 font-bold text-sm shrink-0 shadow-sm overflow-hidden">
+            {user?.avatar ? (
+              <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+            ) : (
+              user?.name ? user.name.charAt(0).toUpperCase() : 'U'
+            )}
           </div>
           {isOpen && (
             <div className="flex-1 truncate">
-              <p className="text-xs font-semibold text-white truncate leading-tight">
-                {user?.name || 'Usuario'}
-              </p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Settings className="w-3.5 h-3.5 text-[#c5a059] group-hover:rotate-45 transition-transform shrink-0" />
+                <p className="text-xs font-semibold text-white group-hover:text-[#dfba73] transition-colors truncate leading-tight">
+                  {user?.name || 'Usuario'}
+                </p>
+              </div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-[10px] text-zinc-400 uppercase font-medium">
@@ -144,7 +155,7 @@ export default function Sidebar({
               </div>
             </div>
           )}
-        </div>
+        </Link>
 
         {/* Action Buttons */}
         <div className="flex items-center gap-1">

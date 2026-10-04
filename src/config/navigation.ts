@@ -11,6 +11,7 @@ import {
   Radar,
   GraduationCap,
   Inbox,
+  FolderArchive,
   LucideIcon
 } from 'lucide-react';
 
@@ -109,6 +110,13 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
     title: 'Administración',
     roles: ['admin', 'socios'], // Exclusivo para administradores y socios de dirección
     items: [
+      {
+        name: 'Explorador de Archivos',
+        href: '/dashboard/archivos',
+        icon: FolderArchive,
+        badge: 'Admin',
+        roles: ['admin'],
+      },
       {
         name: 'Gestión de Usuarios',
         href: '/dashboard/usuarios',

@@ -170,12 +170,23 @@ export async function POST(req: NextRequest) {
 
     const publicUrl = publicUrlData.publicUrl;
 
-    // 4. Actualizar tabla de Trámites
+    // 4. Registrar la subida del cliente en documentos_seguimiento_cliente (pendiente de verificación del asesor)
     const currentTramiteDocs = tramite.documentos_urls || {};
-    const updatedTramiteDocs = { ...currentTramiteDocs, [reqKey]: publicUrl };
+    const seguimientoUploads = { ...(currentTramiteDocs.documentos_seguimiento_cliente || {}) };
+
+    seguimientoUploads[reqKey] = {
+      url: publicUrl,
+      subido_en: new Date().toISOString(),
+      nombre_archivo: file.name,
+      estado: 'pendiente', // Esperando que el asesor lo verifique
+    };
+
+    const updatedTramiteDocs = {
+      ...currentTramiteDocs,
+      documentos_seguimiento_cliente: seguimientoUploads,
+    };
 
     const tramiteUpdatePayload: Record<string, any> = {
-      [reqKey]: true,
       documentos_urls: updatedTramiteDocs,
       updated_at: new Date().toISOString(),
     };
@@ -193,30 +204,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 5. Actualizar registro de Cliente (documentos_urls y atajos directos)
+    // 5. Registrar también en el expediente del cliente para sincronización
     const currentCliDocs = cliente.documentos_urls || {};
-    const clientUpdates: Record<string, any> = {
-      documentos_urls: { ...currentCliDocs, [reqKey]: publicUrl },
-      updated_at: new Date().toISOString(),
-    };
-
-    if (['req_ine_vigente', 'req_ine_normal', 'req_identificacion_oficial'].includes(reqKey)) {
-      clientUpdates.ine_completa_url = publicUrl;
-    }
-    if (['req_curp', 'req_curp_actualizada', 'req_curp_validada'].includes(reqKey)) {
-      clientUpdates.curp_document_url = publicUrl;
-    }
+    const clientSeguimiento = { ...(currentCliDocs.documentos_seguimiento_cliente || {}) };
+    clientSeguimiento[reqKey] = seguimientoUploads[reqKey];
 
     await supabase
       .from('clientes')
-      .update(clientUpdates)
+      .update({
+        documentos_urls: {
+          ...currentCliDocs,
+          documentos_seguimiento_cliente: clientSeguimiento,
+        },
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', cliente.id);
 
     return NextResponse.json({
       success: true,
-      message: 'Documento subido y registrado exitosamente.',
+      message: 'Documento enviado exitosamente. Ha quedado en espera de verificación por parte de tu asesor.',
       url: publicUrl,
       reqKey,
+      subidoPor: 'cliente',
+      estadoVerificacion: 'pendiente',
       updated_at: tramiteUpdatePayload.updated_at,
     });
   } catch (error: any) {

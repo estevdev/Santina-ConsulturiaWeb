@@ -30,6 +30,7 @@ import {
   List,
   ChevronLeft,
   ChevronRight,
+  Camera,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { toast } from 'sonner';
@@ -37,12 +38,13 @@ import { createClient } from '@/utils/supabase/client';
 import { ModalNotification } from '@/components/ui/ModalNotification';
 import { Cliente } from '@/types/cliente';
 import { Preset } from '@/types/preset';
+import { generateInmuebleFotosPdf } from '@/utils/inmuebleFotosPdfGenerator';
 
 export interface DocumentCategoryDef {
   key: string;
   label: string;
   badge: string;
-  targetTramite?: 'mejoravit' | 'retiro' | 'altaMedica' | 'cliente';
+  targetTramite?: 'mejoravit' | 'retiro' | 'altaMedica' | 'cliente' | 'ninguno';
   reqKey?: string;
 }
 
@@ -57,7 +59,8 @@ export const DOCUMENT_CATEGORIES: DocumentCategoryDef[] = [
   
   // Trámite Mejoravit (Infonavit)
   { key: 'estado_cuenta_bancario', label: '🏦 Estado de Cuenta Bancario', badge: 'Edo. Cuenta Bancario', targetTramite: 'mejoravit', reqKey: 'req_estado_cuenta_bancario' },
-  { key: 'fotos_inmueble', label: '📸 Fotos del Inmueble (5) / Vivienda', badge: 'Fotos Inmueble (5)', targetTramite: 'mejoravit', reqKey: 'req_fotos_inmueble_5' },
+  { key: 'fotos_inmueble', label: '📸 Fotos del Inmueble (PDF Compilado)', badge: 'Fotos Inmueble PDF', targetTramite: 'mejoravit', reqKey: 'req_fotos_inmueble_5' },
+  { key: 'foto_inmueble', label: '🖼️ Foto de la Vivienda (Imagen Individual)', badge: 'Foto Vivienda', targetTramite: 'mejoravit', reqKey: 'fotos_inmueble_urls' },
   { key: 'cita_infonavit', label: '📅 Comprobante de Cita Infonavit', badge: 'Cita Infonavit', targetTramite: 'mejoravit', reqKey: 'comprobante_cita_infonavit' },
   { key: 'tabla_amortizacion', label: '📊 Tabla de Amortización Infonavit', badge: 'Tabla Amortización', targetTramite: 'mejoravit', reqKey: 'tabla_amortizacion' },
 
@@ -94,8 +97,11 @@ export const DOCUMENT_CATEGORIES: DocumentCategoryDef[] = [
   { key: 'cartilla_salud', label: '🩺 Cartilla Nacional de Salud', badge: 'Cartilla de Salud', targetTramite: 'altaMedica', reqKey: 'req_cartilla_nacional_salud' },
   { key: 'fotografia_infantil', label: '👤 Fotografía Infantil', badge: 'Fotografía Infantil', targetTramite: 'altaMedica', reqKey: 'req_fotografia_infantil' },
 
-  // Omitir
-  { key: 'ignorar', label: '🚫 Ignorar (No subir)', badge: 'Ignorar' },
+  // Archivos Adicionales / Varios
+  { key: 'archivo_adicional', label: '📁 Archivo Adicional / Otro', badge: 'Doc. Adicional', targetTramite: 'cliente', reqKey: 'documentos_adicionales' },
+
+  // Omitir (solo cuando el usuario decide excluirlo voluntariamente)
+  { key: 'ignorar', label: '🚫 Ignorar (No subir)', badge: 'Ignorado', targetTramite: 'ninguno' },
 ];
 
 export function classifyFilename(rawFilename: string): string {
@@ -106,6 +112,10 @@ export function classifyFilename(rawFilename: string): string {
     .replace(/[^a-z0-9]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  const ext = rawFilename.split('.').pop()?.toLowerCase() || '';
+  const isImage = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'heic', 'avif'].includes(ext);
+  const isPdf = ext === 'pdf';
 
   // 1. Tabla de amortización
   if (clean.includes('tabla amortizacion') || clean.includes('amortizacion')) {
@@ -151,8 +161,28 @@ export function classifyFilename(rawFilename: string): string {
   }
 
   // 6. Fotos vivienda / inmueble
-  if (clean.includes('fotos') || clean.includes('vivienda') || clean.includes('inmueble') || clean.includes('fachada')) {
-    return 'fotos_inmueble';
+  const isViviendaKeywords =
+    clean.includes('vivienda') ||
+    clean.includes('inmueble') ||
+    clean.includes('fachada') ||
+    clean.includes('casa') ||
+    clean.includes('sala') ||
+    clean.includes('comedor') ||
+    clean.includes('cocina') ||
+    clean.includes('bano') ||
+    clean.includes('banio') ||
+    clean.includes('recamara') ||
+    clean.includes('patio') ||
+    clean.includes('cochera') ||
+    clean.includes('interior') ||
+    clean.includes('exterior') ||
+    (clean.includes('foto') && !clean.includes('infantil'));
+
+  if (isViviendaKeywords) {
+    if (isPdf) {
+      return 'fotos_inmueble'; // PDF compilado de fotos de inmueble
+    }
+    return 'foto_inmueble'; // Imagen individual de la vivienda
   }
 
   // 7. Estado de cuenta bancario
@@ -256,8 +286,8 @@ export function classifyFilename(rawFilename: string): string {
     return 'cartilla_salud';
   }
 
-  // 20. Fotografía
-  if (clean.includes('infantil') || clean.includes('foto') || clean.includes('fotografia')) {
+  // 20. Fotografía infantil
+  if (clean.includes('infantil')) {
     return 'fotografia_infantil';
   }
 
@@ -266,7 +296,33 @@ export function classifyFilename(rawFilename: string): string {
     return clean.includes('retiro') ? 'contrato_retiro' : 'contrato_mejoravit';
   }
 
-  return 'ignorar';
+  // 22. Si es una IMAGEN y no coincidió con ninguna regla previa:
+  // Se clasifica como foto de la vivienda para que pueda compilarse automáticamente en el PDF de fotos
+  if (isImage) {
+    return 'foto_inmueble';
+  }
+
+  // 23. Archivos no identificados de cualquier formato:
+  // "los archivos no identificados aun asi subelos y relacionalos con el cliente no importa el formato que sean"
+  return 'archivo_adicional';
+}
+
+export function getMimeTypeFromFilename(filename: string): string {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'application/pdf';
+  if (lower.endsWith('.png')) return 'image/png';
+  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+  if (lower.endsWith('.webp')) return 'image/webp';
+  if (lower.endsWith('.gif')) return 'image/gif';
+  if (lower.endsWith('.bmp')) return 'image/bmp';
+  if (lower.endsWith('.svg')) return 'image/svg+xml';
+  if (lower.endsWith('.docx')) return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if (lower.endsWith('.doc')) return 'application/msword';
+  if (lower.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  if (lower.endsWith('.xls')) return 'application/vnd.ms-excel';
+  if (lower.endsWith('.txt')) return 'text/plain';
+  if (lower.endsWith('.xml')) return 'application/xml';
+  return 'application/octet-stream';
 }
 
 export interface ImportItem {
@@ -284,6 +340,7 @@ interface CategorySearchDropdownProps {
   onChange: (newCategory: string) => void;
   disabled?: boolean;
   fullWidth?: boolean;
+  isImage?: boolean;
 }
 
 export function CategorySearchDropdown({
@@ -291,6 +348,7 @@ export function CategorySearchDropdown({
   onChange,
   disabled = false,
   fullWidth = false,
+  isImage = false,
 }: CategorySearchDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -341,14 +399,23 @@ export function CategorySearchDropdown({
   };
 
   const filteredCategories = useMemo(() => {
-    if (!searchQuery.trim()) return DOCUMENT_CATEGORIES;
+    let cats = DOCUMENT_CATEGORIES;
+    if (!searchQuery.trim()) {
+      if (isImage) {
+        // Para imágenes, colocar foto_inmueble al principio para fácil selección
+        const fotoInmueble = cats.find((c) => c.key === 'foto_inmueble');
+        const otros = cats.filter((c) => c.key !== 'foto_inmueble');
+        return fotoInmueble ? [fotoInmueble, ...otros] : cats;
+      }
+      return cats;
+    }
     const cleanQuery = searchQuery
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
 
-    return DOCUMENT_CATEGORIES.filter((cat) => {
+    return cats.filter((cat) => {
       const cleanLabel = cat.label
         .toLowerCase()
         .normalize('NFD')
@@ -365,7 +432,7 @@ export function CategorySearchDropdown({
         cleanKey.includes(cleanQuery)
       );
     });
-  }, [searchQuery]);
+  }, [searchQuery, isImage]);
 
   const currentCat = DOCUMENT_CATEGORIES.find((c) => c.key === value) || {
     key: value,
@@ -440,6 +507,7 @@ export function CategorySearchDropdown({
               filteredCategories.map((cat) => {
                 const isSelected = cat.key === value;
                 const isIgnorar = cat.key === 'ignorar';
+                const isSuggestedImage = isImage && cat.key === 'foto_inmueble';
 
                 return (
                   <button
@@ -455,10 +523,19 @@ export function CategorySearchDropdown({
                         ? 'bg-[#c5a059]/20 text-[#dfba73] font-bold border border-[#c5a059]/30'
                         : isIgnorar
                         ? 'text-zinc-400 hover:bg-rose-950/30 hover:text-rose-300'
+                        : isSuggestedImage
+                        ? 'bg-[#c5a059]/10 text-amber-200 hover:bg-[#c5a059]/20 font-semibold'
                         : 'text-zinc-200 hover:bg-zinc-800/80 hover:text-white'
                     }`}
                   >
-                    <span className="truncate">{cat.label}</span>
+                    <div className="flex items-center gap-1.5 min-w-0 truncate">
+                      <span className="truncate">{cat.label}</span>
+                      {isSuggestedImage && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-[#c5a059]/30 text-[#dfba73] font-bold shrink-0">
+                          Foto sugerida
+                        </span>
+                      )}
+                    </div>
                     {isSelected && (
                       <Check className="w-3.5 h-3.5 text-[#dfba73] shrink-0" />
                     )}
@@ -625,13 +702,10 @@ export const ImageThumbnail = React.memo(function ImageThumbnail({ file }: { fil
 
 // Selector dinámico de miniatura
 export function FileThumbnail({ file }: { file: File }) {
-  const lower = file.name.toLowerCase();
-  const isPdf = lower.endsWith('.pdf');
+  const isPdf = file.name.toLowerCase().endsWith('.pdf');
   const isImage =
-    lower.endsWith('.png') ||
-    lower.endsWith('.jpg') ||
-    lower.endsWith('.jpeg') ||
-    lower.endsWith('.webp');
+    file.type.startsWith('image/') ||
+    /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(file.name);
 
   if (isPdf) {
     return <PdfThumbnail file={file} />;
@@ -639,10 +713,11 @@ export function FileThumbnail({ file }: { file: File }) {
   if (isImage) {
     return <ImageThumbnail file={file} />;
   }
+  const ext = file.name.split('.').pop()?.toUpperCase() || 'DOC';
   return (
     <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-950 text-zinc-400 p-3">
       <FileText className="w-10 h-10 text-[#c5a059] mb-1" />
-      <span className="text-[10px] text-zinc-400 font-mono">Archivo</span>
+      <span className="text-[10px] text-zinc-400 font-mono font-bold uppercase">{ext}</span>
     </div>
   );
 }
@@ -713,10 +788,8 @@ export function FilePreviewLightbox({
   const lower = item.originalName.toLowerCase();
   const isPdf = lower.endsWith('.pdf');
   const isImage =
-    lower.endsWith('.png') ||
-    lower.endsWith('.jpg') ||
-    lower.endsWith('.jpeg') ||
-    lower.endsWith('.webp');
+    item.file.type.startsWith('image/') ||
+    /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(item.originalName);
   const catDef = DOCUMENT_CATEGORIES.find((c) => c.key === item.category);
 
   const handleDownload = () => {
@@ -800,6 +873,7 @@ export function FilePreviewLightbox({
                 value={item.category}
                 onChange={(newCat) => onSelectCategory(item.id, newCat)}
                 disabled={item.status === 'success' || item.status === 'uploading'}
+                isImage={isImage}
               />
             </div>
 
@@ -924,16 +998,13 @@ export function ImportarArchivosModal({
       return (
         !f.name.startsWith('.') &&
         !f.name.startsWith('__MACOSX') &&
-        (lower.endsWith('.pdf') ||
-          lower.endsWith('.png') ||
-          lower.endsWith('.jpg') ||
-          lower.endsWith('.jpeg') ||
-          lower.endsWith('.webp'))
+        !lower.endsWith('.ds_store') &&
+        !lower.endsWith('thumbs.db')
       );
     });
 
     if (validFiles.length === 0) {
-      toast.warning('No se encontraron archivos válidos (PDF o imágenes) en la selección.');
+      toast.warning('No se encontraron archivos válidos en la selección.');
       return;
     }
 
@@ -950,7 +1021,7 @@ export function ImportarArchivosModal({
     });
 
     setItems((prev) => [...prev, ...newItems]);
-    toast.success(`Se agregaron ${newItems.length} archivos para clasificación.`);
+    toast.success(`Se agregaron ${newItems.length} archivo(s) para clasificación.`);
   };
 
   // Manejador para Carpeta
@@ -993,11 +1064,7 @@ export function ImportarArchivosModal({
 
         const blob = await entry.async('blob');
         const filename = relativePath.split('/').pop() || entry.name;
-        let mimeType = 'application/pdf';
-        const lower = filename.toLowerCase();
-        if (lower.endsWith('.png')) mimeType = 'image/png';
-        else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mimeType = 'image/jpeg';
-        else if (lower.endsWith('.webp')) mimeType = 'image/webp';
+        const mimeType = getMimeTypeFromFilename(filename);
 
         extracted.push(new File([blob], filename, { type: mimeType }));
       }
@@ -1036,11 +1103,7 @@ export function ImportarArchivosModal({
           }
           const blob = await entry.async('blob');
           const filename = relativePath.split('/').pop() || entry.name;
-          let mimeType = 'application/pdf';
-          const lower = filename.toLowerCase();
-          if (lower.endsWith('.png')) mimeType = 'image/png';
-          else if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) mimeType = 'image/jpeg';
-          else if (lower.endsWith('.webp')) mimeType = 'image/webp';
+          const mimeType = getMimeTypeFromFilename(filename);
           extracted.push(new File([blob], filename, { type: mimeType }));
         }
         processFiles(extracted);
@@ -1203,6 +1266,61 @@ export function ImportarArchivosModal({
 
       let uploadedSuccessCount = 0;
 
+      // 1.5. Compilación automática del PDF de Fotos de la Vivienda si no se subió directamente
+      const directFotosPdfItem = itemsToUpload.find(
+        (it) => it.category === 'fotos_inmueble' && it.originalName.toLowerCase().endsWith('.pdf')
+      );
+      const fotoInmuebleItems = itemsToUpload.filter((it) => it.category === 'foto_inmueble');
+
+      if (!directFotosPdfItem && fotoInmuebleItems.length > 0) {
+        try {
+          setUploadProgress({
+            current: 0,
+            total: itemsToUpload.length,
+            filename: `Compilando PDF con ${fotoInmuebleItems.length} foto(s) de la vivienda...`,
+          });
+
+          // Convertir cada imagen a DataURL
+          const dataUrls: string[] = await Promise.all(
+            fotoInmuebleItems.map((item) => {
+              return new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(item.file);
+              });
+            })
+          );
+
+          // Generar el archivo PDF consolidado
+          const generatedPdf = await generateInmuebleFotosPdf(
+            dataUrls,
+            `fotos_inmueble_${currentTargetCliente.id}.pdf`
+          );
+
+          // Subir a Storage en bucket 'ine_documents'
+          const compiledPdfPath = `${currentTargetCliente.id}/importados/${Date.now()}_fotos_inmueble_compilado.pdf`;
+          const { error: pdfUploadErr } = await supabase.storage
+            .from('ine_documents')
+            .upload(compiledPdfPath, generatedPdf, { upsert: true });
+
+          if (!pdfUploadErr) {
+            const { data: { publicUrl: compiledPdfUrl } } = supabase.storage
+              .from('ine_documents')
+              .getPublicUrl(compiledPdfPath);
+
+            clientDocs.req_fotos_inmueble_5 = compiledPdfUrl;
+            if (trMejoravit) {
+              mejoravitDocs.req_fotos_inmueble_5 = compiledPdfUrl;
+              mejoravitUpdates.req_fotos_inmueble_5 = true;
+            }
+          }
+        } catch (pdfCompileErr: any) {
+          console.error('Error al generar PDF de fotos de vivienda:', pdfCompileErr);
+          toast.warning('No se pudo compilar el PDF de fotos automáticamente: ' + (pdfCompileErr.message || 'Error'));
+        }
+      }
+
       // 2. Iterar y subir cada archivo
       for (let i = 0; i < itemsToUpload.length; i++) {
         const item = itemsToUpload[i];
@@ -1300,6 +1418,21 @@ export function ImportarArchivosModal({
             if (trMejoravit) {
               mejoravitDocs.req_fotos_inmueble_5 = publicUrl;
               mejoravitUpdates.req_fotos_inmueble_5 = true;
+            }
+          } else if (cat === 'foto_inmueble') {
+            if (!Array.isArray(clientDocs.fotos_inmueble_urls)) {
+              clientDocs.fotos_inmueble_urls = [];
+            }
+            if (!clientDocs.fotos_inmueble_urls.includes(publicUrl)) {
+              clientDocs.fotos_inmueble_urls.push(publicUrl);
+            }
+            if (trMejoravit) {
+              if (!Array.isArray(mejoravitDocs.fotos_inmueble_urls)) {
+                mejoravitDocs.fotos_inmueble_urls = [];
+              }
+              if (!mejoravitDocs.fotos_inmueble_urls.includes(publicUrl)) {
+                mejoravitDocs.fotos_inmueble_urls.push(publicUrl);
+              }
             }
           } else if (cat === 'cita_infonavit') {
             clientDocs.comprobante_cita_infonavit = publicUrl;
@@ -1419,6 +1552,23 @@ export function ImportarArchivosModal({
               altaMedicaDocs.req_fotografia_infantil = publicUrl;
               altaMedicaUpdates.req_fotografia_infantil = true;
             }
+          } else if (cat === 'archivo_adicional') {
+            if (!Array.isArray(clientDocs.documentos_adicionales)) {
+              clientDocs.documentos_adicionales = [];
+            }
+            clientDocs.documentos_adicionales.push({
+              id: item.id,
+              nombre: item.originalName,
+              url: publicUrl,
+              tipo: item.file.type || 'archivo',
+              tamano: item.file.size,
+              subido_en: new Date().toISOString(),
+            });
+            const safeName = item.originalName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+            clientDocs[`doc_extra_${safeName}`] = publicUrl;
+          } else {
+            // Cualquier otro archivo no clasificado explícitamente se vincula al cliente
+            clientDocs[cat] = publicUrl;
           }
 
           uploadedSuccessCount++;
@@ -1500,6 +1650,43 @@ export function ImportarArchivosModal({
     if (showIgnored) return items;
     return items.filter((it) => it.category !== 'ignorar');
   }, [items, showIgnored]);
+
+  const imageItems = useMemo(() => {
+    return items.filter(
+      (it) =>
+        it.file.type.startsWith('image/') ||
+        /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(it.originalName)
+    );
+  }, [items]);
+
+  const fotoInmuebleItems = useMemo(() => {
+    return items.filter((it) => it.category === 'foto_inmueble');
+  }, [items]);
+
+  const hasDirectFotosPdf = useMemo(() => {
+    return items.some(
+      (it) => it.category === 'fotos_inmueble' && it.originalName.toLowerCase().endsWith('.pdf')
+    );
+  }, [items]);
+
+  const nonFotoImagesCount = useMemo(() => {
+    return imageItems.filter((it) => it.category !== 'foto_inmueble').length;
+  }, [imageItems]);
+
+  const handleMarkAllImagesAsVivienda = () => {
+    setItems((prev) =>
+      prev.map((it) => {
+        const isImg =
+          it.file.type.startsWith('image/') ||
+          /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(it.originalName);
+        if (isImg && it.category !== 'foto_inmueble') {
+          return { ...it, category: 'foto_inmueble' };
+        }
+        return it;
+      })
+    );
+    toast.success(`Se marcaron ${imageItems.length} imágenes como Fotos de la Vivienda.`);
+  };
 
   if (!isOpen) return null;
 
@@ -1646,7 +1833,6 @@ export function ImportarArchivosModal({
                     ref={filesInputRef}
                     type="file"
                     multiple
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.zip"
                     className="hidden"
                     onChange={handleFilesSelect}
                   />
@@ -1732,7 +1918,6 @@ export function ImportarArchivosModal({
                         ref={filesInputRef}
                         type="file"
                         multiple
-                        accept=".pdf,.png,.jpg,.jpeg,.webp,.zip"
                         className="hidden"
                         onChange={handleFilesSelect}
                       />
@@ -1831,6 +2016,40 @@ export function ImportarArchivosModal({
                       )}
                     </button>
                   )}
+
+                  {/* Botón rápido para marcar imágenes detectadas como fotos de vivienda */}
+                  {imageItems.length > 0 && nonFotoImagesCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleMarkAllImagesAsVivienda}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#c5a059]/15 text-[#dfba73] hover:bg-[#c5a059]/25 border border-[#c5a059]/30 transition-all cursor-pointer shadow-sm"
+                      title="Marcar todas las imágenes detectadas como fotos de vivienda"
+                    >
+                      <Camera className="w-3 h-3 text-[#c5a059]" />
+                      <span>Marcar imágenes como Fotos Vivienda ({imageItems.length})</span>
+                    </button>
+                  )}
+
+                  {/* Indicador de compilación automática de PDF para fotos de inmueble */}
+                  {fotoInmuebleItems.length > 0 && !hasDirectFotosPdf && (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-950/40 text-emerald-300 border border-emerald-800/60"
+                      title="Al subir, estas fotos se compilarán en un solo PDF consolidado de Fotos de Vivienda y se asignarán al expediente del cliente"
+                    >
+                      <FileCheck className="w-3 h-3 text-emerald-400" />
+                      <span>✨ Se generará PDF automático ({fotoInmuebleItems.length} foto{fotoInmuebleItems.length > 1 ? 's' : ''})</span>
+                    </span>
+                  )}
+
+                  {hasDirectFotosPdf && (
+                    <span
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-950/40 text-cyan-300 border border-cyan-800/60"
+                      title="Se detectó un PDF de fotos cargado directamente; se priorizará ese archivo"
+                    >
+                      <FileCheck className="w-3 h-3 text-cyan-400" />
+                      <span>PDF Directo de Fotos detectado</span>
+                    </span>
+                  )}
                 </div>
 
                 {/* Alternador de Vista (Cuadrícula 5xX vs Lista) */}
@@ -1899,10 +2118,8 @@ export function ImportarArchivosModal({
                     const lower = item.originalName.toLowerCase();
                     const isPdf = lower.endsWith('.pdf');
                     const isImage =
-                      lower.endsWith('.png') ||
-                      lower.endsWith('.jpg') ||
-                      lower.endsWith('.jpeg') ||
-                      lower.endsWith('.webp');
+                      item.file.type.startsWith('image/') ||
+                      /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(item.originalName);
 
                     return (
                       <div
@@ -2015,6 +2232,7 @@ export function ImportarArchivosModal({
                             value={item.category}
                             onChange={(newCat) => handleCategoryChange(item.id, newCat)}
                             disabled={isUploading || isSuccess}
+                            isImage={isImage}
                             fullWidth
                           />
                         </div>
@@ -2031,6 +2249,9 @@ export function ImportarArchivosModal({
                     const isSuccess = item.status === 'success';
                     const isUploadingThis = item.status === 'uploading';
                     const isError = item.status === 'error';
+                    const isImage =
+                      item.file.type.startsWith('image/') ||
+                      /\.(jpg|jpeg|png|webp|bmp|tiff|heic|avif)$/i.test(item.originalName);
 
                     return (
                       <div
@@ -2109,6 +2330,7 @@ export function ImportarArchivosModal({
                             value={item.category}
                             onChange={(newCat) => handleCategoryChange(item.id, newCat)}
                             disabled={isUploading || isSuccess}
+                            isImage={isImage}
                           />
 
                           {!isSuccess && !isUploading && (

@@ -76,6 +76,13 @@ interface ClienteSeguimientoTimelineProps {
   onDownloadContratosPdf?: () => void;
   downloadingBundle?: 'oficiales' | 'contratos' | 'ambos' | null;
   isMobile?: boolean;
+  onVerifyClientDoc?: (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    fileUrl: string
+  ) => Promise<void>;
+  verifyingDocKey?: string | null;
 }
 
 export function ClienteSeguimientoTimeline({
@@ -103,12 +110,26 @@ export function ClienteSeguimientoTimeline({
   onDownloadOficialesPdf,
   onDownloadContratosPdf,
   downloadingBundle,
+  onVerifyClientDoc,
+  verifyingDocKey,
 }: ClienteSeguimientoTimelineProps) {
   const isAdmin = currentUserRole === 'admin';
   const trMejoravit = clienteTramites.mejoravit?.[0];
   const trRetiro = clienteTramites.retiro?.[0];
   const tramiteId = trMejoravit?.id || trRetiro?.id || '';
   const tipoTramiteActual: 'mejoravit' | 'retiro' = trMejoravit ? 'mejoravit' : 'retiro';
+
+  const getPendingClientDoc = (docUrls: any, reqKey: string) => {
+    const pendingInTramite = docUrls?.documentos_seguimiento_cliente?.[reqKey];
+    if (pendingInTramite && pendingInTramite.estado === 'pendiente') {
+      return pendingInTramite;
+    }
+    const pendingInCliente = (selectedCliente?.documentos_urls as any)?.documentos_seguimiento_cliente?.[reqKey];
+    if (pendingInCliente && pendingInCliente.estado === 'pendiente') {
+      return pendingInCliente;
+    }
+    return null;
+  };
 
   // Estados locales para Paso 1 (Credenciales)
   const [nssInput, setNssInput] = useState(
@@ -835,12 +856,15 @@ export function ClienteSeguimientoTimeline({
                 label="1. INE Normal (Frente y Reverso)"
                 isCompleted={trMejoravit.req_ine_normal}
                 existingDocUrl={trMejoravit.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_ine_normal')}
                 numberTag={1}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_ine_normal`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_ine_normal`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 2. INE Ampliada 200% */}
@@ -851,6 +875,7 @@ export function ClienteSeguimientoTimeline({
                 label="2. INE Ampliada al 200%"
                 isCompleted={trMejoravit.req_ine_ampliada_200}
                 existingDocUrl={trMejoravit.documentos_urls?.req_ine_ampliada_200}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_ine_ampliada_200')}
                 numberTag={2}
                 extraAction={
                   normalIneUrl && isAdmin ? (
@@ -876,10 +901,12 @@ export function ClienteSeguimientoTimeline({
                   ) : null
                 }
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_ine_ampliada_200`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_ine_ampliada_200`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 3. CURP */}
@@ -890,12 +917,15 @@ export function ClienteSeguimientoTimeline({
                 label="3. CURP Actualizada"
                 isCompleted={trMejoravit.req_curp_actualizada}
                 existingDocUrl={trMejoravit.documentos_urls?.req_curp_actualizada || selectedCliente?.curp_document_url}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_curp_actualizada')}
                 numberTag={3}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_curp_actualizada`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_curp_actualizada`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 4. Acta de Nacimiento */}
@@ -906,12 +936,15 @@ export function ClienteSeguimientoTimeline({
                 label="4. Acta de Nacimiento"
                 isCompleted={trMejoravit.req_acta_nacimiento}
                 existingDocUrl={trMejoravit.documentos_urls?.req_acta_nacimiento}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_acta_nacimiento')}
                 numberTag={4}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_acta_nacimiento`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_acta_nacimiento`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 5. Comprobante Domicilio */}
@@ -922,12 +955,15 @@ export function ClienteSeguimientoTimeline({
                 label="5. Comprobante de Domicilio"
                 isCompleted={trMejoravit.req_comprobante_domicilio}
                 existingDocUrl={trMejoravit.documentos_urls?.req_comprobante_domicilio}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_comprobante_domicilio')}
                 numberTag={5}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_comprobante_domicilio`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_comprobante_domicilio`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 6. Estado de Cuenta */}
@@ -938,12 +974,15 @@ export function ClienteSeguimientoTimeline({
                 label="6. Estado de Cuenta Bancario"
                 isCompleted={trMejoravit.req_estado_cuenta_bancario}
                 existingDocUrl={trMejoravit.documentos_urls?.req_estado_cuenta_bancario}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_estado_cuenta_bancario')}
                 numberTag={6}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_estado_cuenta_bancario`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_estado_cuenta_bancario`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 7. Constancia Situación Fiscal */}
@@ -954,12 +993,15 @@ export function ClienteSeguimientoTimeline({
                 label="7. Situación Fiscal (SAT / RFC)"
                 isCompleted={trMejoravit.req_constancia_situacion_fiscal}
                 existingDocUrl={trMejoravit.documentos_urls?.req_constancia_situacion_fiscal}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_constancia_situacion_fiscal')}
                 numberTag={7}
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_constancia_situacion_fiscal`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_constancia_situacion_fiscal`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
 
               {/* 8. 3 Referencias Personales */}
@@ -1017,6 +1059,7 @@ export function ClienteSeguimientoTimeline({
                 label="9. Fotografías del Inmueble (5 fotos)"
                 isCompleted={trMejoravit.req_fotos_inmueble_5}
                 existingDocUrl={trMejoravit.documentos_urls?.req_fotos_inmueble_5}
+                clientUploadPending={getPendingClientDoc(trMejoravit.documentos_urls, 'req_fotos_inmueble_5')}
                 numberTag={9}
                 extraAction={
                   isAdmin ? (
@@ -1031,10 +1074,12 @@ export function ClienteSeguimientoTimeline({
                   ) : null
                 }
                 isUploading={uploadingDocKey === `${trMejoravit.id}_req_fotos_inmueble_5`}
+                isVerifying={verifyingDocKey === `${trMejoravit.id}_req_fotos_inmueble_5`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
             </div>
           )}

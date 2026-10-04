@@ -81,6 +81,10 @@ export function SubirDocumentosView({
               ...doc,
               subido: true,
               archivoUrl: data.url,
+              subidoPor: 'cliente' as const,
+              puedeVer: true,
+              puedeCambiar: true,
+              estadoVerificacion: 'pendiente' as const,
             };
           }
           return doc;
@@ -103,7 +107,7 @@ export function SubirDocumentosView({
 
       setGlobalFeedback({
         type: 'success',
-        text: `¡Documento subido correctamente! Se ha registrado en tu expediente.`,
+        text: `¡Documento enviado con éxito! Ha quedado registrado y en espera de verificación por tu asesor.`,
       });
 
       if (onRefreshData) {

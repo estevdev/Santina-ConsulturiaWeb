@@ -11,6 +11,7 @@ import {
   AlertCircle,
   FileCheck,
   FileUp,
+  ShieldCheck,
 } from 'lucide-react';
 import { DocumentoRequisito } from '@/types/seguimiento';
 
@@ -117,14 +118,26 @@ export function DocumentoUploadCard({
 
           <div>
             {documento.subido ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                <FileCheck className="w-3 h-3" />
-                Subido
-              </span>
+              documento.subidoPor === 'asesor' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                  Cargado por Asesor
+                </span>
+              ) : documento.estadoVerificacion === 'verificado' ? (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                  Verificado
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                  <Clock className="w-3 h-3 text-amber-400" />
+                  Pendiente de Verificación
+                </span>
+              )
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-300 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                <Clock className="w-3 h-3 text-amber-400" />
-                Pendiente
+              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-400 bg-zinc-800/80 px-2.5 py-0.5 rounded-full border border-zinc-700">
+                <Clock className="w-3 h-3 text-zinc-400" />
+                Pendiente de Subir
               </span>
             )}
           </div>
@@ -169,38 +182,74 @@ export function DocumentoUploadCard({
         />
 
         {documento.subido ? (
-          <div className="flex items-center gap-2 pt-1">
-            {documento.archivoUrl && (
-              <button
-                type="button"
-                onClick={() => onViewDoc(documento.archivoUrl!, documento.titulo)}
-                className="flex-1 py-2 px-3 rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-              >
-                <Eye className="w-3.5 h-3.5 text-[#c5a059]" />
-                <span>Ver archivo</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              disabled={isUploading}
-              onClick={() => fileInputRef.current?.click()}
-              className="py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Reemplazar archivo existente"
-            >
-              {isUploading ? (
-                <>
-                  <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
-                  <span>Subiendo...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Reemplazar</span>
-                </>
+          documento.subidoPor === 'asesor' ? (
+            /* Subido por el asesor: el cliente NO lo podrá ver ni cambiar */
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-zinc-900/90 border border-emerald-500/30 text-xs">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="space-y-0.5">
+                <span className="font-semibold text-emerald-300 block text-xs">
+                  Documento Integrado al Expediente
+                </span>
+                <p className="text-[11px] text-zinc-400 leading-tight">
+                  Este documento fue integrado y resguardado por tu asesor. Se encuentra debidamente archivado en tu trámite.
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* Subido por el cliente: solo podrá ver o cambiar los que él sube */
+            <div className="space-y-2 pt-1">
+              {documento.estadoVerificacion === 'pendiente' && (
+                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-[11px] text-amber-200 flex items-start gap-2">
+                  <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+                  <span>
+                    Archivo recibido. Tu asesor lo revisará para darle el visto bueno y anexarlo formalmente a tu expediente.
+                  </span>
+                </div>
               )}
-            </button>
-          </div>
+              {documento.estadoVerificacion === 'verificado' && (
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>
+                    Documento verificado y anexado con éxito a tu expediente.
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                {documento.archivoUrl && documento.puedeVer !== false && (
+                  <button
+                    type="button"
+                    onClick={() => onViewDoc(documento.archivoUrl!, documento.titulo)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    <Eye className="w-3.5 h-3.5 text-[#c5a059]" />
+                    <span>Ver mi archivo</span>
+                  </button>
+                )}
+
+                {documento.puedeCambiar !== false && (
+                  <button
+                    type="button"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-semibold text-xs border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title="Reemplazar archivo enviado"
+                  >
+                    {isUploading ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin" />
+                        <span>Subiendo...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Reemplazar</span>
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
         ) : (
           <div className="pt-1">
             <button

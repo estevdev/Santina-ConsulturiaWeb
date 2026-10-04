@@ -181,6 +181,7 @@ export default function ClientesPage() {
   const [clientDocModal, setClientDocModal] = useState<ClientDocLinkModalState | null>(null);
   const [uploadingDocKey, setUploadingDocKey] = useState<string | null>(null);
   const [togglingReqKey, setTogglingReqKey] = useState<string | null>(null);
+  const [verifyingDocKey, setVerifyingDocKey] = useState<string | null>(null);
   const [modalViewerDoc, setModalViewerDoc] = useState<DocumentViewerModalState | null>(null);
   const [generatingAmpliada200, setGeneratingAmpliada200] = useState<boolean>(false);
   const [downloadingBundle, setDownloadingBundle] = useState<'oficiales' | 'contratos' | 'ambos' | null>(null);
@@ -1947,6 +1948,124 @@ export default function ClientesPage() {
     }
   };
 
+  // Handler para verificar documento subido por el cliente desde /seguimiento
+  const handleVerifyClientDoc = async (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    clientFileUrl: string
+  ) => {
+    if (!selectedCliente) return;
+
+    const key = `${tramiteId}_${reqKey}`;
+    setVerifyingDocKey(key);
+
+    try {
+      let table = '';
+      let currentTramite: any = null;
+      if (tramiteTipo === 'retiro') {
+        currentTramite = clienteTramites.retiro?.find((t) => t.id === tramiteId);
+        table = 'tramites_retiro_desempleo';
+      } else if (tramiteTipo === 'mejoravit') {
+        currentTramite = clienteTramites.mejoravit?.find((t) => t.id === tramiteId);
+        table = 'tramites_mejoravit';
+      } else if (tramiteTipo === 'altaMedica') {
+        currentTramite = clienteTramites.altaMedica?.find((t) => t.id === tramiteId);
+        table = 'tramites_alta_medica_imss';
+      }
+
+      const currentDocs = currentTramite?.documentos_urls || {};
+      const clientFollowupDocs = { ...(currentDocs.documentos_seguimiento_cliente || {}) };
+
+      // Marcar como verificado en el registro del cliente
+      if (clientFollowupDocs[reqKey]) {
+        clientFollowupDocs[reqKey] = {
+          ...clientFollowupDocs[reqKey],
+          estado: 'verificado',
+          verificado_en: new Date().toISOString(),
+        };
+      } else {
+        clientFollowupDocs[reqKey] = {
+          url: clientFileUrl,
+          estado: 'verificado',
+          verificado_en: new Date().toISOString(),
+        };
+      }
+
+      // Sustituir o anexar en el expediente oficial del trámite
+      const updatedDocs = {
+        ...currentDocs,
+        [reqKey]: clientFileUrl,
+        documentos_seguimiento_cliente: clientFollowupDocs,
+      };
+
+      const updatePayload: Record<string, any> = {
+        [reqKey]: true,
+        documentos_urls: updatedDocs,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error: trErr } = await supabase
+        .from(table)
+        .update(updatePayload)
+        .eq('id', tramiteId);
+
+      if (trErr) throw trErr;
+
+      // Actualizar también en clientes.documentos_urls
+      const currentCliDocs = selectedCliente.documentos_urls || {};
+      const cliFollowupDocs = { ...(currentCliDocs.documentos_seguimiento_cliente || {}) };
+      cliFollowupDocs[reqKey] = clientFollowupDocs[reqKey];
+
+      const cliDocUpdates: Record<string, any> = {
+        documentos_urls: {
+          ...currentCliDocs,
+          [reqKey]: clientFileUrl,
+          documentos_seguimiento_cliente: cliFollowupDocs,
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      // Si es INE o CURP, actualizar también los campos directos del cliente
+      if (reqKey === 'req_ine_vigente' || reqKey === 'req_ine_normal') {
+        cliDocUpdates.ine_completa_url = clientFileUrl;
+      } else if (reqKey === 'req_curp' || reqKey === 'req_curp_actualizada' || reqKey === 'req_curp_validada') {
+        cliDocUpdates.curp_document_url = clientFileUrl;
+      }
+
+      const { data: updatedCliData, error: cliErr } = await supabase
+        .from('clientes')
+        .update(cliDocUpdates)
+        .eq('id', selectedCliente.id)
+        .select()
+        .single();
+
+      if (cliErr) {
+        console.warn('Advertencia al actualizar cliente durante verificación:', cliErr);
+      } else if (updatedCliData) {
+        setSelectedCliente(updatedCliData);
+      }
+
+      toast.success('Documento verificado e integrado al expediente oficial con éxito');
+      setFeedbackMsg({
+        type: 'success',
+        text: '✓ Documento verificado e integrado con éxito al expediente oficial del cliente.',
+      });
+
+      await fetchTramites(selectedCliente.id);
+      await fetchClientes();
+    } catch (err: any) {
+      console.error('Error al verificar documento del cliente:', err);
+      toast.error('Error al verificar documento: ' + (err.message || 'Error desconocido'));
+      setFeedbackMsg({
+        type: 'error',
+        text: `Error al verificar documento: ${err.message || 'Error desconocido'}`,
+      });
+    } finally {
+      setVerifyingDocKey(null);
+    }
+  };
+
   const papeleraCount = clientes.filter((c) => Boolean(c.deleted_at)).length;
 
   const currentSelectedFolio = (() => {
@@ -2022,6 +2141,8 @@ export default function ClientesPage() {
               onDownloadOficialesPdf={handleDownloadOficialesPdf}
               onDownloadContratosPdf={handleDownloadContratosPdf}
               downloadingBundle={downloadingBundle}
+              onVerifyClientDoc={handleVerifyClientDoc}
+              verifyingDocKey={verifyingDocKey}
             />
           }
           onBack={() => {
@@ -2076,6 +2197,8 @@ export default function ClientesPage() {
             onRemoveDocPreset={handleRemoveDocPreset}
             onToggleRequirement={handleToggleReqRequirement}
             togglingReqKey={togglingReqKey}
+            onVerifyClientDoc={handleVerifyClientDoc}
+            verifyingDocKey={verifyingDocKey}
           />
         </ClienteFullDetails>
       ) : (
@@ -2167,6 +2290,8 @@ export default function ClientesPage() {
               onRemoveDocPreset={handleRemoveDocPreset}
               onToggleRequirement={handleToggleReqRequirement}
               togglingReqKey={togglingReqKey}
+              onVerifyClientDoc={handleVerifyClientDoc}
+              verifyingDocKey={verifyingDocKey}
             />
           </ClienteQuickView>
         </div>
@@ -2514,6 +2639,8 @@ export default function ClientesPage() {
         onDownloadContratosPdf={handleDownloadContratosPdf}
         onToggleRequirement={handleToggleReqRequirement}
         togglingReqKey={togglingReqKey}
+        onVerifyClientDoc={handleVerifyClientDoc}
+        verifyingDocKey={verifyingDocKey}
       />
 
       {/* Modal Importar Archivos (Carpeta o ZIP) */}

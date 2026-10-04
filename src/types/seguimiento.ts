@@ -16,6 +16,11 @@ export interface DocumentoRequisito {
   formatosAceptados: string;
   mimePattern: string;
   categoria?: string;
+  subidoPor?: 'asesor' | 'cliente';
+  puedeVer?: boolean;
+  puedeCambiar?: boolean;
+  estadoVerificacion?: 'pendiente' | 'verificado' | 'integrado';
+  subidoEn?: string;
 }
 
 export interface ProgresoTramite {

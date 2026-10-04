@@ -76,6 +76,13 @@ interface ClienteMobileModalProps {
   onDownloadContratosPdf: () => void;
   onToggleRequirement?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentValue: boolean) => Promise<void>;
   togglingReqKey?: string | null;
+  onVerifyClientDoc?: (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    fileUrl: string
+  ) => Promise<void>;
+  verifyingDocKey?: string | null;
 }
 
 export function ClienteMobileModal({
@@ -116,6 +123,8 @@ export function ClienteMobileModal({
   onDownloadContratosPdf,
   onToggleRequirement,
   togglingReqKey,
+  onVerifyClientDoc,
+  verifyingDocKey,
 }: ClienteMobileModalProps) {
   if (!isOpen || !selectedCliente) return null;
 
@@ -373,6 +382,8 @@ export function ClienteMobileModal({
                 onRemoveDocPreset={onRemoveDocPreset}
                 onToggleRequirement={onToggleRequirement}
                 togglingReqKey={togglingReqKey}
+                onVerifyClientDoc={onVerifyClientDoc}
+                verifyingDocKey={verifyingDocKey}
               />
             </div>
           ) : (
@@ -402,6 +413,8 @@ export function ClienteMobileModal({
               onDownloadOficialesPdf={onDownloadOficialesPdf}
               onDownloadContratosPdf={onDownloadContratosPdf}
               downloadingBundle={downloadingBundle}
+              onVerifyClientDoc={onVerifyClientDoc}
+              verifyingDocKey={verifyingDocKey}
             />
           )}
         </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Check, Eye, Download, Upload } from 'lucide-react';
+import { Check, Eye, Download, Upload, Clock } from 'lucide-react';
 
 export function DocumentNoFileIcon({ className = 'w-4 h-4' }: { className?: string }) {
   return (
@@ -61,15 +61,23 @@ interface ChecklistRowProps {
   label: string;
   isCompleted?: boolean;
   existingDocUrl?: string | null;
+  clientUploadPending?: {
+    url: string;
+    subido_en?: string;
+    nombre_archivo?: string;
+    estado?: string;
+  } | null;
   numberTag?: number;
   extraAction?: React.ReactNode;
   isUploading: boolean;
   isToggling?: boolean;
+  isVerifying?: boolean;
   isAdmin?: boolean;
   onViewDoc: (url: string, title: string) => void;
   onDownloadDoc: (url: string, title: string) => void;
   onUploadFile: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, file: File) => void;
   onToggleCheck?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentVal: boolean) => void;
+  onVerifyClientDoc?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, fileUrl: string) => void;
 }
 
 export function ChecklistRow({
@@ -79,15 +87,18 @@ export function ChecklistRow({
   label,
   isCompleted,
   existingDocUrl,
+  clientUploadPending,
   numberTag,
   extraAction,
   isUploading,
   isToggling = false,
+  isVerifying = false,
   isAdmin = false,
   onViewDoc,
   onDownloadDoc,
   onUploadFile,
   onToggleCheck,
+  onVerifyClientDoc,
 }: ChecklistRowProps) {
   const completed = isCompleted !== undefined ? Boolean(isCompleted) : Boolean(existingDocUrl);
 
@@ -170,6 +181,38 @@ export function ChecklistRow({
 
       {/* Lado derecho: Acciones y Estado del Archivo */}
       <div className="flex items-center gap-1 shrink-0">
+        {/* Notificación si el cliente subió un archivo pendiente de verificación */}
+        {clientUploadPending && clientUploadPending.url && (
+          <div className="flex items-center gap-1 bg-amber-500/15 border border-amber-500/40 rounded-lg p-0.5 px-2">
+            <span className="text-[10px] text-amber-300 font-bold flex items-center gap-1 whitespace-nowrap">
+              <Clock className="w-3 h-3 text-amber-400 shrink-0" />
+              Por cliente
+            </span>
+            <button
+              type="button"
+              onClick={() => onViewDoc(clientUploadPending.url, `Enviado por cliente: ${label}`)}
+              title="Revisar archivo enviado por el cliente"
+              className="px-1.5 py-0.5 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-amber-200 border border-amber-500/30 rounded font-semibold transition-colors cursor-pointer"
+            >
+              Revisar
+            </button>
+            <button
+              type="button"
+              disabled={isVerifying}
+              onClick={() => onVerifyClientDoc && onVerifyClientDoc(tramiteTipo, tramiteId, reqKey, clientUploadPending.url)}
+              title={existingDocUrl ? "Sustituir documento previo con este archivo verificado" : "Verificar y anexar este documento al expediente"}
+              className="px-2 py-0.5 text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold shadow-sm transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            >
+              {isVerifying ? (
+                <div className="w-2.5 h-2.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Check className="w-3 h-3 stroke-[3]" />
+              )}
+              <span>Verificado</span>
+            </button>
+          </div>
+        )}
+
         {extraAction}
 
         {existingDocUrl ? (

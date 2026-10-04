@@ -40,6 +40,8 @@ interface TramitesChecklistProps {
   onRemoveDocPreset: (preset: Preset, docKey: string) => Promise<void>;
   onToggleRequirement?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentValue: boolean) => Promise<void>;
   togglingReqKey?: string | null;
+  onVerifyClientDoc?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, fileUrl: string) => Promise<void>;
+  verifyingDocKey?: string | null;
 }
 
 export function TramitesChecklist({
@@ -62,8 +64,22 @@ export function TramitesChecklist({
   onRemoveDocPreset,
   onToggleRequirement,
   togglingReqKey,
+  onVerifyClientDoc,
+  verifyingDocKey,
 }: TramitesChecklistProps) {
   const isAdmin = currentUserRole === 'admin';
+
+  const getPendingClientDoc = (docUrls: any, reqKey: string) => {
+    const pendingInTramite = docUrls?.documentos_seguimiento_cliente?.[reqKey];
+    if (pendingInTramite && pendingInTramite.estado === 'pendiente') {
+      return pendingInTramite;
+    }
+    const pendingInCliente = (selectedCliente?.documentos_urls as any)?.documentos_seguimiento_cliente?.[reqKey];
+    if (pendingInCliente && pendingInCliente.estado === 'pendiente') {
+      return pendingInCliente;
+    }
+    return null;
+  };
   if (loadingTramites) {
     return (
       <div className="flex items-center justify-center p-4 text-xs text-slate-400">
@@ -130,13 +146,16 @@ export function TramitesChecklist({
                 label="INE Vigente"
                 isCompleted={tr.req_ine_vigente}
                 existingDocUrl={tr.documentos_urls?.req_ine_vigente || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_ine_vigente')}
                 isUploading={uploadingDocKey === `${tr.id}_req_ine_vigente`}
                 isToggling={togglingReqKey === `${tr.id}_req_ine_vigente`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_ine_vigente`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -145,13 +164,16 @@ export function TramitesChecklist({
                 label="App AforeMóvil"
                 isCompleted={tr.req_app_aforemovil_instalada}
                 existingDocUrl={tr.documentos_urls?.req_app_aforemovil_instalada}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_app_aforemovil_instalada')}
                 isUploading={uploadingDocKey === `${tr.id}_req_app_aforemovil_instalada`}
                 isToggling={togglingReqKey === `${tr.id}_req_app_aforemovil_instalada`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_app_aforemovil_instalada`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -160,13 +182,16 @@ export function TramitesChecklist({
                 label="Comp. Domicilio"
                 isCompleted={tr.req_comprobante_domicilio}
                 existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_comprobante_domicilio')}
                 isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio`}
                 isToggling={togglingReqKey === `${tr.id}_req_comprobante_domicilio`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_comprobante_domicilio`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -175,13 +200,16 @@ export function TramitesChecklist({
                 label="Registro AforeMóvil"
                 isCompleted={tr.req_registro_aforemovil_realizado}
                 existingDocUrl={tr.documentos_urls?.req_registro_aforemovil_realizado}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_registro_aforemovil_realizado')}
                 isUploading={uploadingDocKey === `${tr.id}_req_registro_aforemovil_realizado`}
                 isToggling={togglingReqKey === `${tr.id}_req_registro_aforemovil_realizado`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_registro_aforemovil_realizado`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -190,13 +218,16 @@ export function TramitesChecklist({
                 label="CURP Certificada"
                 isCompleted={tr.req_curp}
                 existingDocUrl={tr.documentos_urls?.req_curp || selectedCliente?.curp_document_url}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_curp')}
                 isUploading={uploadingDocKey === `${tr.id}_req_curp`}
                 isToggling={togglingReqKey === `${tr.id}_req_curp`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_curp`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -205,13 +236,16 @@ export function TramitesChecklist({
                 label="Saldo AforeMóvil"
                 isCompleted={tr.req_saldo_visible_aforemovil}
                 existingDocUrl={tr.documentos_urls?.req_saldo_visible_aforemovil}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_saldo_visible_aforemovil')}
                 isUploading={uploadingDocKey === `${tr.id}_req_saldo_visible_aforemovil`}
                 isToggling={togglingReqKey === `${tr.id}_req_saldo_visible_aforemovil`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_saldo_visible_aforemovil`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -220,13 +254,16 @@ export function TramitesChecklist({
                 label="Situación Fiscal (SAT)"
                 isCompleted={tr.req_constancia_situacion_fiscal}
                 existingDocUrl={tr.documentos_urls?.req_constancia_situacion_fiscal}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_constancia_situacion_fiscal')}
                 isUploading={uploadingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
                 isToggling={togglingReqKey === `${tr.id}_req_constancia_situacion_fiscal`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -235,13 +272,16 @@ export function TramitesChecklist({
                 label="Anexo SINDO"
                 isCompleted={tr.req_anexo_sindo}
                 existingDocUrl={tr.documentos_urls?.req_anexo_sindo}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_anexo_sindo')}
                 isUploading={uploadingDocKey === `${tr.id}_req_anexo_sindo`}
                 isToggling={togglingReqKey === `${tr.id}_req_anexo_sindo`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_anexo_sindo`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="retiro"
@@ -250,13 +290,16 @@ export function TramitesChecklist({
                 label="Reporte Semanas IMSS"
                 isCompleted={tr.req_reporte_semanas_imss}
                 existingDocUrl={tr.documentos_urls?.req_reporte_semanas_imss}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_reporte_semanas_imss')}
                 isUploading={uploadingDocKey === `${tr.id}_req_reporte_semanas_imss`}
                 isToggling={togglingReqKey === `${tr.id}_req_reporte_semanas_imss`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_reporte_semanas_imss`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
             </div>
 
@@ -331,14 +374,17 @@ export function TramitesChecklist({
                   label="1. INE Normal"
                   isCompleted={tr.req_ine_normal}
                   existingDocUrl={tr.documentos_urls?.req_ine_normal || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_ine_normal')}
                   numberTag={1}
                   isUploading={uploadingDocKey === `${tr.id}_req_ine_normal`}
                   isToggling={togglingReqKey === `${tr.id}_req_ine_normal`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_ine_normal`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
                 <ChecklistRow
                   tramiteTipo="mejoravit"
@@ -347,14 +393,17 @@ export function TramitesChecklist({
                   label="6. Edo. Cuenta Bancario"
                   isCompleted={tr.req_estado_cuenta_bancario}
                   existingDocUrl={tr.documentos_urls?.req_estado_cuenta_bancario}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_estado_cuenta_bancario')}
                   numberTag={6}
                   isUploading={uploadingDocKey === `${tr.id}_req_estado_cuenta_bancario`}
                   isToggling={togglingReqKey === `${tr.id}_req_estado_cuenta_bancario`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_estado_cuenta_bancario`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
                 <ChecklistRow
                   tramiteTipo="mejoravit"
@@ -363,15 +412,18 @@ export function TramitesChecklist({
                   label="2. INE Ampliada 200%"
                   isCompleted={tr.req_ine_ampliada_200}
                   existingDocUrl={tr.documentos_urls?.req_ine_ampliada_200}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_ine_ampliada_200')}
                   numberTag={2}
                   extraAction={btnGetIne200}
                   isUploading={uploadingDocKey === `${tr.id}_req_ine_ampliada_200`}
                   isToggling={togglingReqKey === `${tr.id}_req_ine_ampliada_200`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_ine_ampliada_200`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
                 <ChecklistRow
                   tramiteTipo="mejoravit"
@@ -380,14 +432,17 @@ export function TramitesChecklist({
                   label="7. Situación Fiscal (SAT)"
                   isCompleted={tr.req_constancia_situacion_fiscal}
                   existingDocUrl={tr.documentos_urls?.req_constancia_situacion_fiscal}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_constancia_situacion_fiscal')}
                   numberTag={7}
                   isUploading={uploadingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
                   isToggling={togglingReqKey === `${tr.id}_req_constancia_situacion_fiscal`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_constancia_situacion_fiscal`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
                 <ChecklistRow
                   tramiteTipo="mejoravit"
@@ -396,14 +451,17 @@ export function TramitesChecklist({
                   label="3. CURP Actualizada"
                   isCompleted={tr.req_curp_actualizada}
                   existingDocUrl={tr.documentos_urls?.req_curp_actualizada || selectedCliente?.curp_document_url}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_curp_actualizada')}
                   numberTag={3}
                   isUploading={uploadingDocKey === `${tr.id}_req_curp_actualizada`}
                   isToggling={togglingReqKey === `${tr.id}_req_curp_actualizada`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_curp_actualizada`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
 
                 {/* 8. 3 Referencias Personales */}
@@ -505,14 +563,17 @@ export function TramitesChecklist({
                   label="4. Acta de Nacimiento"
                   isCompleted={tr.req_acta_nacimiento}
                   existingDocUrl={tr.documentos_urls?.req_acta_nacimiento}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_acta_nacimiento')}
                   numberTag={4}
                   isUploading={uploadingDocKey === `${tr.id}_req_acta_nacimiento`}
                   isToggling={togglingReqKey === `${tr.id}_req_acta_nacimiento`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_acta_nacimiento`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
 
                 {/* 9. Credenciales Infonavit */}
@@ -615,14 +676,17 @@ export function TramitesChecklist({
                   label="5. Comp. Domicilio"
                   isCompleted={tr.req_comprobante_domicilio}
                   existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_comprobante_domicilio')}
                   numberTag={5}
                   isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio`}
                   isToggling={togglingReqKey === `${tr.id}_req_comprobante_domicilio`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_comprobante_domicilio`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
 
                 <ChecklistRow
@@ -632,6 +696,7 @@ export function TramitesChecklist({
                   label="10. Fotos Inmueble (5)"
                   isCompleted={tr.req_fotos_inmueble_5}
                   existingDocUrl={tr.documentos_urls?.req_fotos_inmueble_5}
+                  clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_fotos_inmueble_5')}
                   numberTag={10}
                   extraAction={
                     isAdmin ? (
@@ -648,11 +713,13 @@ export function TramitesChecklist({
                   }
                   isUploading={uploadingDocKey === `${tr.id}_req_fotos_inmueble_5`}
                   isToggling={togglingReqKey === `${tr.id}_req_fotos_inmueble_5`}
+                  isVerifying={verifyingDocKey === `${tr.id}_req_fotos_inmueble_5`}
                   isAdmin={isAdmin}
                   onViewDoc={onViewDoc}
                   onDownloadDoc={onDownloadDoc}
                   onUploadFile={onUploadReqDocument}
                   onToggleCheck={onToggleRequirement}
+                  onVerifyClientDoc={onVerifyClientDoc}
                 />
               </div>
 
@@ -694,13 +761,16 @@ export function TramitesChecklist({
                 label="CURP Validada"
                 isCompleted={tr.req_curp_validada}
                 existingDocUrl={tr.documentos_urls?.req_curp_validada || selectedCliente?.curp_document_url}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_curp_validada')}
                 isUploading={uploadingDocKey === `${tr.id}_req_curp_validada`}
                 isToggling={togglingReqKey === `${tr.id}_req_curp_validada`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_curp_validada`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="altaMedica"
@@ -709,13 +779,16 @@ export function TramitesChecklist({
                 label="Comp. Domicilio Reciente"
                 isCompleted={tr.req_comprobante_domicilio_reciente}
                 existingDocUrl={tr.documentos_urls?.req_comprobante_domicilio_reciente}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_comprobante_domicilio_reciente')}
                 isUploading={uploadingDocKey === `${tr.id}_req_comprobante_domicilio_reciente`}
                 isToggling={togglingReqKey === `${tr.id}_req_comprobante_domicilio_reciente`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_comprobante_domicilio_reciente`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="altaMedica"
@@ -724,13 +797,16 @@ export function TramitesChecklist({
                 label="Identificación Oficial"
                 isCompleted={tr.req_identificacion_oficial}
                 existingDocUrl={tr.documentos_urls?.req_identificacion_oficial || selectedCliente?.ine_completa_url || selectedCliente?.ine_frente_url}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_identificacion_oficial')}
                 isUploading={uploadingDocKey === `${tr.id}_req_identificacion_oficial`}
                 isToggling={togglingReqKey === `${tr.id}_req_identificacion_oficial`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_identificacion_oficial`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="altaMedica"
@@ -739,13 +815,16 @@ export function TramitesChecklist({
                 label="Fotografía Infantil"
                 isCompleted={tr.req_fotografia_infantil}
                 existingDocUrl={tr.documentos_urls?.req_fotografia_infantil}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_fotografia_infantil')}
                 isUploading={uploadingDocKey === `${tr.id}_req_fotografia_infantil`}
                 isToggling={togglingReqKey === `${tr.id}_req_fotografia_infantil`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_fotografia_infantil`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="altaMedica"
@@ -754,13 +833,16 @@ export function TramitesChecklist({
                 label="Cartilla de Salud"
                 isCompleted={tr.req_cartilla_nacional_salud}
                 existingDocUrl={tr.documentos_urls?.req_cartilla_nacional_salud}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_cartilla_nacional_salud')}
                 isUploading={uploadingDocKey === `${tr.id}_req_cartilla_nacional_salud`}
                 isToggling={togglingReqKey === `${tr.id}_req_cartilla_nacional_salud`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_cartilla_nacional_salud`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
               <ChecklistRow
                 tramiteTipo="altaMedica"
@@ -769,13 +851,16 @@ export function TramitesChecklist({
                 label="Alta Patronal Vigente"
                 isCompleted={tr.req_alta_patronal_vigente}
                 existingDocUrl={tr.documentos_urls?.req_alta_patronal_vigente}
+                clientUploadPending={getPendingClientDoc(tr.documentos_urls, 'req_alta_patronal_vigente')}
                 isUploading={uploadingDocKey === `${tr.id}_req_alta_patronal_vigente`}
                 isToggling={togglingReqKey === `${tr.id}_req_alta_patronal_vigente`}
+                isVerifying={verifyingDocKey === `${tr.id}_req_alta_patronal_vigente`}
                 isAdmin={isAdmin}
                 onViewDoc={onViewDoc}
                 onDownloadDoc={onDownloadDoc}
                 onUploadFile={onUploadReqDocument}
                 onToggleCheck={onToggleRequirement}
+                onVerifyClientDoc={onVerifyClientDoc}
               />
             </div>
 

@@ -6,6 +6,7 @@ import {
   Users,
   Edit,
   User,
+  UserCheck,
   ChevronRight,
   Trash2,
   RotateCcw,
@@ -21,7 +22,9 @@ import {
   MapPin,
   Phone,
   Mail,
+  FolderArchive,
 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { Cliente } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
 
@@ -32,9 +35,12 @@ interface ClientesListProps {
   onSearchChange: (val: string) => void;
   selectedCliente: Cliente | null;
   showFullDetails: boolean;
+  currentUser?: { id?: string; email?: string; name?: string; role?: string } | null;
   currentUserRole?: string;
   activeStatusFilter: string;
   onStatusFilterChange: (status: string) => void;
+  soloMisClientes?: boolean;
+  onSoloMisClientesChange?: (val: boolean) => void;
   onSelectCliente: (cliente: Cliente, openDetails: boolean) => void;
   onEditCliente: (cliente: Cliente) => void;
   onDeleteCliente?: (cliente: Cliente) => void;
@@ -43,7 +49,9 @@ interface ClientesListProps {
   onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
   papeleraCount?: number;
   clientesTramitesMap?: Record<string, string[]>;
+  clientesFoliosMap?: Record<string, string[]>;
   onNewCliente?: () => void;
+  onOpenImportModal?: () => void;
 }
 
 export function ClientesList({
@@ -53,9 +61,12 @@ export function ClientesList({
   onSearchChange,
   selectedCliente,
   showFullDetails,
-  currentUserRole,
+  currentUser: propCurrentUser,
+  currentUserRole: propCurrentUserRole,
   activeStatusFilter,
   onStatusFilterChange,
+  soloMisClientes: propSoloMisClientes,
+  onSoloMisClientesChange,
   onSelectCliente,
   onEditCliente,
   onDeleteCliente,
@@ -64,8 +75,41 @@ export function ClientesList({
   onChangeClienteStatus,
   papeleraCount = 0,
   clientesTramitesMap = {},
+  clientesFoliosMap = {},
   onNewCliente,
+  onOpenImportModal,
 }: ClientesListProps) {
+  const { user: authUser } = useAuth();
+  const currentUser = propCurrentUser || authUser;
+  const currentUserRole = propCurrentUserRole || currentUser?.role;
+
+  const [localSoloMisClientes, setLocalSoloMisClientes] = useState(false);
+  const isSoloMisClientes = propSoloMisClientes !== undefined ? propSoloMisClientes : localSoloMisClientes;
+
+  const handleToggleSoloMisClientes = (val: boolean) => {
+    if (onSoloMisClientesChange) {
+      onSoloMisClientesChange(val);
+    } else {
+      setLocalSoloMisClientes(val);
+    }
+  };
+
+  const isClienteMio = (c: Cliente) => {
+    if (!currentUser) return false;
+    const matchId = Boolean(currentUser.id && c.creado_por && c.creado_por === currentUser.id);
+    const matchEmail = Boolean(
+      currentUser.email &&
+      c.creado_por_email &&
+      c.creado_por_email.trim().toLowerCase() === currentUser.email.trim().toLowerCase()
+    );
+    const matchNombre = Boolean(
+      currentUser.name &&
+      c.creado_por_nombre &&
+      c.creado_por_nombre.trim().toLowerCase() === currentUser.name.trim().toLowerCase()
+    );
+    return matchId || matchEmail || matchNombre;
+  };
+
   const isPapelera = activeStatusFilter === 'papelera';
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -81,6 +125,11 @@ export function ClientesList({
   }, []);
 
   const filteredClientes = clientes.filter((c) => {
+    // 0. Si el admin tiene activado "Solo mis clientes", omitir clientes ajenos
+    if (currentUserRole === 'admin' && isSoloMisClientes && !isClienteMio(c)) {
+      return false;
+    }
+
     // 1. Filtrado por Papelera vs Activos
     if (isPapelera) {
       if (!c.deleted_at) return false;
@@ -92,29 +141,63 @@ export function ClientesList({
       }
     }
 
-    // 2. Filtrado por Búsqueda de texto
-    const q = search.toLowerCase();
+    // 2. Filtrado por Búsqueda de texto (Nombre, Asesor, Teléfono, Email, CURP, NSS o Folio)
+    const q = search.trim().toLowerCase();
+    const cleanQ = q.replace(/^#/, '').replace(/-/g, '');
     const fullName = `${c.nombre} ${c.apellido_paterno || ''} ${c.apellido_materno || ''} ${c.apellidos || ''}`.toLowerCase();
     const advisorInfo = `${c.creado_por_nombre || ''} ${c.creado_por_email || ''}`.toLowerCase();
+
+    // Coincidencia por Folio (del trámite o del cliente)
+    const clientShortId = (c.id || '').substring(0, 8).toLowerCase();
+    const clientFullId = (c.id || '').toLowerCase().replace(/-/g, '');
+    const clientFolioField = ((c as any).folio || '').toLowerCase().replace(/-/g, '');
+    const tramitesFolios = clientesFoliosMap?.[c.id] || [];
+
+    const matchesFolio = Boolean(
+      cleanQ && (
+        clientShortId.includes(cleanQ) ||
+        clientFullId.includes(cleanQ) ||
+        (clientFolioField && clientFolioField.includes(cleanQ)) ||
+        tramitesFolios.some((fol) => {
+          const cleanFol = fol.toLowerCase().replace(/-/g, '');
+          return cleanFol.includes(cleanQ);
+        })
+      )
+    );
+
     return (
       fullName.includes(q) ||
       advisorInfo.includes(q) ||
       (c.telefono && c.telefono.includes(q)) ||
       (c.email && c.email.toLowerCase().includes(q)) ||
       (c.curp && c.curp.toLowerCase().includes(q)) ||
-      (c.nss && c.nss.toLowerCase().includes(q))
+      (c.nss && c.nss.toLowerCase().includes(q)) ||
+      matchesFolio
     );
   });
 
   const getStatusCount = (statusValue: string) => {
+    const list = (currentUserRole === 'admin' && isSoloMisClientes)
+      ? clientes.filter(isClienteMio)
+      : clientes;
+
     if (statusValue === 'todos') {
-      return clientes.filter((c) => !c.deleted_at).length;
+      return list.filter((c) => !c.deleted_at).length;
     }
     if (statusValue === 'papelera') {
-      return clientes.filter((c) => Boolean(c.deleted_at)).length;
+      return list.filter((c) => Boolean(c.deleted_at)).length;
     }
-    return clientes.filter((c) => !c.deleted_at && (c.estado_cliente || 'interesado') === statusValue).length;
+    return list.filter((c) => !c.deleted_at && (c.estado_cliente || 'interesado') === statusValue).length;
   };
+
+  const totalActivosCount = clientes.filter((c) => !c.deleted_at).length;
+  const misClientesActivosCount = clientes.filter((c) => !c.deleted_at && isClienteMio(c)).length;
+
+  const totalPapeleraCount = clientes.filter((c) => Boolean(c.deleted_at)).length;
+  const misClientesPapeleraCount = clientes.filter((c) => Boolean(c.deleted_at) && isClienteMio(c)).length;
+
+  const totalDisplayCount = isPapelera ? totalPapeleraCount : totalActivosCount;
+  const misClientesDisplayCount = isPapelera ? misClientesPapeleraCount : misClientesActivosCount;
 
   const getInitials = (nombre: string, pat?: string | null) => {
     const n = (nombre || '').trim().charAt(0);
@@ -196,7 +279,7 @@ export function ClientesList({
               type="text"
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
-              placeholder="Buscar por nombre, CURP o NSS..."
+              placeholder="Buscar por nombre, CURP, NSS o Folio..."
               className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
@@ -212,7 +295,86 @@ export function ClientesList({
               <span className="hidden sm:inline">Nuevo Cliente</span>
             </button>
           )}
+
+          {onOpenImportModal && (
+            <button
+              type="button"
+              onClick={onOpenImportModal}
+              className="inline-flex items-center gap-1 px-2.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] hover:text-white border border-zinc-700 hover:border-[#c5a059]/50 text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
+              title="Importar Carpeta o ZIP con Archivos"
+            >
+              <FolderArchive className="w-3.5 h-3.5 text-[#c5a059]" />
+              <span className="hidden sm:inline">Importar</span>
+            </button>
+          )}
         </div>
+
+        {/* Selector para Administradores: Todos vs Solo mis clientes */}
+        {currentUserRole === 'admin' && (
+          <div className="space-y-1.5 pt-0.5">
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-zinc-950/60 dark:bg-zinc-900/60 rounded-xl border border-zinc-800/80">
+              <button
+                type="button"
+                onClick={() => handleToggleSoloMisClientes(false)}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer ${
+                  !isSoloMisClientes
+                    ? 'bg-zinc-800 text-white font-bold shadow-sm border border-zinc-700'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 font-medium'
+                }`}
+              >
+                <Globe className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Todos</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-black/40 text-zinc-300">
+                  {totalDisplayCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleSoloMisClientes(!isSoloMisClientes)}
+                className={`flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg text-xs transition-all cursor-pointer ${
+                  isSoloMisClientes
+                    ? 'bg-[#c5a059] text-white font-bold shadow-md shadow-amber-500/20 border border-[#c5a059]'
+                    : 'text-zinc-400 hover:text-[#dfba73] hover:bg-zinc-800/40 font-medium'
+                }`}
+                title={
+                  isSoloMisClientes
+                    ? 'Filtro activo: mostrando únicamente tus clientes. Haz clic para ver todos.'
+                    : 'Filtrar para ver solo tus clientes asignados'
+                }
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Solo mis clientes</span>
+                <span
+                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                    isSoloMisClientes ? 'bg-black/30 text-white' : 'bg-black/40 text-zinc-300'
+                  }`}
+                >
+                  {misClientesDisplayCount}
+                </span>
+              </button>
+            </div>
+
+            {/* Aviso visual y botón rápido de restablecer cuando 'Solo mis clientes' está activo */}
+            {isSoloMisClientes && (
+              <div className="flex items-center justify-between px-2.5 py-1 rounded-lg bg-[#c5a059]/10 border border-[#c5a059]/30 text-[11px] text-[#dfba73]">
+                <div className="flex items-center gap-1.5 truncate">
+                  <UserCheck className="w-3.5 h-3.5 text-[#c5a059] shrink-0" />
+                  <span className="truncate">
+                    Mostrando únicamente tus clientes
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleSoloMisClientes(false)}
+                  className="text-[10px] text-zinc-400 hover:text-white underline cursor-pointer shrink-0 ml-1"
+                >
+                  Ver todos
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Desplegable Personalizado de Filtro de Estado */}
         <div className="flex items-center justify-between gap-2 pt-0.5 relative" ref={dropdownRef}>
@@ -376,7 +538,11 @@ export function ClientesList({
               <>
                 <Trash2 className="w-10 h-10 text-zinc-600 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-zinc-300">La papelera está vacía</p>
-                <p className="text-xs text-zinc-500 mt-1">No hay clientes eliminados temporalmente.</p>
+                <p className="text-xs text-zinc-500 mt-1">
+                  {currentUserRole === 'admin' && isSoloMisClientes
+                    ? 'No tienes clientes tuyos en la papelera.'
+                    : 'No hay clientes eliminados temporalmente.'}
+                </p>
               </>
             ) : (
               <>
@@ -385,8 +551,22 @@ export function ClientesList({
                   No hay clientes con este filtro
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
-                  {search ? 'Intenta con otro término de búsqueda.' : 'Registra un cliente o cambia el filtro de estado.'}
+                  {currentUserRole === 'admin' && isSoloMisClientes
+                    ? 'No tienes clientes asignados bajo este filtro o término de búsqueda.'
+                    : search
+                    ? 'Intenta con otro término de búsqueda.'
+                    : 'Registra un cliente o cambia el filtro de estado.'}
                 </p>
+                {currentUserRole === 'admin' && isSoloMisClientes && (
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSoloMisClientes(false)}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-[#dfba73] border border-zinc-700 inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Globe className="w-3.5 h-3.5 text-[#c5a059]" />
+                    <span>Ver todos los clientes</span>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -396,6 +576,7 @@ export function ClientesList({
             const fullApellidos = [cliente.apellido_paterno, cliente.apellido_materno].filter(Boolean).join(' ') || cliente.apellidos || '';
             const statusConfig = getEstadoClienteConfig(cliente.estado_cliente);
             const nombreCompleto = `${cliente.nombre} ${fullApellidos}`.trim();
+            const clientFolio = (clientesFoliosMap?.[cliente.id]?.[0]) || (cliente.id ? cliente.id.substring(0, 8).toUpperCase() : '');
 
             return (
               <div
@@ -432,6 +613,11 @@ export function ClientesList({
 
                       {/* Contacto & Ubicación */}
                       <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-1 flex-wrap">
+                        {clientFolio && (
+                          <span className="font-mono text-[10px] px-1.5 py-0.2 rounded bg-[#c5a059]/15 text-[#dfba73] border border-[#c5a059]/30 font-bold" title="Folio de seguimiento">
+                            Folio: {clientFolio}
+                          </span>
+                        )}
                         {cliente.telefono && (
                           <span className="flex items-center gap-1 text-zinc-300">
                             <Phone className="w-3 h-3 text-[#c5a059]" />
@@ -476,10 +662,16 @@ export function ClientesList({
                   </div>
 
                   {currentUserRole === 'admin' && (
-                    <span className="text-[10px] text-[#dfba73] truncate flex items-center gap-1 font-medium">
+                    <span
+                      className={`text-[10px] truncate flex items-center gap-1 font-medium ${
+                        isClienteMio(cliente) ? 'text-[#dfba73]' : 'text-zinc-400'
+                      }`}
+                    >
                       <User className="w-3 h-3 text-[#c5a059]" />
                       <span className="truncate max-w-[120px]">
-                        {cliente.creado_por_nombre || cliente.creado_por_email || 'Sin asesor'}
+                        {isClienteMio(cliente)
+                          ? `${cliente.creado_por_nombre || 'Tú'} (Mío)`
+                          : cliente.creado_por_nombre || cliente.creado_por_email || 'Sin asesor'}
                       </span>
                     </span>
                   )}

@@ -17,6 +17,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronUp,
+  FolderArchive,
 } from 'lucide-react';
 import { Cliente, TramiteMejoravit } from '@/types/cliente';
 import { Preset } from '@/types/preset';
@@ -29,6 +30,7 @@ interface ClienteMobileModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedCliente: Cliente | null;
+  folio?: string;
   currentUserRole?: string;
   clienteTramites: ClienteTramitesState;
   loadingTramites: boolean;
@@ -43,6 +45,7 @@ interface ClienteMobileModalProps {
   onEditCliente: (cliente: Cliente) => void;
   onOpenShareModal: (cliente: Cliente) => void;
   onOpenDownloadModal: () => void;
+  onOpenImportModal?: () => void;
   onViewDoc: (url: string, title: string) => void;
   onDownloadDoc: (url: string, filename: string) => void;
   onUploadReqDocument: (
@@ -71,12 +74,15 @@ interface ClienteMobileModalProps {
   onUploadComprobanteCita: (file: File) => Promise<void>;
   onDownloadOficialesPdf: () => void;
   onDownloadContratosPdf: () => void;
+  onToggleRequirement?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentValue: boolean) => Promise<void>;
+  togglingReqKey?: string | null;
 }
 
 export function ClienteMobileModal({
   isOpen,
   onClose,
   selectedCliente,
+  folio,
   currentUserRole,
   clienteTramites,
   loadingTramites,
@@ -91,6 +97,7 @@ export function ClienteMobileModal({
   onEditCliente,
   onOpenShareModal,
   onOpenDownloadModal,
+  onOpenImportModal,
   onViewDoc,
   onDownloadDoc,
   onUploadReqDocument,
@@ -107,11 +114,14 @@ export function ClienteMobileModal({
   onUploadComprobanteCita,
   onDownloadOficialesPdf,
   onDownloadContratosPdf,
+  onToggleRequirement,
+  togglingReqKey,
 }: ClienteMobileModalProps) {
   if (!isOpen || !selectedCliente) return null;
 
   const fullApellidos = [selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || '';
   const nombreCompleto = `${selectedCliente.nombre} ${fullApellidos}`.trim();
+  const clientFolio = folio || (selectedCliente.id ? selectedCliente.id.substring(0, 8).toUpperCase() : '');
   const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
   const [showContactDetails, setShowContactDetails] = useState(false);
 
@@ -130,7 +140,7 @@ export function ClienteMobileModal({
 
         {/* Cabecera del Modal Móvil */}
         <div className="px-3.5 py-2.5 border-b border-zinc-800/80 shrink-0 space-y-2 bg-zinc-950/70">
-          {/* Fila 1: Avatar + Nombre + Estado + Botón Cerrar */}
+          {/* Fila 1: Avatar + Nombre + Folio + Estado + Botón Cerrar */}
           <div className="flex items-center justify-between gap-2.5">
             <div className="flex items-center gap-2.5 min-w-0 flex-1">
               <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#c5a059] to-[#dfba73] text-zinc-950 flex items-center justify-center font-bold text-sm shrink-0 shadow-md">
@@ -142,6 +152,12 @@ export function ClienteMobileModal({
                   <h3 className="text-sm font-bold text-white leading-tight truncate">
                     {nombreCompleto}
                   </h3>
+
+                  {clientFolio && (
+                    <span className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-[#c5a059]/15 text-[#dfba73] border border-[#c5a059]/30 font-bold" title="Folio">
+                      FOLIO: {clientFolio}
+                    </span>
+                  )}
 
                   {/* Selector de Estado */}
                   {onChangeClienteStatus ? (
@@ -253,14 +269,17 @@ export function ClienteMobileModal({
                 <span className="truncate">Compartir</span>
               </button>
 
-              <button
-                type="button"
-                onClick={() => onEditCliente(selectedCliente)}
-                className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl border border-zinc-700 transition-all cursor-pointer min-h-[34px] flex-1 truncate"
-              >
-                <Edit className="w-3.5 h-3.5 text-[#dfba73] shrink-0" />
-                <span className="truncate">Editar</span>
-              </button>
+              {onOpenImportModal && (
+                <button
+                  type="button"
+                  onClick={onOpenImportModal}
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 text-xs font-semibold rounded-xl border border-emerald-500/30 transition-all cursor-pointer min-h-[34px] flex-1 truncate"
+                  title="Importar Carpeta o ZIP de documentos"
+                >
+                  <FolderArchive className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span className="truncate">Importar</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -270,6 +289,16 @@ export function ClienteMobileModal({
               >
                 <FileDown className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">PDFs</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onEditCliente(selectedCliente)}
+                className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl border border-zinc-700 hover:border-[#c5a059]/50 transition-all cursor-pointer min-h-[34px] min-w-[34px] flex items-center justify-center shrink-0 shadow-sm"
+                title="Editar datos del cliente"
+              >
+                <Edit className="w-4 h-4 text-[#dfba73]" />
+                <span className="sr-only">Editar Datos</span>
               </button>
             </div>
 
@@ -342,6 +371,8 @@ export function ClienteMobileModal({
                 onOpenInmuebleFotosModal={onOpenInmuebleFotosModal}
                 onGenerateClientDocLink={onGenerateClientDocLink}
                 onRemoveDocPreset={onRemoveDocPreset}
+                onToggleRequirement={onToggleRequirement}
+                togglingReqKey={togglingReqKey}
               />
             </div>
           ) : (

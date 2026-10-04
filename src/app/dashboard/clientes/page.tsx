@@ -47,11 +47,14 @@ import {
   DocumentViewerModalState,
   ClientDocLinkModalState,
   ClienteTramitesState,
+  ImportarArchivosModal,
 } from '@/components/dashboard/clientes';
+import { useModalNotification } from '@/components/ui/ModalNotification';
 
 export default function ClientesPage() {
   const { user } = useAuth();
   const supabase = createClient();
+  const { showConfirm, showAlert, ModalComponent } = useModalNotification();
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -62,7 +65,9 @@ export default function ClientesPage() {
   const [isModoSeguimiento, setIsModoSeguimiento] = useState(true);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('todos');
+  const [soloMisClientes, setSoloMisClientes] = useState(false);
   const [clientesTramitesMap, setClientesTramitesMap] = useState<Record<string, string[]>>({});
+  const [clientesFoliosMap, setClientesFoliosMap] = useState<Record<string, string[]>>({});
   const [availableAdvisors, setAvailableAdvisors] = useState<StaffUser[]>([]);
 
   // Form State Cliente
@@ -168,12 +173,14 @@ export default function ClientesPage() {
   const [isDraggingPdf, setIsDraggingPdf] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [downloadExpedienteModalOpen, setDownloadExpedienteModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [previewPdfModal, setPreviewPdfModal] = useState<PreviewPdfModalState | null>(null);
 
   const [localNetworkIp, setLocalNetworkIp] = useState<string>('');
   const [docPresets, setDocPresets] = useState<Preset[]>([]);
   const [clientDocModal, setClientDocModal] = useState<ClientDocLinkModalState | null>(null);
   const [uploadingDocKey, setUploadingDocKey] = useState<string | null>(null);
+  const [togglingReqKey, setTogglingReqKey] = useState<string | null>(null);
   const [modalViewerDoc, setModalViewerDoc] = useState<DocumentViewerModalState | null>(null);
   const [generatingAmpliada200, setGeneratingAmpliada200] = useState<boolean>(false);
   const [downloadingBundle, setDownloadingBundle] = useState<'oficiales' | 'contratos' | 'ambos' | null>(null);
@@ -271,25 +278,39 @@ export default function ClientesPage() {
       }
 
       const tMap: Record<string, string[]> = {};
+      const fMap: Record<string, string[]> = {};
+
+      const addFolio = (clienteId: string, tramiteId: string) => {
+        if (!clienteId || !tramiteId) return;
+        if (!fMap[clienteId]) fMap[clienteId] = [];
+        const shortCode = tramiteId.substring(0, 8).toUpperCase();
+        if (!fMap[clienteId].includes(shortCode)) fMap[clienteId].push(shortCode);
+        if (!fMap[clienteId].includes(tramiteId)) fMap[clienteId].push(tramiteId);
+      };
+
       (retiroRes.data || []).forEach((t: any) => {
         if (t.cliente_id) {
           if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
           if (!tMap[t.cliente_id].includes('retiro_desempleo')) tMap[t.cliente_id].push('retiro_desempleo');
+          addFolio(t.cliente_id, t.id);
         }
       });
       (mejoravitRes.data || []).forEach((t: any) => {
         if (t.cliente_id) {
           if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
           if (!tMap[t.cliente_id].includes('mejoravit')) tMap[t.cliente_id].push('mejoravit');
+          addFolio(t.cliente_id, t.id);
         }
       });
       (altaMedicaRes.data || []).forEach((t: any) => {
         if (t.cliente_id) {
           if (!tMap[t.cliente_id]) tMap[t.cliente_id] = [];
           if (!tMap[t.cliente_id].includes('alta_medica')) tMap[t.cliente_id].push('alta_medica');
+          addFolio(t.cliente_id, t.id);
         }
       });
       setClientesTramitesMap(tMap);
+      setClientesFoliosMap(fMap);
     } catch (e) {
       console.error(e);
     } finally {
@@ -311,6 +332,23 @@ export default function ClientesPage() {
         mejoravit: mejoravitRes.data || [],
         altaMedica: altaMedicaRes.data || [],
       });
+
+      const folios: string[] = [];
+      const addTId = (id?: string) => {
+        if (!id) return;
+        const short = id.substring(0, 8).toUpperCase();
+        if (!folios.includes(short)) folios.push(short);
+        if (!folios.includes(id)) folios.push(id);
+      };
+      (retiroRes.data || []).forEach((t: any) => addTId(t.id));
+      (mejoravitRes.data || []).forEach((t: any) => addTId(t.id));
+      (altaMedicaRes.data || []).forEach((t: any) => addTId(t.id));
+      if (folios.length > 0) {
+        setClientesFoliosMap((prev) => ({
+          ...prev,
+          [clienteId]: Array.from(new Set([...(prev[clienteId] || []), ...folios])),
+        }));
+      }
     } catch (e) {
       console.error('Error fetching tramites:', e);
     } finally {
@@ -324,6 +362,30 @@ export default function ClientesPage() {
     setIsModoSeguimiento(true);
     setIsMobileModalOpen(true);
     await fetchTramites(cliente.id);
+  };
+
+  const isClienteDelUsuario = (c: Cliente | null) => {
+    if (!c || !user) return false;
+    const matchId = Boolean(user.id && c.creado_por && c.creado_por === user.id);
+    const matchEmail = Boolean(
+      user.email &&
+      c.creado_por_email &&
+      c.creado_por_email.trim().toLowerCase() === user.email.trim().toLowerCase()
+    );
+    const matchNombre = Boolean(
+      user.name &&
+      c.creado_por_nombre &&
+      c.creado_por_nombre.trim().toLowerCase() === user.name.trim().toLowerCase()
+    );
+    return matchId || matchEmail || matchNombre;
+  };
+
+  const handleSoloMisClientesChange = (val: boolean) => {
+    setSoloMisClientes(val);
+    if (val && selectedCliente && !isClienteDelUsuario(selectedCliente)) {
+      setSelectedCliente(null);
+      setShowFullDetails(false);
+    }
   };
 
   // Auto-seleccionar cliente si viene en los parámetros de la URL (?clienteId=...)
@@ -535,44 +597,50 @@ export default function ClientesPage() {
       });
       return;
     }
-    const confirmed = window.confirm(
-      `¿Estás seguro de enviar a "${cliente.nombre} ${cliente.apellido_paterno || ''}" a la papelera de reciclaje?\nPodrás restaurarlo o eliminarlo permanentemente después.`
-    );
-    if (!confirmed) return;
 
-    try {
-      const nowIso = new Date().toISOString();
-      const { error } = await supabase
-        .from('clientes')
-        .update({ deleted_at: nowIso })
-        .eq('id', cliente.id);
+    showConfirm({
+      type: 'warning',
+      title: '¿Mover a papelera de reciclaje?',
+      description: `¿Estás seguro de enviar a "${cliente.nombre} ${cliente.apellido_paterno || ''}" a la papelera?`,
+      message: 'El cliente no aparecerá en la lista activa, pero podrás restaurarlo en cualquier momento.',
+      confirmText: 'Enviar a Papelera',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        try {
+          const nowIso = new Date().toISOString();
+          const { error } = await supabase
+            .from('clientes')
+            .update({ deleted_at: nowIso })
+            .eq('id', cliente.id);
 
-      if (error) throw error;
+          if (error) throw error;
 
-      setClientes((prev) =>
-        prev.map((c) => (c.id === cliente.id ? { ...c, deleted_at: nowIso } : c))
-      );
+          setClientes((prev) =>
+            prev.map((c) => (c.id === cliente.id ? { ...c, deleted_at: nowIso } : c))
+          );
 
-      if (selectedCliente?.id === cliente.id) {
-        setSelectedCliente(null);
-        setShowFullDetails(false);
-      }
+          if (selectedCliente?.id === cliente.id) {
+            setSelectedCliente(null);
+            setShowFullDetails(false);
+          }
 
-      setFeedbackMsg({
-        type: 'success',
-        text: `El cliente "${cliente.nombre}" ha sido movido a la papelera.`,
-      });
-      toast.info('Cliente en papelera', {
-        description: `"${cliente.nombre} ${cliente.apellido_paterno || ''}" fue movido a la papelera.`,
-        duration: 4000,
-      });
-    } catch (err: any) {
-      console.error('Error al enviar cliente a la papelera:', err);
-      setFeedbackMsg({ type: 'error', text: `Error al mover a papelera: ${err.message || 'Error desconocido'}` });
-      toast.error('Error al mover a papelera', {
-        description: err.message || 'Ocurrió un error inesperado.',
-      });
-    }
+          setFeedbackMsg({
+            type: 'success',
+            text: `El cliente "${cliente.nombre}" ha sido movido a la papelera.`,
+          });
+          toast.info('Cliente en papelera', {
+            description: `"${cliente.nombre} ${cliente.apellido_paterno || ''}" fue movido a la papelera.`,
+            duration: 4000,
+          });
+        } catch (err: any) {
+          console.error('Error al enviar cliente a la papelera:', err);
+          setFeedbackMsg({ type: 'error', text: `Error al mover a papelera: ${err.message || 'Error desconocido'}` });
+          toast.error('Error al mover a papelera', {
+            description: err.message || 'Ocurrió un error inesperado.',
+          });
+        }
+      },
+    });
   };
 
   const handleRestoreCliente = async (cliente: Cliente) => {
@@ -617,39 +685,50 @@ export default function ClientesPage() {
 
   const handlePermanentDeleteCliente = async (cliente: Cliente) => {
     if (user?.role !== 'admin') {
-      alert('Solo los administradores pueden eliminar clientes definitivamente.');
+      showAlert({
+        type: 'danger',
+        title: 'Acceso Denegado',
+        description: 'Solo los administradores pueden eliminar clientes definitivamente.',
+      });
       return;
     }
-    const confirmed = window.confirm(
-      `⚠️ ¡ADVERTENCIA DE ELIMINACIÓN PERMANENTE!\n\n¿Estás completamente seguro de borrar a "${cliente.nombre} ${cliente.apellido_paterno || ''}" y todos sus trámites y expedientes?\n\nEsta acción NO se puede deshacer.`
-    );
-    if (!confirmed) return;
 
-    try {
-      await Promise.all([
-        supabase.from('tramites_retiro_desempleo').delete().eq('cliente_id', cliente.id),
-        supabase.from('tramites_mejoravit').delete().eq('cliente_id', cliente.id),
-        supabase.from('tramites_alta_medica_imss').delete().eq('cliente_id', cliente.id),
-      ]);
+    showConfirm({
+      type: 'danger',
+      title: '¿Eliminar permanentemente?',
+      description: `⚠️ Se borrará a "${cliente.nombre} ${cliente.apellido_paterno || ''}" y todos sus trámites y expedientes de la base de datos.`,
+      message: 'Esta acción es irreversible y no se puede deshacer.',
+      confirmText: 'Eliminar Definitivamente',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        try {
+          await Promise.all([
+            supabase.from('tramites_retiro_desempleo').delete().eq('cliente_id', cliente.id),
+            supabase.from('tramites_mejoravit').delete().eq('cliente_id', cliente.id),
+            supabase.from('tramites_alta_medica_imss').delete().eq('cliente_id', cliente.id),
+          ]);
 
-      const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
-      if (error) throw error;
+          const { error } = await supabase.from('clientes').delete().eq('id', cliente.id);
+          if (error) throw error;
 
-      setClientes((prev) => prev.filter((c) => c.id !== cliente.id));
+          setClientes((prev) => prev.filter((c) => c.id !== cliente.id));
 
-      if (selectedCliente?.id === cliente.id) {
-        setSelectedCliente(null);
-        setShowFullDetails(false);
-      }
+          if (selectedCliente?.id === cliente.id) {
+            setSelectedCliente(null);
+            setShowFullDetails(false);
+          }
 
-      setFeedbackMsg({
-        type: 'success',
-        text: `El cliente "${cliente.nombre}" ha sido eliminado permanentemente de la base de datos.`,
-      });
-    } catch (err: any) {
-      console.error('Error al borrar permanentemente:', err);
-      setFeedbackMsg({ type: 'error', text: `Error al eliminar cliente: ${err.message || 'Error desconocido'}` });
-    }
+          setFeedbackMsg({
+            type: 'success',
+            text: `El cliente "${cliente.nombre}" ha sido eliminado permanentemente de la base de datos.`,
+          });
+          toast.success('Cliente eliminado definitivamente');
+        } catch (err: any) {
+          console.error('Error al borrar permanentemente:', err);
+          setFeedbackMsg({ type: 'error', text: `Error al eliminar cliente: ${err.message || 'Error desconocido'}` });
+        }
+      },
+    });
   };
 
   const handleSubmitCliente = async (e: React.FormEvent) => {
@@ -1559,38 +1638,42 @@ export default function ClientesPage() {
       return;
     }
 
-    const confirmDelete = window.confirm(
-      `⚠️ ATENCIÓN: El contrato "${preset.name}" ya fue completado por el cliente.\n\n` +
-      `Si eliminas el documento del expediente, la versión anterior NO se borrará de la base de datos (quedará archivada como historial), pero podrás VOLVER A GENERAR un nuevo link para que el cliente lo rellene nuevamente.\n\n` +
-      `¿Deseas continuar y habilitar la opción de nuevo link?`
-    );
+    showConfirm({
+      type: 'warning',
+      title: '¿Quitar documento del expediente?',
+      description: `El documento "${preset.name}" ya fue completado por el cliente.`,
+      message: 'La versión previa quedará archivada en el historial y podrás generar un nuevo link para que el cliente lo rellene nuevamente.',
+      confirmText: 'Quitar y Habilitar Nuevo Enlace',
+      cancelText: 'Cancelar',
+      onConfirm: async () => {
+        if (!selectedCliente) return;
+        try {
+          const currentDocs = { ...(selectedCliente.documentos_urls || {}) };
+          delete currentDocs[docKey];
 
-    if (confirmDelete && selectedCliente) {
-      try {
-        const currentDocs = { ...(selectedCliente.documentos_urls || {}) };
-        delete currentDocs[docKey];
+          const { error } = await supabase
+            .from('clientes')
+            .update({ documentos_urls: currentDocs })
+            .eq('id', selectedCliente.id);
 
-        const { error } = await supabase
-          .from('clientes')
-          .update({ documentos_urls: currentDocs })
-          .eq('id', selectedCliente.id);
+          if (error) throw error;
 
-        if (error) throw error;
+          setSelectedCliente({
+            ...selectedCliente,
+            documentos_urls: currentDocs,
+          });
 
-        setSelectedCliente({
-          ...selectedCliente,
-          documentos_urls: currentDocs,
-        });
-
-        setFeedbackMsg({
-          type: 'success',
-          text: `Se ha quitado "${preset.name}" del expediente. Ya puedes generar un nuevo link para el cliente.`,
-        });
-      } catch (err: any) {
-        console.error('Error al quitar documento:', err);
-        alert(`Error: ${err.message || 'No se pudo actualizar'}`);
-      }
-    }
+          setFeedbackMsg({
+            type: 'success',
+            text: `Se ha quitado "${preset.name}" del expediente. Ya puedes generar un nuevo link para el cliente.`,
+          });
+          toast.success(`Se quitó "${preset.name}" del expediente.`);
+        } catch (err: any) {
+          console.error('Error al quitar documento:', err);
+          toast.error(`Error: ${err.message || 'No se pudo actualizar'}`);
+        }
+      },
+    });
   };
 
   // Handler para guardar credenciales rápidas de Infonavit desde Modo Seguimiento
@@ -1816,7 +1899,64 @@ export default function ClientesPage() {
     }
   };
 
+  // Handler para marcar o desmarcar requisitos de trámites interactivamente desde el checklist
+  const handleToggleReqRequirement = async (
+    tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica',
+    tramiteId: string,
+    reqKey: string,
+    currentValue: boolean
+  ) => {
+    if (!selectedCliente) return;
+    const newValue = !currentValue;
+    const key = `${tramiteId}_${reqKey}`;
+    setTogglingReqKey(key);
+
+    // Actualización optimista inmediata en clienteTramites
+    setClienteTramites((prev) => {
+      const copy = { ...prev };
+      if (tramiteTipo === 'retiro' && copy.retiro) {
+        copy.retiro = copy.retiro.map((t) => (t.id === tramiteId ? { ...t, [reqKey]: newValue } : t));
+      } else if (tramiteTipo === 'mejoravit' && copy.mejoravit) {
+        copy.mejoravit = copy.mejoravit.map((t) => (t.id === tramiteId ? { ...t, [reqKey]: newValue } : t));
+      } else if (tramiteTipo === 'altaMedica' && copy.altaMedica) {
+        copy.altaMedica = copy.altaMedica.map((t) => (t.id === tramiteId ? { ...t, [reqKey]: newValue } : t));
+      }
+      return copy;
+    });
+
+    let table = '';
+    if (tramiteTipo === 'retiro') table = 'tramites_retiro_desempleo';
+    else if (tramiteTipo === 'mejoravit') table = 'tramites_mejoravit';
+    else if (tramiteTipo === 'altaMedica') table = 'tramites_alta_medica_imss';
+
+    try {
+      const { error } = await supabase
+        .from(table)
+        .update({ [reqKey]: newValue })
+        .eq('id', tramiteId);
+
+      if (error) throw error;
+      toast.success(newValue ? 'Requisito marcado como completado' : 'Requisito desmarcado');
+    } catch (err: any) {
+      console.error('Error toggling requisito:', err);
+      toast.error('Error al actualizar requisito: ' + (err.message || 'Error desconocido'));
+      // Revertir estado si ocurre error
+      await fetchTramites(selectedCliente.id);
+    } finally {
+      setTogglingReqKey(null);
+    }
+  };
+
   const papeleraCount = clientes.filter((c) => Boolean(c.deleted_at)).length;
+
+  const currentSelectedFolio = (() => {
+    if (!selectedCliente) return '';
+    const trRetiro = clienteTramites.retiro?.[0];
+    const trMejoravit = clienteTramites.mejoravit?.[0];
+    const trAltaMedica = clienteTramites.altaMedica?.[0];
+    const tr = trRetiro || trMejoravit || trAltaMedica;
+    return tr ? tr.id.substring(0, 8).toUpperCase() : (selectedCliente.id || '').substring(0, 8).toUpperCase();
+  })();
 
   return (
     <div className="space-y-6">
@@ -1824,6 +1964,7 @@ export default function ClientesPage() {
       {showFullDetails && selectedCliente ? (
         <ClienteFullDetails
           selectedCliente={selectedCliente}
+          folio={currentSelectedFolio}
           currentUserRole={user?.role}
           tramiteMejoravit={clienteTramites.mejoravit?.[0]}
           downloadingBundle={downloadingBundle}
@@ -1888,6 +2029,7 @@ export default function ClientesPage() {
             setIsModoSeguimiento(false);
           }}
           onOpenDownloadModal={() => setDownloadExpedienteModalOpen(true)}
+          onOpenImportModal={() => setIsImportModalOpen(true)}
           onOpenShareModal={openShareCredentialsModal}
           onEditCliente={handleEditCliente}
         >
@@ -1932,6 +2074,8 @@ export default function ClientesPage() {
             }}
             onGenerateClientDocLink={handleGenerateClientDocLink}
             onRemoveDocPreset={handleRemoveDocPreset}
+            onToggleRequirement={handleToggleReqRequirement}
+            togglingReqKey={togglingReqKey}
           />
         </ClienteFullDetails>
       ) : (
@@ -1943,9 +2087,12 @@ export default function ClientesPage() {
             onSearchChange={setSearch}
             selectedCliente={selectedCliente}
             showFullDetails={showFullDetails}
+            currentUser={user}
             currentUserRole={user?.role}
             activeStatusFilter={activeStatusFilter}
             onStatusFilterChange={setActiveStatusFilter}
+            soloMisClientes={soloMisClientes}
+            onSoloMisClientesChange={handleSoloMisClientesChange}
             onSelectCliente={handleSelectCliente}
             onEditCliente={handleEditCliente}
             onDeleteCliente={handleSoftDeleteCliente}
@@ -1954,13 +2101,17 @@ export default function ClientesPage() {
             onChangeClienteStatus={handleUpdateEstadoCliente}
             papeleraCount={papeleraCount}
             clientesTramitesMap={clientesTramitesMap}
+            clientesFoliosMap={clientesFoliosMap}
             onNewCliente={handleOpenNewClienteModal}
+            onOpenImportModal={() => setIsImportModalOpen(true)}
           />
 
           <ClienteQuickView
             selectedCliente={selectedCliente}
+            folio={currentSelectedFolio}
             currentUserRole={user?.role}
             onOpenShareModal={openShareCredentialsModal}
+            onOpenImportModal={() => setIsImportModalOpen(true)}
             onEditCliente={handleEditCliente}
             onChangeClienteStatus={handleUpdateEstadoCliente}
             onDeleteCliente={handleSoftDeleteCliente}
@@ -2014,6 +2165,8 @@ export default function ClientesPage() {
               }}
               onGenerateClientDocLink={handleGenerateClientDocLink}
               onRemoveDocPreset={handleRemoveDocPreset}
+              onToggleRequirement={handleToggleReqRequirement}
+              togglingReqKey={togglingReqKey}
             />
           </ClienteQuickView>
         </div>
@@ -2304,6 +2457,7 @@ export default function ClientesPage() {
         isOpen={isMobileModalOpen}
         onClose={() => setIsMobileModalOpen(false)}
         selectedCliente={selectedCliente}
+        folio={currentSelectedFolio}
         currentUserRole={user?.role}
         clienteTramites={clienteTramites}
         loadingTramites={loadingTramites}
@@ -2318,6 +2472,7 @@ export default function ClientesPage() {
         onEditCliente={handleEditCliente}
         onOpenShareModal={openShareCredentialsModal}
         onOpenDownloadModal={() => setDownloadExpedienteModalOpen(true)}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
         onViewDoc={(url, title) => setModalViewerDoc({ url, title })}
         onDownloadDoc={handleDownloadInline}
         onUploadReqDocument={handleUploadReqDocument}
@@ -2357,7 +2512,35 @@ export default function ClientesPage() {
         onUploadComprobanteCita={handleUploadComprobanteCita}
         onDownloadOficialesPdf={handleDownloadOficialesPdf}
         onDownloadContratosPdf={handleDownloadContratosPdf}
+        onToggleRequirement={handleToggleReqRequirement}
+        togglingReqKey={togglingReqKey}
       />
+
+      {/* Modal Importar Archivos (Carpeta o ZIP) */}
+      <ImportarArchivosModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        cliente={selectedCliente}
+        allClientes={clientes}
+        docPresets={docPresets}
+        onSuccess={async () => {
+          await fetchClientes();
+          if (selectedCliente) {
+            await fetchTramites(selectedCliente.id);
+            const { data } = await supabase
+              .from('clientes')
+              .select('*')
+              .eq('id', selectedCliente.id)
+              .single();
+            if (data) {
+              setSelectedCliente(data);
+            }
+          }
+        }}
+      />
+
+      {/* Componente Global de Modales de Confirmación y Alerta */}
+      {ModalComponent}
     </div>
   );
 }

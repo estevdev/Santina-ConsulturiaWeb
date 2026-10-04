@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   FileSearch,
   CheckCircle2,
@@ -18,40 +19,14 @@ import {
   User,
   Info,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  UploadCloud,
+  FileUp,
 } from 'lucide-react';
+import { TramiteResultado } from '@/types/seguimiento';
+import { SubirDocumentosView } from '@/components/seguimiento/SubirDocumentosView';
 
 const SESSION_STORAGE_KEY = 'santina_seguimiento_session';
-
-interface PasoTimeline {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  completado: boolean;
-  estadoPaso: 'completado' | 'en_proceso' | 'pendiente';
-}
-
-interface TramiteResultado {
-  cliente: {
-    nombrePublico: string;
-  };
-  tramite: {
-    id: string;
-    folio: string;
-    tipo: string;
-    tipoNombre: string;
-    estado: string;
-    observaciones: string | null;
-    created_at: string;
-    updated_at: string;
-  };
-  pasos: PasoTimeline[];
-  progreso: {
-    completados: number;
-    total: number;
-    porcentaje: number;
-  };
-}
 
 function SeguimientoContent() {
   const searchParams = useSearchParams();
@@ -65,13 +40,17 @@ function SeguimientoContent() {
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<TramiteResultado | null>(null);
 
+  // Selector de Sección: 'timeline' o 'documentos'
+  const [seccionActiva, setSeccionActiva] = useState<'timeline' | 'documentos'>('timeline');
+
   // Estados de Notificaciones Push
   const [pushStatus, setPushStatus] = useState<'granted' | 'denied' | 'default' | 'unsupported'>('default');
   const [subscribingPush, setSubscribingPush] = useState(false);
   const [pushSuccessMsg, setPushSuccessMsg] = useState<string | null>(null);
 
-  // Copia de enlace
+  // Copia de enlaces
   const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedUploadLink, setCopiedUploadLink] = useState(false);
 
   // Función reutilizable para realizar la consulta a la API
   const ejecutarConsulta = async (targetFolio: string, targetNss: string, isAutoCheck = false) => {
@@ -132,6 +111,11 @@ function SeguimientoContent() {
     if (typeof window === 'undefined') return;
 
     const paramFolio = searchParams.get('folio') || searchParams.get('f');
+    const paramSeccion = searchParams.get('seccion');
+    if (paramSeccion === 'documentos' || paramSeccion === 'subir') {
+      setSeccionActiva('documentos');
+    }
+
     const savedSessionRaw = localStorage.getItem(SESSION_STORAGE_KEY);
     let savedSession: { folio: string; nss: string } | null = null;
 
@@ -241,6 +225,14 @@ function SeguimientoContent() {
     navigator.clipboard.writeText(url);
     setCopiedLink(true);
     setTimeout(() => setCopiedLink(false), 2500);
+  };
+
+  const copiarEnlaceSubida = () => {
+    if (!resultado) return;
+    const url = `${window.location.origin}/seguimiento/subir-documentos?folio=${resultado.tramite.folio}`;
+    navigator.clipboard.writeText(url);
+    setCopiedUploadLink(true);
+    setTimeout(() => setCopiedUploadLink(false), 2500);
   };
 
   const getBadgeEstado = (estado: string) => {
@@ -440,7 +432,7 @@ function SeguimientoContent() {
           </div>
         ) : (
           /* ======================================================================= */
-          /* PANTALLA 2: LÍNEA DE TIEMPO DEL TRÁMITE                                 */
+          /* PANTALLA 2: VISTA DEL TRÁMITE (LÍNEA DE TIEMPO O SUBIR DOCUMENTOS)       */
           /* ======================================================================= */
           <div className="space-y-4">
             
@@ -460,8 +452,8 @@ function SeguimientoContent() {
                     </span>
                     <button
                       onClick={copiarEnlaceTramite}
-                      className="text-[11px] text-zinc-400 hover:text-[#dfba73] flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded"
-                      title="Copiar enlace"
+                      className="text-[11px] text-zinc-400 hover:text-[#dfba73] flex items-center gap-1 transition-colors px-1.5 py-0.5 rounded cursor-pointer"
+                      title="Copiar enlace de seguimiento"
                     >
                       {copiedLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedLink ? 'Copiado' : 'Copiar'}</span>
@@ -469,15 +461,42 @@ function SeguimientoContent() {
                   </div>
                 </div>
 
-                <div className="self-start sm:self-auto">
+                <div className="self-start sm:self-auto flex items-center gap-2">
                   {getBadgeEstado(resultado.tramite.estado)}
                 </div>
               </div>
 
-              {/* Barra de Progreso */}
-              <div>
+              {/* Botón y Acciones de Documentos */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 pt-0.5">
+                <Link
+                  href={`/seguimiento/subir-documentos?folio=${resultado.tramite.folio}`}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] hover:brightness-110 active:scale-[0.99] text-zinc-950 font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer"
+                  title="Abrir portal de subida de documentos"
+                >
+                  <UploadCloud className="w-4 h-4 text-zinc-950" />
+                  <span>Subir Documentos</span>
+                  {resultado.progresoDocumentos && (
+                    <span className="ml-1 text-[10px] font-extrabold bg-zinc-950/20 px-2 py-0.5 rounded-full">
+                      {resultado.progresoDocumentos.subidos}/{resultado.progresoDocumentos.total}
+                    </span>
+                  )}
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={copiarEnlaceSubida}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-[#c5a059]/40 text-[#dfba73] text-xs font-semibold transition-colors cursor-pointer"
+                  title="Copiar enlace directo para compartir la sección de subida de documentos"
+                >
+                  {copiedUploadLink ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-[#c5a059]" />}
+                  <span>{copiedUploadLink ? '¡Enlace de Subida Copiado!' : 'Compartir Enlace de Subida'}</span>
+                </button>
+              </div>
+
+              {/* Barra de Progreso General */}
+              <div className="pt-1">
                 <div className="flex justify-between items-center text-xs font-semibold text-zinc-400 mb-1.5">
-                  <span>Avance General</span>
+                  <span>Avance General del Trámite</span>
                   <span className="text-[#dfba73] font-bold">
                     {resultado.progreso.completados}/{resultado.progreso.total} Pasos ({resultado.progreso.porcentaje}%)
                   </span>
@@ -491,108 +510,173 @@ function SeguimientoContent() {
               </div>
             </div>
 
-            {/* Aviso Compacto de Notificaciones Push */}
-            {pushStatus !== 'granted' && (
-              <div className="bg-[#101217] border border-[#c5a059]/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Bell className="w-4 h-4 text-[#c5a059] shrink-0" />
-                  <span className="text-zinc-300 truncate">
-                    Recibe avisos inmediatos en tu celular ante cualquier avance.
+            {/* Pestañas de Navegación: Línea de Tiempo vs Subir Documentos */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-[#101217] rounded-xl border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => setSeccionActiva('timeline')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  seccionActiva === 'timeline'
+                    ? 'bg-zinc-800 text-white shadow-sm border border-zinc-700'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-[#c5a059]" />
+                <span>Línea de Tiempo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSeccionActiva('documentos')}
+                className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  seccionActiva === 'documentos'
+                    ? 'bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] text-zinc-950 font-extrabold shadow-sm'
+                    : 'text-[#dfba73] hover:text-white'
+                }`}
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Subir Documentos</span>
+                {resultado.progresoDocumentos && (
+                  <span className="text-[10px] font-extrabold px-1.5 py-0.2 rounded-full bg-black/20">
+                    {resultado.progresoDocumentos.subidos}/{resultado.progresoDocumentos.total}
                   </span>
-                </div>
-                <button
-                  onClick={solicitarPermisoNotificaciones}
-                  disabled={subscribingPush}
-                  className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 font-bold rounded-lg text-xs shrink-0 cursor-pointer disabled:opacity-50 min-h-[34px]"
-                >
-                  {subscribingPush ? '...' : 'Activar'}
-                </button>
-              </div>
-            )}
-
-            {pushSuccessMsg && (
-              <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{pushSuccessMsg}</span>
-              </div>
-            )}
-
-            {/* Observaciones (Si existen) */}
-            {resultado.tramite.observaciones && (
-              <div className="bg-[#101217] border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300 space-y-1">
-                <span className="font-bold text-[#dfba73] flex items-center gap-1 text-[11px] uppercase">
-                  <Info className="w-3 h-3" /> Nota del Asesor:
-                </span>
-                <p className="italic text-zinc-300">"{resultado.tramite.observaciones}"</p>
-              </div>
-            )}
-
-            {/* Línea de Tiempo Simplificada */}
-            <div className="bg-[#101217] rounded-2xl border border-zinc-800 p-4 sm:p-5 shadow-lg space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 pb-2 border-b border-zinc-800">
-                Línea de Tiempo del Proceso
-              </h3>
-
-              <div className="space-y-2.5">
-                {resultado.pasos.map((paso, idx) => {
-                  const isDone = paso.completado;
-                  const isCurrent = paso.estadoPaso === 'en_proceso';
-
-                  return (
-                    <div
-                      key={paso.id}
-                      className={`p-3 rounded-xl border transition-all flex items-start gap-3 ${
-                        isDone
-                          ? 'bg-[#0b0c10] border-emerald-500/25'
-                          : isCurrent
-                          ? 'bg-[#0b0c10] border-[#c5a059]/40 ring-1 ring-[#c5a059]/30'
-                          : 'bg-[#0b0c10]/60 border-zinc-800/80 text-zinc-500'
-                      }`}
-                    >
-                      {/* Indicador de Estado */}
-                      <span
-                        className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
-                          isDone
-                            ? 'bg-emerald-500 text-zinc-950'
-                            : isCurrent
-                            ? 'bg-[#c5a059] text-zinc-950'
-                            : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
-                        }`}
-                      >
-                        {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : idx + 1}
-                      </span>
-
-                      {/* Contenido */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <h4
-                            className={`text-xs sm:text-sm font-bold ${
-                              isDone ? 'text-white' : isCurrent ? 'text-[#dfba73]' : 'text-zinc-400'
-                            }`}
-                          >
-                            {paso.titulo}
-                          </h4>
-                          <span
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                              isDone
-                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : isCurrent
-                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                                : 'bg-zinc-800 text-zinc-500'
-                            }`}
-                          >
-                            {isDone ? 'Listo' : isCurrent ? 'En Proceso' : 'Pendiente'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                          {paso.descripcion}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                )}
+              </button>
             </div>
+
+            {/* VISTA 1: SUBIR DOCUMENTOS */}
+            {seccionActiva === 'documentos' ? (
+              <SubirDocumentosView
+                resultado={resultado}
+                folio={folio}
+                nss={nss}
+                onRefreshData={() => ejecutarConsulta(folio, nss, true)}
+              />
+            ) : (
+              /* VISTA 2: LÍNEA DE TIEMPO DEL TRÁMITE */
+              <div className="space-y-4">
+                {/* Banner de Documentos Pendientes si existen */}
+                {resultado.progresoDocumentos && resultado.progresoDocumentos.subidos < resultado.progresoDocumentos.total && (
+                  <div className="bg-[#101217] border border-[#c5a059]/40 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <UploadCloud className="w-4 h-4 text-[#c5a059] shrink-0" />
+                      <span className="text-zinc-300 truncate">
+                        Tienes <strong>{resultado.progresoDocumentos.total - resultado.progresoDocumentos.subidos}</strong> documento(s) pendiente(s) por subir.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSeccionActiva('documentos')}
+                      className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 font-bold rounded-lg text-xs shrink-0 cursor-pointer transition-colors"
+                    >
+                      Subir Ahora
+                    </button>
+                  </div>
+                )}
+
+                {/* Aviso Compacto de Notificaciones Push */}
+                {pushStatus !== 'granted' && (
+                  <div className="bg-[#101217] border border-[#c5a059]/30 rounded-xl p-3 flex items-center justify-between gap-3 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Bell className="w-4 h-4 text-[#c5a059] shrink-0" />
+                      <span className="text-zinc-300 truncate">
+                        Recibe avisos inmediatos en tu celular ante cualquier avance.
+                      </span>
+                    </div>
+                    <button
+                      onClick={solicitarPermisoNotificaciones}
+                      disabled={subscribingPush}
+                      className="px-3 py-1.5 bg-[#c5a059] hover:bg-[#d5b069] text-zinc-950 font-bold rounded-lg text-xs shrink-0 cursor-pointer disabled:opacity-50 min-h-[34px]"
+                    >
+                      {subscribingPush ? '...' : 'Activar'}
+                    </button>
+                  </div>
+                )}
+
+                {pushSuccessMsg && (
+                  <div className="p-2.5 rounded-xl bg-emerald-950/30 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>{pushSuccessMsg}</span>
+                  </div>
+                )}
+
+                {/* Observaciones (Si existen) */}
+                {resultado.tramite.observaciones && (
+                  <div className="bg-[#101217] border border-zinc-800 rounded-xl p-3 text-xs text-zinc-300 space-y-1">
+                    <span className="font-bold text-[#dfba73] flex items-center gap-1 text-[11px] uppercase">
+                      <Info className="w-3 h-3" /> Nota del Asesor:
+                    </span>
+                    <p className="italic text-zinc-300">"{resultado.tramite.observaciones}"</p>
+                  </div>
+                )}
+
+                {/* Línea de Tiempo Simplificada */}
+                <div className="bg-[#101217] rounded-2xl border border-zinc-800 p-4 sm:p-5 shadow-lg space-y-3">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-400 pb-2 border-b border-zinc-800">
+                    Línea de Tiempo del Proceso
+                  </h3>
+
+                  <div className="space-y-2.5">
+                    {resultado.pasos.map((paso, idx) => {
+                      const isDone = paso.completado;
+                      const isCurrent = paso.estadoPaso === 'en_proceso';
+
+                      return (
+                        <div
+                          key={paso.id}
+                          className={`p-3 rounded-xl border transition-all flex items-start gap-3 ${
+                            isDone
+                              ? 'bg-[#0b0c10] border-emerald-500/25'
+                              : isCurrent
+                              ? 'bg-[#0b0c10] border-[#c5a059]/40 ring-1 ring-[#c5a059]/30'
+                              : 'bg-[#0b0c10]/60 border-zinc-800/80 text-zinc-500'
+                          }`}
+                        >
+                          {/* Indicador de Estado */}
+                          <span
+                            className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 mt-0.5 ${
+                              isDone
+                                ? 'bg-emerald-500 text-zinc-950'
+                                : isCurrent
+                                ? 'bg-[#c5a059] text-zinc-950'
+                                : 'bg-zinc-800 text-zinc-500 border border-zinc-700/60'
+                            }`}
+                          >
+                            {isDone ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : idx + 1}
+                          </span>
+
+                          {/* Contenido */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <h4
+                                className={`text-xs sm:text-sm font-bold ${
+                                  isDone ? 'text-white' : isCurrent ? 'text-[#dfba73]' : 'text-zinc-400'
+                                }`}
+                              >
+                                {paso.titulo}
+                              </h4>
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  isDone
+                                    ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                    : isCurrent
+                                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                    : 'bg-zinc-800 text-zinc-500'
+                                }`}
+                              >
+                                {isDone ? 'Listo' : isCurrent ? 'En Proceso' : 'Pendiente'}
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                              {paso.descripcion}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         )}

@@ -391,6 +391,236 @@ export async function POST(req: NextRequest) {
     const total = pasos.length;
     const porcentaje = total > 0 ? Math.round((completados / total) * 100) : 0;
 
+    // 4. Estructurar Lista de Documentos del Trámite
+    let documentos: Array<{
+      id: string;
+      titulo: string;
+      descripcion: string;
+      obligatorio: boolean;
+      subido: boolean;
+      archivoUrl: string | null;
+      formatosAceptados: string;
+      mimePattern: string;
+    }> = [];
+
+    const tramiteDocs = tramite.documentos_urls || {};
+    const clienteDocs = cliente.documentos_urls || {};
+
+    if (tipoTramite === 'retiro_desempleo') {
+      documentos = [
+        {
+          id: 'req_ine_vigente',
+          titulo: 'Identificación Oficial (INE) Vigente',
+          descripcion: 'Credencial para votar legible a color por ambos lados o escaneo completo.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_ine_vigente || tramiteDocs.req_ine_vigente || cliente.ine_completa_url || cliente.ine_frente_url),
+          archivoUrl: tramiteDocs.req_ine_vigente || cliente.ine_completa_url || cliente.ine_frente_url || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_comprobante_domicilio',
+          titulo: 'Comprobante de Domicilio Reciente',
+          descripcion: 'Recibo de luz, agua, telefonía o predial no mayor a 3 meses.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_comprobante_domicilio || tramiteDocs.req_comprobante_domicilio),
+          archivoUrl: tramiteDocs.req_comprobante_domicilio || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_curp',
+          titulo: 'CURP Certificada Actualizada',
+          descripcion: 'Formato digital oficial de CURP descargado recientemente de RENAPO.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_curp || tramiteDocs.req_curp || cliente.curp_document_url),
+          archivoUrl: tramiteDocs.req_curp || cliente.curp_document_url || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_constancia_situacion_fiscal',
+          titulo: 'Constancia de Situación Fiscal (SAT)',
+          descripcion: 'Constancia oficial con Cédula de Identificación Fiscal no mayor a 3 meses.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_constancia_situacion_fiscal || tramiteDocs.req_constancia_situacion_fiscal),
+          archivoUrl: tramiteDocs.req_constancia_situacion_fiscal || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_reporte_semanas_imss',
+          titulo: 'Reporte de Semanas Cotizadas IMSS',
+          descripcion: 'Reporte o historial oficial de semanas cotizadas emitido por el portal IMSS.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_reporte_semanas_imss || tramiteDocs.req_reporte_semanas_imss),
+          archivoUrl: tramiteDocs.req_reporte_semanas_imss || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_anexo_sindo',
+          titulo: 'Anexo SINDO',
+          descripcion: 'Documento o anexo SINDO emitido si aplica a tu trámite de retiro.',
+          obligatorio: false,
+          subido: Boolean(tramite.req_anexo_sindo || tramiteDocs.req_anexo_sindo),
+          archivoUrl: tramiteDocs.req_anexo_sindo || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+      ];
+    } else if (tipoTramite === 'mejoravit') {
+      documentos = [
+        {
+          id: 'req_ine_normal',
+          titulo: '1. Identificación Oficial INE (Frente y Reverso)',
+          descripcion: 'Credencial para votar legible a color por ambos lados en un solo archivo o imagen.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_ine_normal || tramiteDocs.req_ine_normal || cliente.ine_completa_url || cliente.ine_frente_url),
+          archivoUrl: tramiteDocs.req_ine_normal || cliente.ine_completa_url || cliente.ine_frente_url || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_curp_actualizada',
+          titulo: '2. CURP Actualizada',
+          descripcion: 'Formato digital oficial de CURP reciente expedido por RENAPO.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_curp_actualizada || tramiteDocs.req_curp_actualizada || cliente.curp_document_url),
+          archivoUrl: tramiteDocs.req_curp_actualizada || cliente.curp_document_url || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_acta_nacimiento',
+          titulo: '3. Acta de Nacimiento Certificada',
+          descripcion: 'Copia digital legible del acta de nacimiento con validez oficial.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_acta_nacimiento || tramiteDocs.req_acta_nacimiento),
+          archivoUrl: tramiteDocs.req_acta_nacimiento || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_comprobante_domicilio',
+          titulo: '4. Comprobante de Domicilio Reciente',
+          descripcion: 'Recibo de luz (CFE), agua o gas no mayor a 3 meses del inmueble a remodelar.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_comprobante_domicilio || tramiteDocs.req_comprobante_domicilio),
+          archivoUrl: tramiteDocs.req_comprobante_domicilio || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_estado_cuenta_bancario',
+          titulo: '5. Estado de Cuenta Bancario con CLABE',
+          descripcion: 'Estado de cuenta bancario completo del último mes con CLABE interbancaria a tu nombre.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_estado_cuenta_bancario || tramiteDocs.req_estado_cuenta_bancario),
+          archivoUrl: tramiteDocs.req_estado_cuenta_bancario || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_constancia_situacion_fiscal',
+          titulo: '6. Constancia de Situación Fiscal (SAT)',
+          descripcion: 'Constancia emitida por el SAT no mayor a 3 meses con Cédula de Identificación Fiscal.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_constancia_situacion_fiscal || tramiteDocs.req_constancia_situacion_fiscal),
+          archivoUrl: tramiteDocs.req_constancia_situacion_fiscal || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_fotos_inmueble_5',
+          titulo: '7. Fotografías del Inmueble (Fachada e Interiores)',
+          descripcion: 'Expediente de fotos (3 interiores y 2 exteriores) o PDF de las áreas a mejorar.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_fotos_inmueble_5 || tramiteDocs.req_fotos_inmueble_5),
+          archivoUrl: tramiteDocs.req_fotos_inmueble_5 || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_ine_ampliada_200',
+          titulo: '8. INE Ampliada al 200% (Opcional)',
+          descripcion: 'Formato especial al 200%. Si no cuentas con él, tu asesor puede generarlo automáticamente.',
+          obligatorio: false,
+          subido: Boolean(tramite.req_ine_ampliada_200 || tramiteDocs.req_ine_ampliada_200),
+          archivoUrl: tramiteDocs.req_ine_ampliada_200 || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+      ];
+    } else if (tipoTramite === 'alta_medica_imss') {
+      documentos = [
+        {
+          id: 'req_curp_validada',
+          titulo: '1. CURP Oficial Validada',
+          descripcion: 'Documento digital oficial de CURP expedido por RENAPO.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_curp_validada || tramiteDocs.req_curp_validada || cliente.curp_document_url),
+          archivoUrl: tramiteDocs.req_curp_validada || cliente.curp_document_url || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+        {
+          id: 'req_comprobante_domicilio_reciente',
+          titulo: '2. Comprobante de Domicilio Reciente',
+          descripcion: 'Comprobante no mayor a 3 meses para la correcta asignación de tu clínica UMF.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_comprobante_domicilio_reciente || tramiteDocs.req_comprobante_domicilio_reciente),
+          archivoUrl: tramiteDocs.req_comprobante_domicilio_reciente || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_identificacion_oficial',
+          titulo: '3. Identificación Oficial (INE / Pasaporte)',
+          descripcion: 'Copia oficial vigente a color de INE, pasaporte o documento de identidad.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_identificacion_oficial || tramiteDocs.req_identificacion_oficial || cliente.ine_completa_url || cliente.ine_frente_url),
+          archivoUrl: tramiteDocs.req_identificacion_oficial || cliente.ine_completa_url || cliente.ine_frente_url || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_fotografia_infantil',
+          titulo: '4. Fotografía Tamaño Infantil',
+          descripcion: 'Fotografía infantil reciente con fondo blanco y rostro despejado para tu cartilla.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_fotografia_infantil || tramiteDocs.req_fotografia_infantil),
+          archivoUrl: tramiteDocs.req_fotografia_infantil || null,
+          formatosAceptados: 'JPG, PNG, PDF',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_cartilla_nacional_salud',
+          titulo: '5. Cartilla Nacional de Salud (Si cuentas con ella)',
+          descripcion: 'Copia o fotografía de tu carátula de cartilla médica previa si ya tienes una.',
+          obligatorio: false,
+          subido: Boolean(tramite.req_cartilla_nacional_salud || tramiteDocs.req_cartilla_nacional_salud),
+          archivoUrl: tramiteDocs.req_cartilla_nacional_salud || null,
+          formatosAceptados: 'PDF, JPG, PNG',
+          mimePattern: 'image/*,application/pdf',
+        },
+        {
+          id: 'req_alta_patronal_vigente',
+          titulo: '6. Alta Patronal Vigente',
+          descripcion: 'Documento o constancia patronal de relación laboral o aseguramiento vigente.',
+          obligatorio: true,
+          subido: Boolean(tramite.req_alta_patronal_vigente || tramiteDocs.req_alta_patronal_vigente),
+          archivoUrl: tramiteDocs.req_alta_patronal_vigente || null,
+          formatosAceptados: 'PDF',
+          mimePattern: 'application/pdf',
+        },
+      ];
+    }
+
+    const docsSubidos = documentos.filter((d) => d.subido).length;
+    const totalDocs = documentos.length;
+    const porcentajeDocs = totalDocs > 0 ? Math.round((docsSubidos / totalDocs) * 100) : 0;
+
     // Nombre formateado para el cliente (ej. "Madai C.")
     const primerNombre = (cliente.nombre || '').split(' ')[0];
     const primerApellido = cliente.apellido_paterno || (cliente.apellidos || '').split(' ')[0] || '';
@@ -416,6 +646,12 @@ export async function POST(req: NextRequest) {
         completados,
         total,
         porcentaje,
+      },
+      documentos,
+      progresoDocumentos: {
+        subidos: docsSubidos,
+        total: totalDocs,
+        porcentaje: porcentajeDocs,
       },
     });
   } catch (error: any) {

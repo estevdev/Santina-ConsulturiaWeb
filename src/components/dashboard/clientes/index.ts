@@ -17,3 +17,4 @@ export * from './ClienteQuickView';
 export * from './ClienteFullDetails';
 export * from './ClienteSeguimientoTimeline';
 export * from './ClienteMobileModal';
+export * from './ImportarArchivosModal';

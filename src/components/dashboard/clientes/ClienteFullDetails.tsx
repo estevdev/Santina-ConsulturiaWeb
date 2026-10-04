@@ -12,12 +12,15 @@ import {
   GitCommit,
   Trash2,
   Plus,
+  Hash,
+  FolderArchive,
 } from 'lucide-react';
 import { Cliente, TramiteMejoravit } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
 
 interface ClienteFullDetailsProps {
   selectedCliente: Cliente;
+  folio?: string;
   currentUserRole?: string;
   tramiteMejoravit?: TramiteMejoravit;
   downloadingBundle: 'oficiales' | 'contratos' | 'ambos' | null;
@@ -28,6 +31,7 @@ interface ClienteFullDetailsProps {
   onDeleteCliente?: (cliente: Cliente) => void;
   onBack: () => void;
   onOpenDownloadModal: () => void;
+  onOpenImportModal?: () => void;
   onOpenShareModal: (cliente: Cliente) => void;
   onEditCliente: (cliente: Cliente) => void;
   onNewCliente?: () => void;
@@ -36,6 +40,7 @@ interface ClienteFullDetailsProps {
 
 export function ClienteFullDetails({
   selectedCliente,
+  folio,
   currentUserRole,
   tramiteMejoravit,
   downloadingBundle,
@@ -46,6 +51,7 @@ export function ClienteFullDetails({
   onDeleteCliente,
   onBack,
   onOpenDownloadModal,
+  onOpenImportModal,
   onOpenShareModal,
   onEditCliente,
   onNewCliente,
@@ -120,6 +126,18 @@ export function ClienteFullDetails({
             <span>Descargar Expediente (2 PDFs)</span>
           </button>
 
+          {onOpenImportModal && (
+            <button
+              type="button"
+              onClick={onOpenImportModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-[#dfba73] hover:text-white border border-[#c5a059]/40 hover:border-[#dfba73] text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer"
+              title="Importar carpeta o archivo ZIP con documentos del cliente"
+            >
+              <FolderArchive className="w-4 h-4 text-[#c5a059]" />
+              <span>Importar Archivos</span>
+            </button>
+          )}
+
           {onNewCliente && (
             <button
               type="button"
@@ -156,9 +174,17 @@ export function ClienteFullDetails({
               <User className="w-5 h-5 text-[#c5a059]" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                Información del Expediente del Cliente
-              </h3>
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Información del Expediente del Cliente
+                </h3>
+                {folio && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-[#c5a059]/15 border border-[#c5a059]/40 text-[#dfba73] font-mono font-bold text-xs shadow-sm">
+                    <Hash className="w-3.5 h-3.5 text-[#c5a059]" />
+                    FOLIO: {folio}
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Datos personales, de contacto y de registro del cliente en el sistema.
               </p>
@@ -188,6 +214,15 @@ export function ClienteFullDetails({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+          {folio && (
+            <div className="p-3.5 bg-[#c5a059]/10 dark:bg-[#c5a059]/15 rounded-xl border border-[#c5a059]/30">
+              <span className="text-[#dfba73] block text-[10px] uppercase font-bold tracking-wider">Folio de Trámite:</span>
+              <span className="font-mono font-bold text-sm text-[#dfba73] block mt-0.5">
+                {folio}
+              </span>
+            </div>
+          )}
+
           <div className="p-3.5 bg-white dark:bg-[#0d0e12]/80 rounded-xl border border-slate-200 dark:border-slate-700/80">
             <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider">Nombre(s):</span>
             <span className="font-bold text-sm text-slate-900 dark:text-white block mt-0.5">

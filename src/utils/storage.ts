@@ -20,7 +20,7 @@ export const INITIAL_PRESETS: Preset[] = [
         width: 40,
         height: 5,
         pageNumber: 1,
-        bgColor: '#FFFFFF',
+        bgColor: 'transparent',
         color: '#000000',
         alignment: 'left'
       },
@@ -32,7 +32,7 @@ export const INITIAL_PRESETS: Preset[] = [
         width: 25,
         height: 5,
         pageNumber: 1,
-        bgColor: '#FFFFFF',
+        bgColor: 'transparent',
         color: '#000000',
         alignment: 'left'
       }

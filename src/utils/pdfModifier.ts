@@ -88,8 +88,10 @@ export async function applyEditsToPdf(
 
     const boxYBottom = pageHeight - boxYTop - boxHeight;
 
-    // 1. Dibujar parche de fondo para blanquear y tapar el texto anterior del PDF base
+    // 1. Dibujar parche de fondo para tapar texto solo si se solicita explícitamente (drawBackground === true)
+    // Los campos de texto no deben modificar el fondo de las letras; solo deben estampar las letras transparentemente sobre el PDF base.
     const shouldDrawBg =
+      Boolean(zone.drawBackground) &&
       zone.bgColor !== 'transparent' &&
       zone.bgColor !== 'none';
 
@@ -198,18 +200,21 @@ export async function applyEditsToPdf(
           }
         }
 
+        // Detectar si el texto original iniciaba con espacios / sangría
+        const initialIndent = (fullTextGroup.match(/^(\s+)/)?.[1] || '').replace(/\t/g, '    ');
+
         // Dividir por palabras y distribuir según el ancho físico permitido por cada zona
         const words = fullTextGroup.split(/\s+/).filter(Boolean);
         let currentWordIdx = 0;
 
-        for (const sib of siblingZones) {
+        for (let sIdx = 0; sIdx < siblingZones.length; sIdx++) {
+          const sib = siblingZones[sIdx];
           if (currentWordIdx >= words.length) break;
 
           const sibX = (sib.zone.x / 100) * pageWidth;
           const sibYTop = (sib.zone.y / 100) * pageHeight;
           const sibWidth = (sib.zone.width / 100) * pageWidth;
           const sibHeight = (sib.zone.height / 100) * pageHeight;
-          const sibYBottom = pageHeight - sibYTop - sibHeight;
 
           const sibFontSize = sib.zone.fontSize || zone.fontSize || 10;
           const fontEnum = getFontName(
@@ -220,8 +225,14 @@ export async function applyEditsToPdf(
           const font = await getEmbeddedFont(fontEnum);
 
           let chunkText = '';
+          // Si es el primer bloque (P1) y tenía sangría inicial, incluirla
+          if (sIdx === 0 && initialIndent) {
+            chunkText = initialIndent;
+          }
+
           while (currentWordIdx < words.length) {
-            const candidate = chunkText ? `${chunkText} ${words[currentWordIdx]}` : words[currentWordIdx];
+            const nextWord = words[currentWordIdx];
+            const candidate = chunkText ? `${chunkText} ${nextWord}` : nextWord;
             const candidateWidth = font.widthOfTextAtSize(candidate, sibFontSize);
 
             if (candidateWidth <= sibWidth) {
@@ -229,8 +240,8 @@ export async function applyEditsToPdf(
               currentWordIdx++;
             } else {
               // Si no cabe ni una sola palabra en la zona, forzar meterla y pasar a la siguiente
-              if (!chunkText) {
-                chunkText = words[currentWordIdx];
+              if (!chunkText || chunkText === initialIndent) {
+                chunkText = chunkText ? `${chunkText} ${nextWord}` : nextWord;
                 currentWordIdx++;
               }
               break;
@@ -241,9 +252,18 @@ export async function applyEditsToPdf(
             const fontAscent = sibFontSize * 0.78;
             const drawY = pageHeight - sibYTop - fontAscent;
             const textColor = hexToRgb(sib.zone.color || zone.color || '#000000');
+            const chunkWidth = font.widthOfTextAtSize(chunkText, sibFontSize);
+
+            let drawX = sibX;
+            const align = sib.zone.alignment || zone.alignment || 'left';
+            if (align === 'center') {
+              drawX = sibX + (sibWidth - chunkWidth) / 2;
+            } else if (align === 'right') {
+              drawX = sibX + sibWidth - chunkWidth;
+            }
 
             page.drawText(chunkText, {
-              x: sibX,
+              x: drawX,
               y: drawY,
               size: sibFontSize,
               font: font,
@@ -260,7 +280,7 @@ export async function applyEditsToPdf(
     if (typeof rawValue === 'object' && 'lines' in rawValue) {
       inputLines = (rawValue as RichTextValue).lines;
     } else if (typeof rawValue === 'string') {
-      const splitStr = rawValue.split('\n');
+      const splitStr = rawValue.replace(/\r/g, '').split('\n');
       inputLines = splitStr.map((line) => ({
         spans: [
           {
@@ -299,6 +319,7 @@ export async function applyEditsToPdf(
 
       for (const span of line.spans) {
         if (!span.text) continue;
+        const sanitizedText = span.text.replace(/\t/g, '    ');
         const spanFontSize = span.fontSize || baseFontSize;
         const fontEnum = getFontName(
           span.fontFamily || zone.fontFamily,
@@ -306,9 +327,9 @@ export async function applyEditsToPdf(
           span.isItalic ?? zone.isItalic
         );
         const font = await getEmbeddedFont(fontEnum);
-        const width = font.widthOfTextAtSize(span.text, spanFontSize);
+        const width = font.widthOfTextAtSize(sanitizedText, spanFontSize);
         totalLineWidth += width;
-        spanMeasurements.push({ span, font, width, fontSize: spanFontSize });
+        spanMeasurements.push({ span: { ...span, text: sanitizedText }, font, width, fontSize: spanFontSize });
       }
 
       // Posición de inicio horizontal según alineación (a partir del borde boxX)

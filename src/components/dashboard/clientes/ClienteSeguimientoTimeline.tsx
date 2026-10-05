@@ -37,6 +37,7 @@ import { Preset } from '@/types/preset';
 import { ChecklistRow } from './ChecklistRow';
 import { ClienteTramitesState } from './TramitesChecklist';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
+import { toast } from 'sonner';
 
 interface ClienteSeguimientoTimelineProps {
   selectedCliente: Cliente;
@@ -268,18 +269,52 @@ export function ClienteSeguimientoTimeline({
     .filter(Boolean)
     .join(' ') || 'Cliente';
 
-  const handleSendWhatsAppCita = () => {
+  const [sendingWpCita, setSendingWpCita] = useState(false);
+
+  const handleSendWhatsAppCita = async () => {
     const telefono = selectedCliente.telefono?.replace(/\D/g, '') || '';
     const msg = `🗓️ *CONSULTORÍA SANTINA - CITA INFONAVIT*\n\nEstimado(a) *${clienteNombreCompleto}*:\n\nTu cita presencial ante el Infonavit ha sido agendada con éxito:\n\n📍 *Lugar:* ${citaLugar || 'Centro de Servicio Infonavit (CESI)'}\n📅 *Fecha:* ${citaFecha || 'Por confirmar'}\n⏰ *Hora:* ${citaHora || 'Por confirmar'}\n🏷️ *Folio de Cita:* ${citaFolio || 'N/A'}\n\n📋 *DOCUMENTOS OBLIGATORIOS QUE DEBES LLEVAR EN ORIGINAL Y COPIA:*\n• Identificación Oficial (INE) vigente en original.\n• Acta de Nacimiento certificada original.\n• Constancia de Situación Fiscal (SAT) impresa.\n• Tabla de Amortización y Solicitud de Crédito.\n• Comprobante de Domicilio reciente original (no mayor a 3 meses).\n• Comprobante impreso de confirmación de cita.\n\n_Por favor asiste 15 minutos antes de tu horario programado. Si tienes dudas, contáctanos a la brevedad._`;
 
-    if (telefono) {
-      const url = `https://wa.me/52${telefono}?text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank');
-    } else {
+    if (!telefono) {
       navigator.clipboard.writeText(msg);
       setCopiedWpCita(true);
       setTimeout(() => setCopiedWpCita(false), 3000);
-      alert('El cliente no tiene teléfono guardado. ¡El mensaje ha sido copiado al portapapeles!');
+      toast.info('Cliente sin teléfono guardado. Mensaje copiado al portapapeles.');
+      return;
+    }
+
+    try {
+      setSendingWpCita(true);
+      const res = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono,
+          mensaje: msg,
+          clienteNombre: clienteNombreCompleto,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar por WhatsApp Cloud API');
+      }
+
+      toast.success('¡Recordatorio de cita enviado!', {
+        description: `Se entregó el recordatorio por WhatsApp oficial a ${clienteNombreCompleto}.`,
+        duration: 5000,
+      });
+    } catch (err: any) {
+      console.error('Error enviando cita por WhatsApp:', err);
+      toast.warning('Aviso de WhatsApp', {
+        description: err.message,
+        duration: 7000,
+      });
+      // Abrir en web como alternativa si falla
+      const url = `https://wa.me/52${telefono}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    } finally {
+      setSendingWpCita(false);
     }
   };
 
@@ -1127,11 +1162,17 @@ export function ClienteSeguimientoTimeline({
             {/* Botón WhatsApp */}
             <button
               type="button"
+              disabled={sendingWpCita}
               onClick={handleSendWhatsAppCita}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer shrink-0 min-h-[40px]"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer shrink-0 min-h-[40px] disabled:opacity-50"
+              title="Enviar recordatorio oficial por WhatsApp Cloud API al cliente"
             >
-              <MessageSquare className="w-4 h-4" />
-              <span>{copiedWpCita ? '¡Mensaje Copiado!' : 'Recordatorio WhatsApp'}</span>
+              {sendingWpCita ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <MessageSquare className="w-4 h-4" />
+              )}
+              <span>{sendingWpCita ? 'Enviando...' : copiedWpCita ? '¡Mensaje Copiado!' : 'Recordatorio WhatsApp (Oficial)'}</span>
             </button>
           </div>
 

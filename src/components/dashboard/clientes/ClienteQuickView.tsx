@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import { Cliente } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
+import { formatFolio } from '@/utils/whatsapp';
 
 interface ClienteQuickViewProps {
   selectedCliente: Cliente | null;
@@ -30,7 +31,6 @@ interface ClienteQuickViewProps {
   onOpenImportModal?: () => void;
   onEditCliente: (cliente: Cliente) => void;
   onViewFullDetails: () => void;
-  onEnterModoSeguimiento?: () => void;
   onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
   onDeleteCliente?: (cliente: Cliente) => void;
   children: React.ReactNode;
@@ -44,7 +44,6 @@ export function ClienteQuickView({
   onOpenImportModal,
   onEditCliente,
   onViewFullDetails,
-  onEnterModoSeguimiento,
   onChangeClienteStatus,
   onDeleteCliente,
   children,
@@ -66,7 +65,7 @@ export function ClienteQuickView({
 
   const fullApellidos = [selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || '';
   const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
-  const clientFolio = propFolio || (selectedCliente.id ? selectedCliente.id.substring(0, 8).toUpperCase() : '');
+  const clientFolio = formatFolio(propFolio || selectedCliente.id);
 
   const handleCopyFolio = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -190,18 +189,6 @@ export function ClienteQuickView({
               <Share2 className="w-3.5 h-3.5" />
               <span>Compartir Acceso</span>
             </button>
-
-            {onEnterModoSeguimiento && (
-              <button
-                type="button"
-                onClick={onEnterModoSeguimiento}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-[#c5a059] to-[#9a7b38] hover:from-[#d5b069] hover:to-[#aa8b48] text-zinc-950 text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer shrink-0"
-                title="Entrar directamente en la línea de tiempo de pasos"
-              >
-                <UserCheck className="w-4 h-4" />
-                <span>Modo Seguimiento</span>
-              </button>
-            )}
 
             {onOpenImportModal && (
               <button

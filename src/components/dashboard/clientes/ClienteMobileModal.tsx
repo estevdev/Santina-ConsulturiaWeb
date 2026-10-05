@@ -6,8 +6,6 @@ import {
   Share2,
   Edit,
   FileDown,
-  GitCommit,
-  CheckSquare,
   Phone,
   Mail,
   CreditCard,
@@ -22,8 +20,8 @@ import {
 import { Cliente, TramiteMejoravit } from '@/types/cliente';
 import { Preset } from '@/types/preset';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
+import { formatFolio } from '@/utils/whatsapp';
 import { ClienteTramitesState } from './TramitesChecklist';
-import { ClienteSeguimientoTimeline } from './ClienteSeguimientoTimeline';
 import { TramitesChecklist } from './TramitesChecklist';
 
 interface ClienteMobileModalProps {
@@ -38,8 +36,6 @@ interface ClienteMobileModalProps {
   uploadingDocKey: string | null;
   generatingAmpliada200: boolean;
   downloadingBundle: 'oficiales' | 'contratos' | 'ambos' | null;
-  isModoSeguimiento: boolean;
-  onToggleModoSeguimiento: () => void;
   onChangeClienteStatus: (clienteId: string, newStatus: string) => void;
   onDeleteCliente?: (cliente: Cliente) => void;
   onEditCliente: (cliente: Cliente) => void;
@@ -61,9 +57,10 @@ interface ClienteMobileModalProps {
   onOpenInmuebleFotosModal: (tramiteId: string, tr: TramiteMejoravit) => void;
   onGenerateClientDocLink: (preset: Preset, tramiteType: string) => Promise<void>;
   onRemoveDocPreset: (preset: Preset, docKey: string) => Promise<void>;
-  onSaveQuickCreds: (nss: string, pass: string) => Promise<void>;
-  onUploadTablaAmortizacion: (file: File) => Promise<void>;
-  onSaveCitaInfonavit: (citaData: {
+  onFillDoc?: (preset: Preset, tramiteType: string) => void;
+  onSaveQuickCreds?: (nss: string, pass: string) => Promise<void>;
+  onUploadTablaAmortizacion?: (file: File) => Promise<void>;
+  onSaveCitaInfonavit?: (citaData: {
     fecha: string;
     hora: string;
     lugar: string;
@@ -71,9 +68,9 @@ interface ClienteMobileModalProps {
     estado: 'pendiente' | 'confirmada' | 'asistida' | 'cancelada';
     notas?: string;
   }) => Promise<void>;
-  onUploadComprobanteCita: (file: File) => Promise<void>;
-  onDownloadOficialesPdf: () => void;
-  onDownloadContratosPdf: () => void;
+  onUploadComprobanteCita?: (file: File) => Promise<void>;
+  onDownloadOficialesPdf?: () => void;
+  onDownloadContratosPdf?: () => void;
   onToggleRequirement?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentValue: boolean) => Promise<void>;
   togglingReqKey?: string | null;
   onVerifyClientDoc?: (
@@ -97,8 +94,6 @@ export function ClienteMobileModal({
   uploadingDocKey,
   generatingAmpliada200,
   downloadingBundle,
-  isModoSeguimiento,
-  onToggleModoSeguimiento,
   onChangeClienteStatus,
   onDeleteCliente,
   onEditCliente,
@@ -115,6 +110,7 @@ export function ClienteMobileModal({
   onOpenInmuebleFotosModal,
   onGenerateClientDocLink,
   onRemoveDocPreset,
+  onFillDoc,
   onSaveQuickCreds,
   onUploadTablaAmortizacion,
   onSaveCitaInfonavit,
@@ -130,7 +126,7 @@ export function ClienteMobileModal({
 
   const fullApellidos = [selectedCliente.apellido_paterno, selectedCliente.apellido_materno].filter(Boolean).join(' ') || selectedCliente.apellidos || '';
   const nombreCompleto = `${selectedCliente.nombre} ${fullApellidos}`.trim();
-  const clientFolio = folio || (selectedCliente.id ? selectedCliente.id.substring(0, 8).toUpperCase() : '');
+  const clientFolio = formatFolio(folio || selectedCliente.id);
   const currentStatusConfig = getEstadoClienteConfig(selectedCliente.estado_cliente);
   const [showContactDetails, setShowContactDetails] = useState(false);
 
@@ -323,79 +319,19 @@ export function ClienteMobileModal({
             )}
           </div>
 
-          {/* Fila 4: Pestañas de Navegación (Checklist de Trámites vs Modo Seguimiento) */}
-          <div className="grid grid-cols-2 gap-1 p-0.5 bg-zinc-900/90 rounded-xl border border-zinc-800/80">
-            <button
-              type="button"
-              onClick={() => {
-                if (isModoSeguimiento) onToggleModoSeguimiento();
-              }}
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                !isModoSeguimiento
-                  ? 'bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] text-zinc-950 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <CheckSquare className="w-3.5 h-3.5" />
-              <span>Checklist</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                if (!isModoSeguimiento) onToggleModoSeguimiento();
-              }}
-              className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                isModoSeguimiento
-                  ? 'bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] text-zinc-950 shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-            >
-              <GitCommit className="w-3.5 h-3.5" />
-              <span>Seguimiento</span>
-            </button>
-          </div>
         </div>
 
         {/* Cuerpo del Modal con Scroll */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 overscroll-contain">
-          {!isModoSeguimiento ? (
-            /* Checklist de Trámites (Vista exacta del lado derecho de PC) */
-            <div className="space-y-4">
-              <TramitesChecklist
-                loadingTramites={loadingTramites}
-                clienteTramites={clienteTramites}
-                selectedCliente={selectedCliente}
-                currentUserRole={currentUserRole}
-                uploadingDocKey={uploadingDocKey}
-                generatingAmpliada200={generatingAmpliada200}
-                docPresets={docPresets}
-                onViewDoc={onViewDoc}
-                onDownloadDoc={onDownloadDoc}
-                onUploadReqDocument={onUploadReqDocument}
-                onGenerateIneAmpliada200={onGenerateIneAmpliada200}
-                onOpenManualIneCropper={onOpenManualIneCropper}
-                onOpenReferenciasModal={onOpenReferenciasModal}
-                onOpenInfonavitCredsModal={onOpenInfonavitCredsModal}
-                onOpenInmuebleFotosModal={onOpenInmuebleFotosModal}
-                onGenerateClientDocLink={onGenerateClientDocLink}
-                onRemoveDocPreset={onRemoveDocPreset}
-                onToggleRequirement={onToggleRequirement}
-                togglingReqKey={togglingReqKey}
-                onVerifyClientDoc={onVerifyClientDoc}
-                verifyingDocKey={verifyingDocKey}
-              />
-            </div>
-          ) : (
-            /* Modo Seguimiento (Línea de Tiempo con los 4 hitos) */
-            <ClienteSeguimientoTimeline
+          <div className="space-y-4">
+            <TramitesChecklist
+              loadingTramites={loadingTramites}
+              clienteTramites={clienteTramites}
               selectedCliente={selectedCliente}
               currentUserRole={currentUserRole}
-              clienteTramites={clienteTramites}
-              docPresets={docPresets}
               uploadingDocKey={uploadingDocKey}
               generatingAmpliada200={generatingAmpliada200}
-              onChangeClienteStatus={onChangeClienteStatus}
+              docPresets={docPresets}
               onViewDoc={onViewDoc}
               onDownloadDoc={onDownloadDoc}
               onUploadReqDocument={onUploadReqDocument}
@@ -406,17 +342,13 @@ export function ClienteMobileModal({
               onOpenInmuebleFotosModal={onOpenInmuebleFotosModal}
               onGenerateClientDocLink={onGenerateClientDocLink}
               onRemoveDocPreset={onRemoveDocPreset}
-              onSaveQuickCreds={onSaveQuickCreds}
-              onUploadTablaAmortizacion={onUploadTablaAmortizacion}
-              onSaveCitaInfonavit={onSaveCitaInfonavit}
-              onUploadComprobanteCita={onUploadComprobanteCita}
-              onDownloadOficialesPdf={onDownloadOficialesPdf}
-              onDownloadContratosPdf={onDownloadContratosPdf}
-              downloadingBundle={downloadingBundle}
+              onFillDoc={onFillDoc}
+              onToggleRequirement={onToggleRequirement}
+              togglingReqKey={togglingReqKey}
               onVerifyClientDoc={onVerifyClientDoc}
               verifyingDocKey={verifyingDocKey}
             />
-          )}
+          </div>
         </div>
       </div>
     </div>

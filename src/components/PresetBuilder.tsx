@@ -64,7 +64,7 @@ export default function PresetBuilder({
       isBold: false,
       isItalic: false,
       isUnderline: false,
-      bgColor: '#FFFFFF',
+      bgColor: 'transparent',
       color: '#000000',
       alignment: 'left',
       filledBy: 'cliente',

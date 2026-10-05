@@ -12,6 +12,7 @@ import {
   GraduationCap,
   Inbox,
   FolderArchive,
+  MessageSquareText,
   LucideIcon
 } from 'lucide-react';
 
@@ -26,6 +27,8 @@ export interface NavItemConfig {
    * Si no se define (o está vacío), todos los roles autenticados tienen acceso.
    */
   roles?: Role[];
+  /** Sub-opciones / pantallas secundarias asociadas */
+  children?: NavItemConfig[];
 }
 
 export interface NavSectionConfig {
@@ -135,6 +138,15 @@ export const NAVIGATION_CONFIG: NavSectionConfig[] = [
         href: '/dashboard/configuracion',
         icon: Settings,
         roles: ['admin'],
+        children: [
+          {
+            name: 'Mensajes Automatizados',
+            href: '/dashboard/configuracion/mensajes-automatizados',
+            icon: MessageSquareText,
+            badge: 'WhatsApp',
+            roles: ['admin'],
+          },
+        ],
       },
     ],
   },
@@ -157,7 +169,14 @@ export function getAuthorizedNavigation(userRole: Role | undefined): NavSectionC
     .filter((section) => hasRoleAccess(userRole, section.roles))
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => hasRoleAccess(userRole, item.roles)),
+      items: section.items
+        .filter((item) => hasRoleAccess(userRole, item.roles))
+        .map((item) => ({
+          ...item,
+          children: item.children
+            ? item.children.filter((ch) => hasRoleAccess(userRole, ch.roles))
+            : undefined,
+        })),
     }))
     .filter((section) => section.items.length > 0);
 }

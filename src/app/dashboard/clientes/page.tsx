@@ -15,12 +15,12 @@ import { mergePdfAndImageUrls } from '@/utils/pdfMerger';
 import { Users, Plus, ShieldCheck, User, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { getEstadoClienteConfig } from '@/constants/estadosCliente';
+import { formatFolio } from '@/utils/whatsapp';
 
 import {
   ClientesList,
   ClienteQuickView,
   ClienteFullDetails,
-  ClienteSeguimientoTimeline,
   ClienteMobileModal,
   TramitesChecklist,
   ClienteFormModal,
@@ -48,6 +48,7 @@ import {
   ClientDocLinkModalState,
   ClienteTramitesState,
   ImportarArchivosModal,
+  LiveDocFillerModal,
 } from '@/components/dashboard/clientes';
 import { useModalNotification } from '@/components/ui/ModalNotification';
 
@@ -62,7 +63,6 @@ export default function ClientesPage() {
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
   const [showFullDetails, setShowFullDetails] = useState(false);
   const [isMobileModalOpen, setIsMobileModalOpen] = useState(false);
-  const [isModoSeguimiento, setIsModoSeguimiento] = useState(true);
   const [editingClienteId, setEditingClienteId] = useState<string | null>(null);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('todos');
   const [soloMisClientes, setSoloMisClientes] = useState(false);
@@ -185,6 +185,11 @@ export default function ClientesPage() {
   const [modalViewerDoc, setModalViewerDoc] = useState<DocumentViewerModalState | null>(null);
   const [generatingAmpliada200, setGeneratingAmpliada200] = useState<boolean>(false);
   const [downloadingBundle, setDownloadingBundle] = useState<'oficiales' | 'contratos' | 'ambos' | null>(null);
+  const [liveDocFillerModal, setLiveDocFillerModal] = useState<{
+    isOpen: boolean;
+    preset: Preset;
+    tramiteType: string;
+  } | null>(null);
 
   useEffect(() => {
     async function loadDocPresets() {
@@ -284,9 +289,8 @@ export default function ClientesPage() {
       const addFolio = (clienteId: string, tramiteId: string) => {
         if (!clienteId || !tramiteId) return;
         if (!fMap[clienteId]) fMap[clienteId] = [];
-        const shortCode = tramiteId.substring(0, 8).toUpperCase();
-        if (!fMap[clienteId].includes(shortCode)) fMap[clienteId].push(shortCode);
-        if (!fMap[clienteId].includes(tramiteId)) fMap[clienteId].push(tramiteId);
+        const shortCode = formatFolio(tramiteId);
+        if (shortCode && !fMap[clienteId].includes(shortCode)) fMap[clienteId].push(shortCode);
       };
 
       (retiroRes.data || []).forEach((t: any) => {
@@ -337,9 +341,8 @@ export default function ClientesPage() {
       const folios: string[] = [];
       const addTId = (id?: string) => {
         if (!id) return;
-        const short = id.substring(0, 8).toUpperCase();
-        if (!folios.includes(short)) folios.push(short);
-        if (!folios.includes(id)) folios.push(id);
+        const short = formatFolio(id);
+        if (short && !folios.includes(short)) folios.push(short);
       };
       (retiroRes.data || []).forEach((t: any) => addTId(t.id));
       (mejoravitRes.data || []).forEach((t: any) => addTId(t.id));
@@ -360,7 +363,6 @@ export default function ClientesPage() {
   const handleSelectCliente = async (cliente: Cliente, openDetails: boolean = false) => {
     setSelectedCliente(cliente);
     setShowFullDetails(openDetails);
-    setIsModoSeguimiento(true);
     setIsMobileModalOpen(true);
     await fetchTramites(cliente.id);
   };
@@ -408,7 +410,7 @@ export default function ClientesPage() {
     const trMejoravit = clienteTramites.mejoravit?.[0];
     const trAltaMedica = clienteTramites.altaMedica?.[0];
     const tr = trRetiro || trMejoravit || trAltaMedica;
-    const folioCode = tr ? tr.id.substring(0, 8).toUpperCase() : (cli.id || '').substring(0, 8).toUpperCase();
+    const folioCode = formatFolio(tr ? tr.id : cli.id);
     const tramiteNombre = trRetiro
       ? 'Retiro por Desempleo AFORE'
       : trMejoravit
@@ -582,6 +584,49 @@ export default function ClientesPage() {
         description: `Se actualizó el estado de "${clientName}" a "${statusConfig.label}".`,
         duration: 4000,
       });
+
+      // Notificación automática por WhatsApp Cloud API
+      const rawFolio = clientesFoliosMap[clienteId];
+      const cleanFolio = formatFolio(rawFolio);
+      const clienteTramiteTipos = clientesTramitesMap[clienteId] || [];
+      const primaryTramiteTipo = clienteTramiteTipos.includes('alta_medica')
+        ? 'Alta Médica IMSS'
+        : clienteTramiteTipos.includes('mejoravit')
+        ? 'Crédito Mejoravit'
+        : clienteTramiteTipos.includes('retiro_desempleo')
+        ? 'Retiro por Desempleo'
+        : undefined;
+
+      try {
+        const waRes = await fetch('/api/whatsapp/notificar-estado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clienteId,
+            nuevoEstado: newStatus,
+            folio: cleanFolio,
+            tramiteTipo: primaryTramiteTipo,
+          }),
+        });
+        const waData = await waRes.json();
+        if (waData.success) {
+          toast.success(`WhatsApp enviado a ${targetCli?.nombre || 'cliente'}`, {
+            description: `Se notificó el cambio de estado a "${statusConfig.label}".`,
+            duration: 4000,
+          });
+        } else if (waData.reason === 'NO_PHONE') {
+          toast.info(`Cliente sin teléfono`, {
+            description: `No se pudo enviar WhatsApp porque el cliente no tiene teléfono registrado.`,
+          });
+        } else if (waData.error) {
+          toast.warning(`Aviso de WhatsApp`, {
+            description: waData.error,
+            duration: 7000,
+          });
+        }
+      } catch (waErr) {
+        console.error('Error al invocar notificación de WhatsApp:', waErr);
+      }
     } catch (err: any) {
       console.error('Error actualizando estado del cliente:', err);
       setFeedbackMsg({ type: 'error', text: `Error al actualizar estado: ${err.message || 'Error desconocido'}` });
@@ -1633,6 +1678,40 @@ export default function ClientesPage() {
     }
   };
 
+  const handleOpenLiveDocFiller = (preset: Preset, tramiteType: string) => {
+    setLiveDocFillerModal({
+      isOpen: true,
+      preset,
+      tramiteType,
+    });
+  };
+
+  const handleSaveLiveDocFillerSuccess = (generatedPdfUrl: string, presetId: string) => {
+    if (selectedCliente) {
+      const updatedDocs = {
+        ...(selectedCliente.documentos_urls || {}),
+        [`doc_preset_${presetId}`]: generatedPdfUrl,
+      };
+      setSelectedCliente({
+        ...selectedCliente,
+        documentos_urls: updatedDocs,
+      });
+
+      setClientes((prev) =>
+        prev.map((c) =>
+          c.id === selectedCliente.id
+            ? { ...c, documentos_urls: updatedDocs }
+            : c
+        )
+      );
+
+      // Si hay un trámite abierto, refrescar datos
+      if (selectedCliente.id) {
+        fetchTramites(selectedCliente.id);
+      }
+    }
+  };
+
   const handleRemoveDocPreset = async (preset: Preset, docKey: string) => {
     if (user?.role !== 'admin') {
       toast.error('Acceso denegado', { description: 'Solo los administradores pueden eliminar o quitar documentos del expediente.' });
@@ -2074,7 +2153,7 @@ export default function ClientesPage() {
     const trMejoravit = clienteTramites.mejoravit?.[0];
     const trAltaMedica = clienteTramites.altaMedica?.[0];
     const tr = trRetiro || trMejoravit || trAltaMedica;
-    return tr ? tr.id.substring(0, 8).toUpperCase() : (selectedCliente.id || '').substring(0, 8).toUpperCase();
+    return formatFolio(tr ? tr.id : selectedCliente.id);
   })();
 
   return (
@@ -2087,67 +2166,11 @@ export default function ClientesPage() {
           currentUserRole={user?.role}
           tramiteMejoravit={clienteTramites.mejoravit?.[0]}
           downloadingBundle={downloadingBundle}
-          isModoSeguimiento={isModoSeguimiento}
-          onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
           onChangeClienteStatus={handleUpdateEstadoCliente}
           onDeleteCliente={handleSoftDeleteCliente}
           onNewCliente={handleOpenNewClienteModal}
-          timelineComponent={
-            <ClienteSeguimientoTimeline
-              selectedCliente={selectedCliente}
-              currentUserRole={user?.role}
-              clienteTramites={clienteTramites}
-              docPresets={docPresets}
-              uploadingDocKey={uploadingDocKey}
-              generatingAmpliada200={generatingAmpliada200}
-              onChangeClienteStatus={handleUpdateEstadoCliente}
-              onViewDoc={(url, title) => setModalViewerDoc({ url, title })}
-              onDownloadDoc={handleDownloadInline}
-              onUploadReqDocument={handleUploadReqDocument}
-              onGenerateIneAmpliada200={handleGenerateIneAmpliada200}
-              onOpenManualIneCropper={openManualIneCropper}
-              onOpenReferenciasModal={(tramiteId, tr) => {
-                const existingRefs = tr.referencias_detalle || [];
-                const initialRefs = [0, 1, 2].map((idx) => ({
-                  nombre: existingRefs[idx]?.nombre || '',
-                  telefono: existingRefs[idx]?.telefono || '',
-                  domicilio: existingRefs[idx]?.domicilio || '',
-                }));
-                setReferenciasModal({
-                  tramiteId,
-                  referencias: initialRefs,
-                });
-              }}
-              onOpenInfonavitCredsModal={(tramiteId, tr) => {
-                setInfonavitCredsModal({
-                  tramiteId,
-                  nss: tr.nss_portal_infonavit || selectedCliente?.nss || '',
-                  password: tr.password_portal_infonavit || '',
-                });
-              }}
-              onOpenInmuebleFotosModal={(tramiteId, tr) => {
-                setInmuebleFotosModal({
-                  tramiteId,
-                  existingPdfUrl: tr.documentos_urls?.req_fotos_inmueble_5,
-                  fotos: [],
-                });
-              }}
-              onGenerateClientDocLink={handleGenerateClientDocLink}
-              onRemoveDocPreset={handleRemoveDocPreset}
-              onSaveQuickCreds={handleSaveQuickCreds}
-              onUploadTablaAmortizacion={handleUploadTablaAmortizacion}
-              onSaveCitaInfonavit={handleSaveCitaInfonavit}
-              onUploadComprobanteCita={handleUploadComprobanteCita}
-              onDownloadOficialesPdf={handleDownloadOficialesPdf}
-              onDownloadContratosPdf={handleDownloadContratosPdf}
-              downloadingBundle={downloadingBundle}
-              onVerifyClientDoc={handleVerifyClientDoc}
-              verifyingDocKey={verifyingDocKey}
-            />
-          }
           onBack={() => {
             setShowFullDetails(false);
-            setIsModoSeguimiento(false);
           }}
           onOpenDownloadModal={() => setDownloadExpedienteModalOpen(true)}
           onOpenImportModal={() => setIsImportModalOpen(true)}
@@ -2195,6 +2218,7 @@ export default function ClientesPage() {
             }}
             onGenerateClientDocLink={handleGenerateClientDocLink}
             onRemoveDocPreset={handleRemoveDocPreset}
+            onFillDoc={handleOpenLiveDocFiller}
             onToggleRequirement={handleToggleReqRequirement}
             togglingReqKey={togglingReqKey}
             onVerifyClientDoc={handleVerifyClientDoc}
@@ -2240,11 +2264,6 @@ export default function ClientesPage() {
             onDeleteCliente={handleSoftDeleteCliente}
             onViewFullDetails={() => {
               setShowFullDetails(true);
-              setIsModoSeguimiento(true);
-            }}
-            onEnterModoSeguimiento={() => {
-              setShowFullDetails(true);
-              setIsModoSeguimiento(true);
             }}
           >
             <TramitesChecklist
@@ -2288,6 +2307,7 @@ export default function ClientesPage() {
               }}
               onGenerateClientDocLink={handleGenerateClientDocLink}
               onRemoveDocPreset={handleRemoveDocPreset}
+              onFillDoc={handleOpenLiveDocFiller}
               onToggleRequirement={handleToggleReqRequirement}
               togglingReqKey={togglingReqKey}
               onVerifyClientDoc={handleVerifyClientDoc}
@@ -2590,8 +2610,6 @@ export default function ClientesPage() {
         uploadingDocKey={uploadingDocKey}
         generatingAmpliada200={generatingAmpliada200}
         downloadingBundle={downloadingBundle}
-        isModoSeguimiento={isModoSeguimiento}
-        onToggleModoSeguimiento={() => setIsModoSeguimiento(!isModoSeguimiento)}
         onChangeClienteStatus={handleUpdateEstadoCliente}
         onDeleteCliente={handleSoftDeleteCliente}
         onEditCliente={handleEditCliente}
@@ -2631,6 +2649,7 @@ export default function ClientesPage() {
         }}
         onGenerateClientDocLink={handleGenerateClientDocLink}
         onRemoveDocPreset={handleRemoveDocPreset}
+        onFillDoc={handleOpenLiveDocFiller}
         onSaveQuickCreds={handleSaveQuickCreds}
         onUploadTablaAmortizacion={handleUploadTablaAmortizacion}
         onSaveCitaInfonavit={handleSaveCitaInfonavit}
@@ -2665,6 +2684,18 @@ export default function ClientesPage() {
           }
         }}
       />
+
+      {/* Modal de Llenado Visual en Tiempo Real del Formato PDF */}
+      {liveDocFillerModal && (
+        <LiveDocFillerModal
+          isOpen={liveDocFillerModal.isOpen}
+          onClose={() => setLiveDocFillerModal(null)}
+          preset={liveDocFillerModal.preset}
+          cliente={selectedCliente}
+          tramiteType={liveDocFillerModal.tramiteType}
+          onSaveSuccess={handleSaveLiveDocFillerSuccess}
+        />
+      )}
 
       {/* Componente Global de Modales de Confirmación y Alerta */}
       {ModalComponent}

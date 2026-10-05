@@ -1,7 +1,8 @@
 'use client';
 
-import React from 'react';
-import { X, Link2, Check, Copy } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Link2, Check, Copy, Smartphone, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface ClientDocLinkModalState {
   isOpen: boolean;
@@ -24,7 +25,53 @@ export function ClientDocLinkModal({
   onClose,
   onCopy,
 }: ClientDocLinkModalProps) {
+  const [sendingWa, setSendingWa] = useState(false);
+
   if (!modalData.isOpen) return null;
+
+  const handleSendWhatsAppLink = async () => {
+    const phone = modalData.clientePhone?.replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sin teléfono', {
+        description: 'No hay un número registrado para enviar este enlace directamente por WhatsApp.',
+      });
+      return;
+    }
+
+    const msg = `Hola *${modalData.clienteNombre}*, tu asesor de *Santina Consultoría* te ha generado un enlace seguro para completar tu documento digital *${modalData.presetName}*:\n\n🔗 ${modalData.linkUrl}\n\n_Por favor ábrelo desde tu celular para verificar y completar tu información._`;
+
+    try {
+      setSendingWa(true);
+      const res = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono: phone,
+          mensaje: msg,
+          clienteNombre: modalData.clienteNombre,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar enlace por WhatsApp');
+      }
+
+      toast.success('¡Enlace enviado por WhatsApp oficial!', {
+        description: `Se entregó a ${modalData.clienteNombre} (${phone}).`,
+        duration: 5000,
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Error enviando enlace:', err);
+      toast.warning('Aviso de WhatsApp', {
+        description: err.message,
+        duration: 7000,
+      });
+    } finally {
+      setSendingWa(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm overflow-y-auto">
@@ -68,14 +115,34 @@ export function ClientDocLinkModal({
             </button>
           </div>
 
-          <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 rounded-2xl text-xs">
+          <div className="p-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 rounded-2xl text-xs flex items-center justify-between">
             <span className="text-purple-900 dark:text-purple-200 font-medium">
               Cliente: <strong>{modalData.clienteNombre}</strong>
+              {modalData.clientePhone && (
+                <span className="ml-2 text-zinc-400 font-mono text-[11px]">({modalData.clientePhone})</span>
+              )}
             </span>
           </div>
         </div>
 
-        <div className="pt-2 flex justify-end">
+        <div className="pt-2 flex items-center justify-end gap-2.5">
+          {modalData.clientePhone && (
+            <button
+              type="button"
+              disabled={sendingWa}
+              onClick={handleSendWhatsAppLink}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Enviar directamente por WhatsApp Cloud API al teléfono del cliente"
+            >
+              {sendingWa ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Smartphone className="w-3.5 h-3.5" />
+              )}
+              <span>{sendingWa ? 'Enviando...' : 'Enviar por WhatsApp (Oficial)'}</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={onClose}

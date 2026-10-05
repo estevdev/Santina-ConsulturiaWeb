@@ -570,13 +570,14 @@ export default function LlenarDocumentoPage() {
                       )}
                     </div>
                   ) : (
-                    <input
-                      type="text"
-                      required
+                    <textarea
+                      wrap="off"
+                      rows={Math.min(6, Math.max(1, ((formValues[zone.id] || '').match(/\n/g) || []).length + 1))}
                       value={formValues[zone.id] || ''}
                       onChange={(e) => handleInputChange(zone.id, e.target.value)}
-                      placeholder={`Ingresa ${zone.name.toLowerCase()}...`}
-                      className="w-full bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium"
+                      placeholder={`Ingresa ${zone.name.toLowerCase()}... (Enter para salto de línea)`}
+                      style={{ whiteSpace: 'pre', overflowX: 'auto' }}
+                      className="w-full bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500 font-medium resize-none leading-relaxed"
                     />
                   )}
                 </div>

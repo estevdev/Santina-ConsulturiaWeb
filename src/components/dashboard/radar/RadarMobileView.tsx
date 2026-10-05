@@ -27,6 +27,7 @@ import { ClienteRadar } from '@/types/radar';
 import { AdvisorOption } from './RadarHeader';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 interface RadarMobileViewProps {
   clientes: ClienteRadar[];
@@ -108,11 +109,36 @@ export function RadarMobileView({
       .toUpperCase();
   };
 
-  const openWhatsApp = (e: React.MouseEvent, cliente: ClienteRadar) => {
+  const openWhatsApp = async (e: React.MouseEvent, cliente: ClienteRadar) => {
     e.stopPropagation();
     const tel = (cliente.telefono || '').replace(/\D/g, '');
-    const msg = `Hola ${cliente.nombre}, te contactamos de Consultoría Santina para dar seguimiento a tu trámite.`;
-    if (tel) {
+    const msg = `Hola *${cliente.nombre}*, te contactamos de *Santina Consultoría* para dar seguimiento a tu trámite. ¿Cómo te podemos apoyar hoy?`;
+    if (!tel) {
+      toast.error('El cliente no tiene teléfono guardado');
+      return;
+    }
+
+    try {
+      toast.info(`Enviando WhatsApp a ${cliente.nombre}...`);
+      const res = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono: tel,
+          mensaje: msg,
+          clienteNombre: cliente.nombre,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar por WhatsApp');
+      }
+      toast.success(`¡WhatsApp enviado a ${cliente.nombre}!`, {
+        description: `Entregado al ${tel} vía WhatsApp Cloud API.`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.warning('Aviso de WhatsApp: ' + err.message);
       window.open(`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`, '_blank');
     }
   };

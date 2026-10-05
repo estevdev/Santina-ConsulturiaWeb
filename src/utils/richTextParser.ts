@@ -79,7 +79,7 @@ export function createRichTextValueFromText(
   const paragraphs = clean.split(/\r?\n/);
 
   const html = paragraphs
-    .map((p) => `<p>${p || '<br>'}</p>`)
+    .map((p) => `<p style="white-space: pre; margin: 0; padding: 0;">${p || '<br>'}</p>`)
     .join('');
 
   const lines: TextLine[] = paragraphs.map((p) => ({
@@ -166,8 +166,8 @@ export function createFormattedRichTextFromExtractedText(
       }
     }
 
-    const alignStyle = alignment !== 'left' ? ` style="text-align: ${alignment}"` : '';
-    htmlParagraphs.push(`<p${alignStyle}>${innerHtml}</p>`);
+    const alignStyle = alignment !== 'left' ? ` text-align: ${alignment};` : '';
+    htmlParagraphs.push(`<p style="white-space: pre; margin: 0; padding: 0;${alignStyle}">${innerHtml}</p>`);
   }
 
   return {

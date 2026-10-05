@@ -11,6 +11,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { ClienteRadar } from '@/types/radar';
+import { toast } from 'sonner';
 
 interface RadarProximasCitasProps {
   clientes: ClienteRadar[];
@@ -30,13 +31,38 @@ export function RadarProximasCitas({
       return da - db;
     });
 
-  const openWhatsAppCita = (e: React.MouseEvent, cliente: ClienteRadar) => {
+  const openWhatsAppCita = async (e: React.MouseEvent, cliente: ClienteRadar) => {
     e.stopPropagation();
     const tel = (cliente.telefono || '').replace(/\D/g, '');
     const cita = cliente.cita;
-    const msg = `🗓️ *CONSULTORÍA SANTINA - RECORDATORIO DE CITA*\n\nEstimado(a) *${cliente.nombreCompleto}*:\n\nTe recordamos tu cita agendada:\n📅 *Fecha:* ${cita?.fecha || 'Por confirmar'}\n⏰ *Hora:* ${cita?.hora || 'Por confirmar'}\n📍 *Lugar:* ${cita?.lugar || 'Oficina / CESI'}\n🏷️ *Folio:* ${cita?.folio || 'N/A'}\n\nPor favor asiste puntual con tus documentos originales. Si requieres apoyo, avísanos con anticipación.`;
-    if (tel) {
-      window.open(`https://wa.me/52${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+    const msg = `🗓️ *CONSULTORÍA SANTINA - RECORDATORIO DE CITA*\n\nEstimado(a) *${cliente.nombreCompleto}*:\n\nTe recordamos tu cita agendada:\n📅 *Fecha:* ${cita?.fecha || 'Por confirmar'}\n⏰ *Hora:* ${cita?.hora || 'Por confirmar'}\n📍 *Lugar:* ${cita?.lugar || 'Oficina / CESI'}\n🏷️ *Folio:* ${cita?.folio || 'N/A'}\n\nPor favor asiste puntual con tus documentos originales. Si requieres apoyo, avísanos con anticipación.\n\n_Santina Consultoría_`;
+
+    if (!tel) {
+      toast.error('El cliente no tiene teléfono guardado');
+      return;
+    }
+
+    try {
+      toast.info(`Enviando recordatorio de cita a ${cliente.nombreCompleto}...`);
+      const res = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono: tel,
+          mensaje: msg,
+          clienteNombre: cliente.nombreCompleto,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar por WhatsApp');
+      }
+      toast.success(`¡Recordatorio de cita enviado a ${cliente.nombreCompleto}!`, {
+        description: `Entregado al ${tel} vía WhatsApp Cloud API.`,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast.warning('Aviso de WhatsApp: ' + err.message);
     }
   };
 

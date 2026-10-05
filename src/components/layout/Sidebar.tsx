@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   FileText,
   X,
   Settings,
@@ -29,9 +30,18 @@ export default function Sidebar({
 }: SidebarProps) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [expandedParents, setExpandedParents] = React.useState<Record<string, boolean>>({});
 
   // Obtiene únicamente las secciones e ítems a los que el rol actual tiene acceso
-  const authorizedSections = getAuthorizedNavigation(user?.role);
+  const authorizedSections = React.useMemo(() => {
+    return getAuthorizedNavigation(user?.role);
+  }, [user?.role]);
+
+  const toggleExpand = (href: string, currentlyExpanded: boolean, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setExpandedParents((prev) => ({ ...prev, [href]: !currentlyExpanded }));
+  };
 
   const isLinkActive = (href: string, matchExact?: boolean) => {
     if (matchExact) {
@@ -82,8 +92,90 @@ export default function Sidebar({
             )}
             <nav className="space-y-1">
               {section.items.map((item) => {
+                const hasChildren = Boolean(item.children && item.children.length > 0);
                 const active = isLinkActive(item.href, item.matchExact);
                 const Icon = item.icon;
+                const isExpanded = expandedParents[item.href] ?? (pathname.startsWith(item.href));
+
+                if (hasChildren && isOpen) {
+                  return (
+                    <div key={item.name} className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        <Link
+                          href={item.href}
+                          onClick={onMobileClose}
+                          className={`flex-1 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                            active
+                              ? 'bg-gradient-to-r from-[#c5a059] to-[#9a7b38] text-zinc-950 font-bold shadow-md shadow-[#c5a059]/20'
+                              : 'text-zinc-300 hover:bg-zinc-800/80 hover:text-white'
+                          }`}
+                        >
+                          <Icon className={`w-5 h-5 shrink-0 ${active ? 'text-zinc-950' : 'text-zinc-400 group-hover:text-amber-400'}`} />
+                          <div className="flex items-center justify-between w-full">
+                            <span className="truncate">{item.name}</span>
+                            {item.badge && (
+                              <span
+                                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                  active
+                                    ? 'bg-zinc-950/20 text-zinc-950'
+                                    : 'bg-[#c5a059]/10 text-[#c5a059] border border-[#c5a059]/30'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={(e) => toggleExpand(item.href, isExpanded, e)}
+                          className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800/80 rounded-xl transition-colors cursor-pointer shrink-0"
+                          title={isExpanded ? 'Contraer submenú' : 'Expandir submenú'}
+                        >
+                          <ChevronDown
+                            className={`w-4 h-4 transition-transform duration-200 ${
+                              isExpanded ? 'rotate-180 text-[#c5a059]' : ''
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      {isExpanded && item.children && (
+                        <div className="pl-5 pt-0.5 pb-1 space-y-1 border-l border-[#c5a059]/30 ml-5 my-0.5 animate-in fade-in duration-150">
+                          {item.children.map((child) => {
+                            const childActive = pathname === child.href;
+                            const ChildIcon = child.icon;
+                            return (
+                              <Link
+                                key={child.name}
+                                href={child.href}
+                                onClick={onMobileClose}
+                                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all group ${
+                                  childActive
+                                    ? 'bg-[#c5a059]/20 text-[#dfba73] font-bold border border-[#c5a059]/40 shadow-sm'
+                                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800/60'
+                                }`}
+                              >
+                                <ChildIcon
+                                  className={`w-4 h-4 shrink-0 ${
+                                    childActive ? 'text-[#c5a059]' : 'text-zinc-400 group-hover:text-amber-400'
+                                  }`}
+                                />
+                                <span className="truncate">{child.name}</span>
+                                {child.badge && (
+                                  <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-[#c5a059]/15 text-[#dfba73] border border-[#c5a059]/30">
+                                    {child.badge}
+                                  </span>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.name}

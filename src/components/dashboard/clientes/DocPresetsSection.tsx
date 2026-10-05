@@ -8,7 +8,8 @@ import {
   XCircle,
   Link2,
   CheckCircle2,
-  Clock
+  Clock,
+  Pencil
 } from 'lucide-react';
 import { Preset } from '@/types/preset';
 import { Cliente } from '@/types/cliente';
@@ -21,6 +22,7 @@ interface DocPresetsSectionProps {
   onGenerateLink: (preset: Preset, tramiteType: string) => void;
   onRemoveDoc: (preset: Preset, docKey: string) => Promise<void>;
   onViewDoc?: (url: string, title: string) => void;
+  onFillDoc?: (preset: Preset, tramiteType: string) => void;
 }
 
 export function DocPresetsSection({
@@ -31,6 +33,7 @@ export function DocPresetsSection({
   onGenerateLink,
   onRemoveDoc,
   onViewDoc,
+  onFillDoc,
 }: DocPresetsSectionProps) {
   const matching = docPresets.filter(
     (p) => p.targetTramiteType === 'todos' || p.targetTramiteType === tramiteType
@@ -97,6 +100,17 @@ export function DocPresetsSection({
                     <span>Ver Vacío</span>
                   </button>
                 )}
+
+                {/* Llenar Documento con Vista en Tiempo Real (Lápiz) */}
+                <button
+                  type="button"
+                  onClick={() => onFillDoc?.(preset, tramiteType)}
+                  className="px-2 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 text-[10px] font-bold rounded-lg border border-amber-500/30 flex items-center gap-1 cursor-pointer transition-all shadow-xs"
+                  title="Llenar documento en tiempo real (Visualizando el PDF como un formulario)"
+                >
+                  <Pencil className="w-3 h-3 text-amber-400" />
+                  <span>Llenar</span>
+                </button>
 
                 {/* Ver Llenado por Cliente */}
                 {existingUrl && (

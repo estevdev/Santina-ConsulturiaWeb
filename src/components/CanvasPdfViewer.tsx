@@ -15,6 +15,9 @@ interface CanvasPdfViewerProps {
   isEditorMode?: boolean;
   livePreviewValues?: ProcessedFieldValues; // Valores en tiempo real
   showOverlays?: boolean; // Controla si se ven las zonas/ediciones o el fondo original puro
+  readOnly?: boolean; // Modo solo lectura/visualización (sin arrastre ni redimensionamiento manual de zonas)
+  fitMode?: 'page' | 'width' | 'custom'; // 'page' ajusta el 100% de la altura de la página, 'width' al ancho
+  maxHeight?: string; // Altura máxima en modo 'page'
 }
 
 export default function CanvasPdfViewer({
@@ -29,6 +32,9 @@ export default function CanvasPdfViewer({
   isEditorMode = false,
   livePreviewValues = {},
   showOverlays = true,
+  readOnly = false,
+  fitMode,
+  maxHeight,
 }: CanvasPdfViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -96,8 +102,19 @@ export default function CanvasPdfViewer({
 
   useEffect(() => {
     updateDisplayScale();
+    const canvas = canvasRef.current;
+    let ro: ResizeObserver | null = null;
+    if (canvas && typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(() => {
+        updateDisplayScale();
+      });
+      ro.observe(canvas);
+    }
     window.addEventListener('resize', updateDisplayScale);
-    return () => window.removeEventListener('resize', updateDisplayScale);
+    return () => {
+      window.removeEventListener('resize', updateDisplayScale);
+      if (ro) ro.disconnect();
+    };
   }, [updateDisplayScale]);
 
   // Renderizar la página actual en el canvas
@@ -152,6 +169,7 @@ export default function CanvasPdfViewer({
 
   // Ajuste con teclado para mover la zona activa (flechas con paso fino de 0.2%)
   useEffect(() => {
+    if (readOnly) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       // No mover con flechas si el usuario está escribiendo en un input o contenteditable
       const target = e.target as HTMLElement;
@@ -182,11 +200,11 @@ export default function CanvasPdfViewer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeZoneId, zones, onUpdateZone]);
+  }, [activeZoneId, zones, onUpdateZone, readOnly]);
 
   // Manejo de mouse para dibujar nuevas zonas, mover existentes o redimensionar
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (readOnly || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -199,7 +217,7 @@ export default function CanvasPdfViewer({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!containerRef.current) return;
+    if (readOnly || !containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const currentX = ((e.clientX - rect.left) / rect.width) * 100;
     const currentY = ((e.clientY - rect.top) / rect.height) * 100;
@@ -237,6 +255,7 @@ export default function CanvasPdfViewer({
   };
 
   const handleMouseUp = () => {
+    if (readOnly) return;
     if (isDrawing && currentBox) {
       setIsDrawing(false);
       // Validar dimensiones mínimas
@@ -268,6 +287,7 @@ export default function CanvasPdfViewer({
   const handleZoneMouseDown = (e: React.MouseEvent, zone: FieldZone) => {
     e.stopPropagation();
     if (onSelectZone) onSelectZone(zone.id);
+    if (readOnly) return;
 
     if (containerRef.current && onUpdateZone) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -314,16 +334,22 @@ export default function CanvasPdfViewer({
   };
 
   return (
-    <div className="flex flex-col items-center w-full">
+    <div className={`flex flex-col items-center ${fitMode === 'page' ? 'w-fit' : 'w-full'}`}>
       <div
         ref={containerRef}
-        className="relative border shadow-md bg-white select-none overflow-hidden rounded-md"
+        className="relative border shadow-md bg-white select-none overflow-hidden rounded-md w-fit max-w-full shrink-0"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         style={{ cursor: isEditorMode ? 'crosshair' : 'default' }}
       >
-        <canvas ref={canvasRef} className="block max-w-full h-auto" />
+        <canvas
+          ref={canvasRef}
+          className={`block ${fitMode === 'page' ? 'w-auto max-w-full h-auto' : 'w-full max-w-full h-auto'}`}
+          style={{
+            maxHeight: fitMode === 'page' ? (maxHeight || 'calc(100vh - 240px)') : undefined,
+          }}
+        />
 
         {/* Zonas sobre el canvas con preview enriquecido */}
         {showOverlays && zones
@@ -334,13 +360,29 @@ export default function CanvasPdfViewer({
 
             let hasContent = false;
             let richHtml = '';
+            const isSigImage = typeof liveValue === 'string' && liveValue.startsWith('data:image/');
 
-            if (typeof liveValue === 'object' && liveValue?.html) {
-              richHtml = liveValue.html;
-              hasContent = Boolean(liveValue.plainText?.trim());
-            } else if (typeof liveValue === 'string' && liveValue.trim()) {
+            if (isSigImage) {
               hasContent = true;
-              richHtml = `<p>${liveValue.replace(/\n/g, '<br/>')}</p>`;
+            } else if (typeof liveValue === 'object' && liveValue?.html) {
+              richHtml = liveValue.html;
+              hasContent = Boolean(liveValue.plainText !== undefined && liveValue.plainText !== '');
+            } else if (typeof liveValue === 'string' && liveValue !== '') {
+              hasContent = true;
+              const cleanVal = liveValue.replace(/\r/g, '');
+              const lines = cleanVal.split('\n');
+              richHtml = lines
+                .map((line) => {
+                  const escapedLine = line
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;')
+                    .replace(/\t/g, '    ');
+                  return `<div style="white-space: pre; line-height: inherit; min-height: 1em; background: transparent;">${escapedLine || '&nbsp;'}</div>`;
+                })
+                .join('');
             }
 
             return (
@@ -386,12 +428,17 @@ export default function CanvasPdfViewer({
 
                 {/* Caja de la zona */}
                 <div
+                  id={`canvas-zone-${zone.id}`}
                   onMouseDown={(e) => handleZoneMouseDown(e, zone)}
-                  className={`absolute transition-shadow flex flex-col justify-center p-0 overflow-visible ${
+                  className={`absolute transition-all flex flex-col justify-center p-0 overflow-visible ${
                     isSelected
-                      ? 'border-2 border-[#c5a059] ring-2 ring-amber-300 shadow-lg z-20 cursor-move'
+                      ? 'border-2 border-[#c5a059] ring-4 ring-[#c5a059]/40 ' + (readOnly ? 'bg-transparent cursor-pointer' : 'bg-[#c5a059]/10 cursor-move') + ' shadow-lg z-20'
                       : isEditorMode
                       ? 'border-2 border-dashed border-amber-500 hover:border-[#c5a059] z-10 cursor-move'
+                      : readOnly
+                      ? (hasContent
+                          ? 'border border-transparent hover:border-[#c5a059]/40 z-10 cursor-pointer bg-transparent'
+                          : 'border border-dashed border-[#c5a059]/25 hover:border-[#c5a059]/60 z-10 cursor-pointer bg-transparent')
                       : 'border border-[#c5a059]/80 hover:border-[#c5a059] hover:shadow-sm z-10 cursor-move'
                   }`}
                   style={{
@@ -400,22 +447,27 @@ export default function CanvasPdfViewer({
                     width: `${zone.width}%`,
                     height: `${zone.height}%`,
                     backgroundColor:
-                      zone.bgColor === 'transparent' || zone.bgColor === 'none'
+                      readOnly || !zone.drawBackground || zone.bgColor === 'transparent' || zone.bgColor === 'none'
                         ? 'transparent'
-                        : (zone.bgColor || '#FFFFFF'),
+                        : (zone.bgColor || 'transparent'),
                     color: zone.color || '#000000',
                     fontFamily: getFontFamilyCss(zone.fontFamily),
                     fontSize: `${(zone.fontSize || 12) * displayScale}px`,
                     lineHeight: zone.lineHeight || 1.15,
                     padding: 0,
                     textAlign: zone.alignment || 'left',
+                    whiteSpace: 'pre',
                   }}
                 >
                   {zone.fieldType === 'circle_select' ? (
                     (!zone.circleOptions || zone.circleOptions.length === 0) ? (
                       <div className="w-full h-full flex items-center justify-center pointer-events-none">
                         <div
-                          className="rounded-full bg-black border-2 border-black"
+                          className={`rounded-full border-2 border-black ${
+                            liveValue === 'SELECTED' || liveValue === 'CHECKED' || (typeof liveValue === 'string' && liveValue.length > 0)
+                              ? 'bg-black'
+                              : (readOnly ? 'bg-transparent border-dashed border-amber-600/50' : 'bg-black')
+                          }`}
                           style={{
                             width: `${(zone.circleRadius || 6) * 2 * displayScale}px`,
                             height: `${(zone.circleRadius || 6) * 2 * displayScale}px`,
@@ -423,6 +475,14 @@ export default function CanvasPdfViewer({
                         />
                       </div>
                     ) : null
+                  ) : isSigImage ? (
+                    <div className="w-full h-full flex items-center justify-center p-0.5 overflow-hidden pointer-events-none select-none">
+                      <img
+                        src={liveValue as string}
+                        alt="Firma"
+                        className="max-w-full max-h-full object-contain pointer-events-none select-none"
+                      />
+                    </div>
                   ) : hasContent ? (
                     <div 
                       className={`w-full h-full flex flex-col justify-center m-0 p-0 ${
@@ -431,18 +491,24 @@ export default function CanvasPdfViewer({
                           : zone.alignment === 'center'
                           ? 'items-center text-center'
                           : 'items-start text-left'
-                      } [&_p]:m-0 [&_p]:p-0 [&_p]:leading-[inherit] [&_p]:whitespace-nowrap overflow-visible pointer-events-none`}
-                      style={{ textAlign: zone.alignment || 'left', lineHeight: zone.lineHeight || 1.15 }}
+                      } [&_p]:m-0 [&_p]:p-0 [&_p]:leading-[inherit] [&_p]:whitespace-pre [&_div]:whitespace-pre overflow-visible pointer-events-none bg-transparent`}
+                      style={{ textAlign: zone.alignment || 'left', lineHeight: zone.lineHeight || 1.15, whiteSpace: 'pre', backgroundColor: 'transparent' }}
                       dangerouslySetInnerHTML={{ __html: richHtml }}
                     />
+                  ) : readOnly ? (
+                    isSelected ? (
+                      <span className="text-[9px] text-[#c5a059] font-sans font-medium px-1 truncate select-none block text-center pointer-events-none">
+                        [{zone.name}]
+                      </span>
+                    ) : null
                   ) : (
                     <span className="text-[10px] text-slate-500 font-sans font-normal opacity-80 truncate select-none bg-white/70 px-1 rounded block text-center pointer-events-none">
                       [{zone.name}]
                     </span>
                   )}
 
-                  {/* Handle de redimensionamiento en la esquina inferior derecha */}
-                  {isSelected && (
+                  {/* Handle de redimensionamiento en la esquina inferior derecha (solo si no es readOnly) */}
+                  {!readOnly && isSelected && (
                     <div
                       onMouseDown={(e) => handleResizeHandleMouseDown(e, zone)}
                       className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-[#c5a059] border-2 border-white rounded-xs shadow-md cursor-se-resize z-30 hover:scale-125 transition-transform"
@@ -450,8 +516,8 @@ export default function CanvasPdfViewer({
                     />
                   )}
 
-                  {/* Badge de posición mientras se selecciona o mueve */}
-                  {isSelected && (
+                  {/* Badge de posición mientras se selecciona o mueve (solo si no es readOnly) */}
+                  {!readOnly && isSelected && (
                     <div className="absolute -top-6 left-0 bg-[#0d0e12]/90 text-white text-[10px] font-mono px-1.5 py-0.5 rounded shadow pointer-events-none whitespace-nowrap z-30">
                       X: {zone.x}% Y: {zone.y}% | W: {zone.width}% H: {zone.height}%
                     </div>

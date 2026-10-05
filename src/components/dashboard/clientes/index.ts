@@ -18,3 +18,4 @@ export * from './ClienteFullDetails';
 export * from './ClienteSeguimientoTimeline';
 export * from './ClienteMobileModal';
 export * from './ImportarArchivosModal';
+export * from './LiveDocFillerModal';

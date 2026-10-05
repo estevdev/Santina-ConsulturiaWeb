@@ -238,7 +238,7 @@ export default function PdfProcessor({
       isBold: false,
       isItalic: false,
       isUnderline: false,
-      bgColor: '#FFFFFF',
+      bgColor: 'transparent',
       color: '#000000',
       alignment: 'left',
     };

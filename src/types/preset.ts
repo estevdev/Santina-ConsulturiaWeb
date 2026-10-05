@@ -45,6 +45,7 @@ export interface FieldZone {
   alignment?: 'left' | 'center' | 'right';
   color?: string; // hex
   bgColor?: string; // hex para tapar el texto anterior (ej. #FFFFFF)
+  drawBackground?: boolean; // Solo si explícitamente se desea pintar un fondo sólido (por defecto falso, 100% transparente)
   filledBy?: FilledByRole; // 'cliente' (por defecto) o 'asesor'
   isSignature?: boolean; // Indica si este campo es una firma/rúbrica en trazo
   fieldType?: 'text' | 'signature' | 'circle_select'; // Tipo de campo: texto, firma o círculo marcado

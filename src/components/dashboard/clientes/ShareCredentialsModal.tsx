@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Share2, Smartphone, Check, Copy, Info } from 'lucide-react';
+import { X, Share2, Smartphone, Check, Copy, Info, RefreshCw, ExternalLink } from 'lucide-react';
 import { Cliente } from '@/types/cliente';
+import { toast } from 'sonner';
+import { formatFolio } from '@/utils/whatsapp';
 
 export interface ShareCredentialsModalState {
   cliente: Cliente;
@@ -25,15 +27,67 @@ export function ShareCredentialsModal({
   onCopy,
 }: ShareCredentialsModalProps) {
   const [showPreview, setShowPreview] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
 
   const getFormattedShareText = (data: ShareCredentialsModalState) => {
-    const url = typeof window !== 'undefined' ? `${window.location.origin}/seguimiento?folio=${data.folio}` : `/seguimiento?folio=${data.folio}`;
+    const cleanFolio = formatFolio(data.folio);
+    const url = typeof window !== 'undefined' ? `${window.location.origin}/seguimiento?folio=${cleanFolio}` : `/seguimiento?folio=${cleanFolio}`;
     const nombreCliente = [data.cliente.nombre, data.cliente.apellido_paterno].filter(Boolean).join(' ') || 'Cliente';
 
-    return `📋 *Consultoría Santina - Seguimiento de Trámite*\n\nEstimado(a) *${nombreCliente}*:\nPuedes consultar el avance de tu trámite (*${data.tramiteNombre}*) en tiempo real en nuestro portal web.\n\n🔗 *Enlace directo:*\n${url}\n\n📄 *Número de Folio:* ${data.folio}\n🔑 *Contraseña (NSS):* ${data.nss}\n\n_Haz clic en el enlace e ingresa tu contraseña para revisar la línea de tiempo de tus avances y recibir notificaciones instantáneas en tu dispositivo._`;
+    return `📋 *Consultoría Santina - Seguimiento de Trámite*\n\nEstimado(a) *${nombreCliente}*:\nPuedes consultar el avance de tu trámite (*${data.tramiteNombre}*) en tiempo real en nuestro portal web.\n\n🔗 *Enlace directo:*\n${url}\n\n📄 *Número de Folio:* ${cleanFolio}\n🔑 *Contraseña (NSS):* ${data.nss || 'No registrado'}\n\n_Haz clic en el enlace e ingresa tu contraseña para revisar la línea de tiempo de tus avances y recibir notificaciones instantáneas en tu dispositivo._`;
   };
 
   const shareText = getFormattedShareText(modalData);
+
+  const handleSendOfficialWhatsApp = async () => {
+    const phone = modalData.cliente.telefono?.replace(/\D/g, '');
+    if (!phone) {
+      toast.error('Cliente sin teléfono', {
+        description: 'El cliente no tiene un número telefónico registrado para enviar WhatsApp.',
+      });
+      return;
+    }
+
+    try {
+      setSendingWa(true);
+      const res = await fetch('/api/whatsapp/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telefono: phone,
+          mensaje: shareText,
+          clienteNombre: modalData.cliente.nombre,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Error al enviar mensaje por WhatsApp Cloud API');
+      }
+
+      toast.success('¡WhatsApp enviado con éxito!', {
+        description: `Se entregó el folio y enlace de seguimiento a ${modalData.cliente.nombre}.`,
+        duration: 5000,
+      });
+      onClose();
+    } catch (err: any) {
+      console.error('Error enviando WhatsApp oficial:', err);
+      toast.warning('Aviso de WhatsApp Cloud API', {
+        description: err.message,
+        duration: 7000,
+      });
+    } finally {
+      setSendingWa(false);
+    }
+  };
+
+  const handleOpenWebWhatsApp = () => {
+    const text = encodeURIComponent(shareText);
+    const phone = (modalData.cliente.telefono || '').replace(/\D/g, '');
+    const url = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
+    window.open(url, '_blank');
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -68,7 +122,7 @@ export function ShareCredentialsModal({
             </div>
             <div className="flex justify-between items-center text-xs">
               <span className="text-zinc-400 font-medium">Número de Folio:</span>
-              <span className="font-mono text-[#c5a059] font-bold bg-[#0d0e12] px-2.5 py-0.5 rounded border border-[#c5a059]/30">{modalData.folio}</span>
+              <span className="font-mono text-[#c5a059] font-bold bg-[#0d0e12] px-2.5 py-0.5 rounded border border-[#c5a059]/30">{formatFolio(modalData.folio)}</span>
             </div>
             <div className="flex justify-between items-center text-xs">
               <span className="text-zinc-400 font-medium">Contraseña (NSS):</span>
@@ -108,16 +162,17 @@ export function ShareCredentialsModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             <button
               type="button"
-              onClick={() => {
-                const text = encodeURIComponent(shareText);
-                const phone = (modalData.cliente.telefono || '').replace(/\D/g, '');
-                const url = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${text}` : `https://api.whatsapp.com/send?text=${text}`;
-                window.open(url, '_blank');
-              }}
-              className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              disabled={sendingWa}
+              onClick={handleSendOfficialWhatsApp}
+              className="py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              title="Enviar directamente desde la API oficial de WhatsApp Cloud al cliente"
             >
-              <Smartphone className="w-4 h-4" />
-              <span>Enviar por WhatsApp</span>
+              {sendingWa ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Smartphone className="w-4 h-4" />
+              )}
+              <span>{sendingWa ? 'Enviando WhatsApp...' : 'Enviar por WhatsApp (Oficial)'}</span>
             </button>
 
             <button
@@ -127,6 +182,16 @@ export function ShareCredentialsModal({
             >
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               <span>{copied ? '¡Copiado!' : 'Copiar Credenciales'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleOpenWebWhatsApp}
+              className="py-1 px-2 text-[11px] text-zinc-400 hover:text-[#dfba73] flex items-center justify-center gap-1 cursor-pointer transition-colors sm:col-span-2"
+              title="Abrir en WhatsApp Web para chatear manualmente"
+            >
+              <ExternalLink className="w-3 h-3" />
+              <span>O abrir manualmente en WhatsApp Web / Móvil</span>
             </button>
 
             {typeof navigator !== 'undefined' && 'share' in navigator && (

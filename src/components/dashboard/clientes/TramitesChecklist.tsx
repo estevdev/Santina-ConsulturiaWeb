@@ -38,6 +38,7 @@ interface TramitesChecklistProps {
   onOpenInmuebleFotosModal: (tramiteId: string, tr: TramiteMejoravit) => void;
   onGenerateClientDocLink: (preset: Preset, tramiteType: string) => Promise<void>;
   onRemoveDocPreset: (preset: Preset, docKey: string) => Promise<void>;
+  onFillDoc?: (preset: Preset, tramiteType: string) => void;
   onToggleRequirement?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, currentValue: boolean) => Promise<void>;
   togglingReqKey?: string | null;
   onVerifyClientDoc?: (tramiteTipo: 'retiro' | 'mejoravit' | 'altaMedica', tramiteId: string, reqKey: string, fileUrl: string) => Promise<void>;
@@ -62,6 +63,7 @@ export function TramitesChecklist({
   onOpenInmuebleFotosModal,
   onGenerateClientDocLink,
   onRemoveDocPreset,
+  onFillDoc,
   onToggleRequirement,
   togglingReqKey,
   onVerifyClientDoc,
@@ -311,6 +313,7 @@ export function TramitesChecklist({
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
               onViewDoc={onViewDoc}
+              onFillDoc={onFillDoc}
             />
           </div>
         ))
@@ -731,6 +734,7 @@ export function TramitesChecklist({
                 onGenerateLink={onGenerateClientDocLink}
                 onRemoveDoc={onRemoveDocPreset}
                 onViewDoc={onViewDoc}
+                onFillDoc={onFillDoc}
               />
             </div>
           );
@@ -872,6 +876,7 @@ export function TramitesChecklist({
               onGenerateLink={onGenerateClientDocLink}
               onRemoveDoc={onRemoveDocPreset}
               onViewDoc={onViewDoc}
+              onFillDoc={onFillDoc}
             />
           </div>
         ))

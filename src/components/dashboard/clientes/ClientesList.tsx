@@ -23,10 +23,12 @@ import {
   Phone,
   Mail,
   FolderArchive,
+  FileText,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Cliente } from '@/types/cliente';
 import { ESTADOS_CLIENTE, getEstadoClienteConfig } from '@/constants/estadosCliente';
+import { formatFolio } from '@/utils/whatsapp';
 
 interface ClientesListProps {
   clientes: Cliente[];
@@ -576,7 +578,7 @@ export function ClientesList({
             const fullApellidos = [cliente.apellido_paterno, cliente.apellido_materno].filter(Boolean).join(' ') || cliente.apellidos || '';
             const statusConfig = getEstadoClienteConfig(cliente.estado_cliente);
             const nombreCompleto = `${cliente.nombre} ${fullApellidos}`.trim();
-            const clientFolio = (clientesFoliosMap?.[cliente.id]?.[0]) || (cliente.id ? cliente.id.substring(0, 8).toUpperCase() : '');
+            const clientFolio = formatFolio(clientesFoliosMap?.[cliente.id]?.[0] || cliente.id);
 
             return (
               <div
@@ -732,15 +734,15 @@ export function ClientesList({
                           e.stopPropagation();
                           onSelectCliente(cliente, true);
                         }}
-                        title="Abrir expediente en Modo Seguimiento"
+                        title="Abrir expediente del cliente"
                         className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
                           isSelected && showFullDetails
                             ? 'bg-[#c5a059] text-zinc-950 shadow-sm'
                             : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
                         }`}
                       >
-                        <User className="w-3 h-3" />
-                        <span>Seguimiento</span>
+                        <FileText className="w-3 h-3" />
+                        <span>Expediente</span>
                       </button>
 
                       {currentUserRole === 'admin' && onDeleteCliente && (

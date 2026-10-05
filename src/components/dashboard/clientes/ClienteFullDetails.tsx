@@ -9,7 +9,6 @@ import {
   Share2,
   Edit,
   MapPin,
-  GitCommit,
   Trash2,
   Plus,
   Hash,
@@ -24,9 +23,6 @@ interface ClienteFullDetailsProps {
   currentUserRole?: string;
   tramiteMejoravit?: TramiteMejoravit;
   downloadingBundle: 'oficiales' | 'contratos' | 'ambos' | null;
-  isModoSeguimiento?: boolean;
-  onToggleModoSeguimiento?: () => void;
-  timelineComponent?: React.ReactNode;
   onChangeClienteStatus?: (clienteId: string, newStatus: string) => void;
   onDeleteCliente?: (cliente: Cliente) => void;
   onBack: () => void;
@@ -44,9 +40,6 @@ export function ClienteFullDetails({
   currentUserRole,
   tramiteMejoravit,
   downloadingBundle,
-  isModoSeguimiento = true,
-  onToggleModoSeguimiento,
-  timelineComponent,
   onChangeClienteStatus,
   onDeleteCliente,
   onBack,
@@ -72,21 +65,6 @@ export function ClienteFullDetails({
             <ArrowLeft className="w-4 h-4 text-[#c5a059]" />
             <span>← Volver a la Lista de Clientes & Checklist</span>
           </button>
-
-          {onToggleModoSeguimiento && (
-            <button
-              type="button"
-              onClick={onToggleModoSeguimiento}
-              className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all cursor-pointer shadow-sm border ${
-                isModoSeguimiento
-                  ? 'bg-gradient-to-r from-[#9a7b38] via-[#c5a059] to-[#dfba73] text-slate-950 border-[#dfba73] shadow-md ring-2 ring-[#c5a059]/40'
-                  : 'bg-slate-100 hover:bg-slate-200 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 text-[#9a7b38] dark:text-[#dfba73] border-slate-300 dark:border-[#c5a059]/40'
-              }`}
-            >
-              <GitCommit className="w-4 h-4" />
-              <span>{isModoSeguimiento ? 'Ver Checklist Tradicional' : 'Entrar en Modo Seguimiento'}</span>
-            </button>
-          )}
         </div>
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -163,8 +141,8 @@ export function ClienteFullDetails({
         </div>
       </div>
 
-      {/* 1. CONTENIDO: LÍNEA DE TIEMPO DE SEGUIMIENTO O CHECKLIST TRADICIONAL */}
-      {isModoSeguimiento && timelineComponent ? timelineComponent : children}
+      {/* 1. CONTENIDO: CHECKLIST DE TRÁMITES Y EXPEDIENTE */}
+      {children}
 
       {/* 2. Información del Expediente del Cliente */}
       <div className="bg-slate-50 dark:bg-slate-800/60 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-6">

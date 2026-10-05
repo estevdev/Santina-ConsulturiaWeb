@@ -172,6 +172,31 @@ export default function RadarPage() {
       }
 
       toast.success('Estado actualizado correctamente');
+
+      // Notificación automática por WhatsApp Cloud API
+      try {
+        const waRes = await fetch('/api/whatsapp/notificar-estado', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clienteId,
+            nuevoEstado: newStatus,
+          }),
+        });
+        const waData = await waRes.json();
+        if (waData.success) {
+          toast.success(`WhatsApp enviado al cliente`, {
+            description: `Se notificó el nuevo estado: "${newStatus}".`,
+          });
+        } else if (waData.error) {
+          toast.warning(`Aviso de WhatsApp`, {
+            description: waData.error,
+            duration: 7000,
+          });
+        }
+      } catch (waErr) {
+        console.error('Error al invocar WhatsApp en Radar:', waErr);
+      }
     } catch (err: any) {
       console.error(err);
       toast.error('Error inesperado al guardar el estado');
